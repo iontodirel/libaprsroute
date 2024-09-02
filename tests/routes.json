@@ -63,6 +63,25 @@
             "options": "preempt_truncate"
         },
         {
+            "id": "4ZCL8",
+            "comment": "Preempt tests: Explicitely route a packet through the router's callsign",
+            "address": "CALLB",
+            "path": "CALLB",
+            "original_packet": "N0CALL>APRS,CALLA,CALLB:data",
+            "routed_packet": "N0CALL>APRS,CALLB*,CALLA:data",
+            "routed": "true",
+            "options": "preempt_front"
+        },
+        {
+            "id": "4ZCL8",
+            "comment": "Preempt tests: Explicitely route a packet through the router's callsign, which is missing",
+            "path": "CALLB",
+            "original_packet": "N0CALL>APRS,CALLA,CALLB:data",
+            "routed_packet": "N0CALL>APRS,CALLA,CALLB:data",
+            "routed": "false",
+            "options": "preempt_front"
+        },
+        {
             "comments": [
                 "-----------------------------------------------------------------------------------------------------",
                 "                                                                                                     ",
@@ -799,7 +818,8 @@
             "path": "WIDE1",
             "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G,H,I,J:data",
             "routed_packet": "N0CALL>APRS,A,B,C,D,E,F,G,H,I,J:data",
-            "routed": "false"
+            "routed": "false",
+            "options": "strict"
         },
         {
             "id": "V8GCC",
@@ -810,6 +830,16 @@
             "routed_packet": "N0CALL>APRS,CALL--1,DIGI*:data",
             "options": "substitute_complete_hops",
             "routed": "true"
+        },
+        {
+            "id": "V8GCC",
+            "comment": "Edge case: Negative SSID (invalid)",
+            "address": "DIGI",
+            "path": "WIDE1",
+            "original_packet": "N0CALL>APRS,CALL--1,WIDE1-1:data",
+            "routed_packet": "N0CALL>APRS,CALL--1,WIDE1-1:data",
+            "options": "substitute_complete_hops,strict",
+            "routed": "false"
         },
         {
             "id": "76HQL",
@@ -876,6 +906,54 @@
             "routed_packet": "N0CALL>APRS,A,B,C,D,E,F,DIGI*,WIDE2-1:data",
             "routed": "true",
             "options": "substitute_complete_hops"
+        },
+        {
+            "id": "5QMJ0",
+            "comment": "Edge cases: Invalid path",
+            "address": "DIGI",
+            "path": "WIDE-",
+            "original_packet": "N0CALL>APRS,WIDE2-2",
+            "routed": "false"
+        },
+        {
+            "id": "5QMJ0",
+            "comment": "Edge cases: Invalid path",
+            "address": "DIGI",
+            "path": "WIDE-2",
+            "original_packet": "N0CALL>APRS,WIDE2-2",
+            "routed": "false"
+        },
+        {
+            "id": "5QMJ0",
+            "comment": "Edge cases: Invalid path",
+            "address": "DIGI",
+            "path": "WIDE2-",
+            "original_packet": "N0CALL>APRS,WIDE2-2",
+            "routed": "false"
+        },
+        {
+            "id": "5QMJ0",
+            "comment": "Edge cases: Invalid path",
+            "address": "DIGI",
+            "path": "WIDE0-2",
+            "original_packet": "N0CALL>APRS,WIDE2-2",
+            "routed": "false"
+        },
+        {
+            "id": "5QMJ0",
+            "comment": "Edge cases: Invalid path",
+            "address": "DIGI",
+            "path": "WIDE",
+            "original_packet": "N0CALL>APRS,WIDE2-2",
+            "routed": "false"
+        },
+        {
+            "id": "5QMJ0",
+            "comment": "Edge cases: Invalid path",
+            "address": "DIGI",
+            "path": "WIDE2-0",
+            "original_packet": "N0CALL>APRS,WIDE2-2",
+            "routed": "false"
         }
     ]
 }

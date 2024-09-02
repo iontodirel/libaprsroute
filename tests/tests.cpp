@@ -51,7 +51,7 @@ using namespace aprs::router::detail;
 
 #define APRS_ROUTE_DISABLE_PACKET_LOOP_TEST
 
-routing_result test_packet_routing_iteration(const packet& p, router_settings digi, std::vector<std::string> addresses,  std::vector<int> digipeated_indices, int count);
+routing_result test_packet_routing_iteration(const packet& p, router_settings digi, std::vector<std::string> addresses,  std::vector<size_t> digipeated_indices, int count);
 
 TEST(segment, to_string)
 {
@@ -345,7 +345,7 @@ TEST(router, try_route_packet_explicit_loop)
     packet p = {"N0CALL", "APRS", {"DIGIA","DIGIB","DIGIC","DIGID","DIGIE","DIGIF","DIGIG","DIGIH"}, "data"};
     result.routed_packet = p;
 
-    std::vector<int> digipeated_indices = { 0, 1, 2, 3, 4, 5, 6, 7 };
+    std::vector<size_t> digipeated_indices = { 0, 1, 2, 3, 4, 5, 6, 7 };
 
     result = test_packet_routing_iteration(p, digi, p.path, digipeated_indices, 8);
 
@@ -370,7 +370,7 @@ TEST(router, try_route_packet_n_N_loop)
     packet p = {"N0CALL", "APRS", {"WIDE1-2", "CALL", "WIDE2-2", "ROUTE", "WIDE3-2"}, "data"};
     result.routed_packet = p;
 
-    std::vector<int> digipeated_indices = { 0, 1, 3, 4, 6, 7 };
+    std::vector<size_t> digipeated_indices = { 0, 1, 3, 4, 6, 7 };
     std::vector<std::string> digipeater_addresses = {"DIGI1","DIGI2","DIGI3","DIGI4","DIGI5","DIGI6"};
 
     result = test_packet_routing_iteration(p, digi, digipeater_addresses, digipeated_indices, 6);
@@ -454,7 +454,7 @@ TEST(router, try_route_packet_loop)
 #endif
 }
 
-routing_result test_packet_routing_iteration(const packet& p, router_settings digi, std::vector<std::string> addresses,  std::vector<int> digipeated_indices, int count)
+routing_result test_packet_routing_iteration(const packet& p, router_settings digi, std::vector<std::string> addresses,  std::vector<size_t> digipeated_indices, int count)
 {
     routing_result result;
 
@@ -473,7 +473,7 @@ routing_result test_packet_routing_iteration(const packet& p, router_settings di
 
         printf("%s\n", to_string(result.routed_packet).c_str());
 
-        for (int j = 0; j < result.routed_packet.path.size(); j++)
+        for (size_t j = 0; j < result.routed_packet.path.size(); j++)
         {
             if (digipeated_indices[i - 1] != j)
             {
@@ -642,7 +642,7 @@ bool try_get_routing_test_set(route_test test, packet& p, router_settings& setti
     settings.options = routing_option::none;
 
     std::vector<std::string> options = split_comma_separated_values(test.options);
-    for (int i = 0; i < options.size(); i++)
+    for (size_t i = 0; i < options.size(); i++)
     {
         routing_option option = routing_option::none;
         if (try_parse_routing_option(options[i], option))
@@ -738,6 +738,52 @@ TEST(router, try_route_packet_auto_tests)
 #else
     EXPECT_TRUE(true);
 #endif
+}
+
+TEST(segment, try_parse_callsign)
+{
+    std::string address;
+    std::string callsign;
+    int ssid = 0;
+
+    address = "A0BCDE-12";
+    EXPECT_TRUE(try_parse_callsign(address, callsign, ssid));
+    EXPECT_TRUE(callsign == "A0BCDE");
+    EXPECT_TRUE(ssid == 12);
+
+    address = "A0BCDE-12*";
+    EXPECT_FALSE(try_parse_callsign(address, callsign, ssid));
+
+    address = "A0BCDE-12*";
+    EXPECT_TRUE(try_parse_callsign_with_used_flag(address, callsign, ssid));
+    EXPECT_TRUE(callsign == "A0BCDE");
+    EXPECT_TRUE(ssid == 12);
+
+    address = "N0CALL";
+    EXPECT_TRUE(try_parse_callsign(address, callsign, ssid));
+    EXPECT_TRUE(callsign == "N0CALL");
+    EXPECT_TRUE(ssid == 0);
+
+    address = "N0CALL-01";
+    EXPECT_FALSE(try_parse_callsign(address, callsign, ssid));
+
+    address = "N0CALL-";
+    EXPECT_FALSE(try_parse_callsign(address, callsign, ssid));
+
+    address = "N0CALL-0";
+    EXPECT_FALSE(try_parse_callsign(address, callsign, ssid));
+
+    address = "N0CALL-100";
+    EXPECT_FALSE(try_parse_callsign(address, callsign, ssid));
+
+    address = "N0CALL-dd";
+    EXPECT_FALSE(try_parse_callsign(address, callsign, ssid));
+
+    address = "N0CALL-WX";
+    EXPECT_FALSE(try_parse_callsign(address, callsign, ssid));
+
+    address = "N0CALL-20";
+    EXPECT_FALSE(try_parse_callsign(address, callsign, ssid));
 }
 
 int main(int argc, char** argv)
