@@ -52,6 +52,12 @@ add_definitions(-DINPUT_TEST_FILE="${INPUT_TEST_FILE}")
 
 set_property(TARGET aprsroute_tests PROPERTY CXX_STANDARD 20)
 
+if(MSVC)
+    target_compile_options(aprsroute_tests PRIVATE /W4 /WX)
+elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
+    target_compile_options(aprsroute_tests PRIVATE -Wall -Wextra -pedantic -Werror)
+endif()
+
 include(GoogleTest)
 
 gtest_discover_tests(aprsroute_tests)

@@ -459,12 +459,7 @@ APRS_ROUTER_INLINE bool try_route_packet(const struct packet& packet, const rout
     std::vector<segment> router_generic_addresses = get_router_generic_addresses(router_addresses);
     std::vector<segment> packet_addresses = parse_packet_addresses(packet);
 
-    if (settings.address.empty())
-    {
-        return create_routing_result(routing_state::not_routed, result);
-    }
-
-    if (!is_packet_valid(packet, packet_addresses, options))
+    if (settings.address.empty() || !is_packet_valid(packet, packet_addresses, options))
     {   
         return create_routing_result(routing_state::not_routed, result);
     }
