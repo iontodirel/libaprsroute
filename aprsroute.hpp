@@ -810,7 +810,7 @@ APRS_ROUTER_INLINE bool try_parse_callsign_with_used_flag(std::string address, s
 APRS_ROUTER_INLINE std::vector<segment> get_router_n_N_addresses(const std::vector<segment>& router_addresses)
 {
     std::vector<segment> result;
-    int i = 0;
+    size_t i = 0;
     for (auto p : router_addresses)
     {
         if (p.n > 0)
@@ -979,7 +979,7 @@ APRS_ROUTER_INLINE std::optional<size_t> find_last_used_address_index(const std:
         return {};
     }
 
-    for (int i = packet_addresses.size() - 1; i >= 0; i--)
+    for (int i = static_cast<int>(packet_addresses.size() - 1); i >= 0; i--)
     {
         if (packet_addresses[i].mark)
         {
