@@ -179,7 +179,21 @@ TEST(segment, try_parse_segment)
     EXPECT_TRUE(s.mark == true);
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
+    EXPECT_TRUE(s.ssid == 10);
     EXPECT_TRUE(s.text == "W7ION-10");
+    EXPECT_TRUE(s.type == segment_type::other);
+
+    // -------------------------------------------------------------
+    // Segment with invalid callsign SSID
+    // -------------------------------------------------------------
+
+    path = "W7ION-1d";
+    EXPECT_TRUE(try_parse_segment(path, s));
+    EXPECT_TRUE(s.mark == false);
+    EXPECT_TRUE(s.n == 0);
+    EXPECT_TRUE(s.N == 0);
+    EXPECT_TRUE(s.ssid == 0);
+    EXPECT_TRUE(s.text == "W7ION-1d");
     EXPECT_TRUE(s.type == segment_type::other);
 
     // -------------------------------------------------------------
