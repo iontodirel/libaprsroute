@@ -42,7 +42,7 @@
 
 #include "../aprsroute.hpp"
 
-#ifdef IS_LINUX_MAC
+#if defined(IS_LINUX_MAC) && !defined(APRS_ROUTE_DISABLE_AUTO_TESTING)
 #include <signal.h>
 #endif
 
@@ -55,6 +55,7 @@ routing_result test_packet_routing_iteration(const packet& p, router_settings di
 
 TEST(segment, to_string)
 {
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
     segment s;
     s.text = "WIDE";
     s.n = 2;
@@ -72,19 +73,27 @@ TEST(segment, to_string)
     s.N = 0;
     s.n = 0;
     EXPECT_TRUE(to_string(s) == "WIDE*");
+#else
+    EXPECT_TRUE(true);
+#endif
 }
 
 TEST(packet, to_string)
 {
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
     packet p = { "FROM", "TO", { "WIDE1-1", "WIDE2-1" }, "data"};
     EXPECT_TRUE(to_string(p) == "FROM>TO,WIDE1-1,WIDE2-1:data");
 
     p = { "FROM", "TO", { "CALL*", "WIDE1", "WIDE2-1" }, "data"};
     EXPECT_TRUE(to_string(p) == "FROM>TO,CALL*,WIDE1,WIDE2-1:data");
+#else
+    EXPECT_TRUE(true);
+#endif
 }
 
 TEST(segment, try_parse_segment)
 {
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
     segment s;
     std::string path;
 
@@ -246,10 +255,14 @@ TEST(segment, try_parse_segment)
     EXPECT_TRUE(s.N == 1);
     EXPECT_TRUE(s.text == "WIDE1");
     EXPECT_TRUE(s.type == segment_type::other);
+#else
+    EXPECT_TRUE(true);
+#endif
 }
 
 TEST(packet, try_decode_packet)
 {
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
     std::string packet_string;
     packet p;
 
@@ -286,7 +299,7 @@ TEST(packet, try_decode_packet)
 
     // Test case: Packet with missing data field
     packet_string = "N0CALL>APRS,WIDE2-2";
-    EXPECT_TRUE(try_decode_packet(packet_string, p) == false);
+    EXPECT_FALSE(try_decode_packet(packet_string, p));
 
     // Test case: Packet with no path
     packet_string = "N0CALL>APRS:data";
@@ -323,13 +336,59 @@ TEST(packet, try_decode_packet)
     EXPECT_TRUE(try_decode_packet(packet_string, p));
     EXPECT_TRUE(p.from == "N0CALL");
     EXPECT_TRUE(p.to == "APRS");
-    EXPECT_TRUE(p.data.empty());  // Assuming empty data is acceptable
+    EXPECT_TRUE(p.data.empty());
     EXPECT_TRUE(p.path.empty());
     EXPECT_TRUE(to_string(p) == packet_string);
+
+    // Test case: Packet with source, destination, and data, but no path
+    packet_string = "N0CALL>APRS:data";
+    EXPECT_TRUE(try_decode_packet(packet_string, p));
+    EXPECT_TRUE(p.from == "N0CALL");
+    EXPECT_TRUE(p.to == "APRS");
+    EXPECT_TRUE(p.data == "data");
+    EXPECT_TRUE(p.path.empty());
+    EXPECT_TRUE(to_string(p) == packet_string);
+
+    // Test case: Packet with only data
+    packet_string = "N0CALL:data";
+    EXPECT_FALSE(try_decode_packet(packet_string, p));
+
+    // Test case: with only source and destination
+    packet_string = "N0CALL>APRS";
+    EXPECT_FALSE(try_decode_packet(packet_string, p));
+
+    // Test case: with only source and destination, and one empty path
+    packet_string = "N0CALL>APRS,";
+    EXPECT_FALSE(try_decode_packet(packet_string, p));
+
+    // Test case: with only source and empty destination
+    packet_string = "N0CALL>";
+    EXPECT_FALSE(try_decode_packet(packet_string, p));
+
+    // Test case: with only source
+    packet_string = "N0CALL";
+    EXPECT_FALSE(try_decode_packet(packet_string, p));
+
+    // Test case: with some empty addresses
+    packet_string = "N0CALL>APRS,,CALLA,,CALLB:data";
+    EXPECT_TRUE(try_decode_packet(packet_string, p));
+    EXPECT_TRUE(p.from == "N0CALL");
+    EXPECT_TRUE(p.to == "APRS");
+    EXPECT_TRUE(p.data == "data");
+    EXPECT_TRUE(p.path.size() == 4);
+    EXPECT_TRUE(p.path[0] == "");
+    EXPECT_TRUE(p.path[1] == "CALLA");
+    EXPECT_TRUE(p.path[2] == "");
+    EXPECT_TRUE(p.path[3] == "CALLB");
+    EXPECT_TRUE(to_string(p) == packet_string);
+#else
+    EXPECT_TRUE(true);
+#endif
 }
 
 TEST(router, try_route_packet_explicit_loop)
 {
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
     routing_result result;
     router_settings digi;
 
@@ -350,10 +409,14 @@ TEST(router, try_route_packet_explicit_loop)
     result = test_packet_routing_iteration(p, digi, p.path, digipeated_indices, 8);
 
     EXPECT_TRUE(to_string(result.routed_packet) == "N0CALL>APRS,DIGIA,DIGIB,DIGIC,DIGID,DIGIE,DIGIF,DIGIG,DIGIH*:data");
+#else
+    EXPECT_TRUE(true);
+#endif
 }
 
 TEST(router, try_route_packet_n_N_loop)
 {
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
     routing_result result;
     router_settings digi;
 
@@ -396,19 +459,27 @@ TEST(router, try_route_packet_n_N_loop)
     result = test_packet_routing_iteration(p, digi, digipeater_addresses, digipeated_indices, 8);
 
     EXPECT_TRUE(to_string(result.routed_packet) == "N0CALL>APRS,DIGI1,DIGI2,DIGI3,DIGI4,DIGI5,DIGI6,DIGI7,DIGI8*:data");
+#else
+    EXPECT_TRUE(true);
+#endif
 }
 
 TEST(routing_option, enum_has_flag)
 {
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
     routing_option op = routing_option::preempt_front | routing_option::substitute_complete_hops;
 
     EXPECT_TRUE(enum_has_flag(op, routing_option::preempt_front));
     EXPECT_TRUE(enum_has_flag(op, routing_option::substitute_complete_hops));
     EXPECT_TRUE(enum_has_flag(op, routing_option::route_self) == false);
+#else
+    EXPECT_TRUE(true);
+#endif
 }
 
 TEST(router, simple_demo)
 {
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
     using namespace aprs::router;
 
     router_settings digi { "DIGI", { "WIDE1" } };
@@ -420,6 +491,9 @@ TEST(router, simple_demo)
 
     EXPECT_TRUE(result.state == routing_state::routed);
     EXPECT_TRUE(to_string(result.routed_packet) == "N0CALL>APRS,DIGI*,WIDE1-2:data"); // N0CALL>APRS,DIGI*,WIDE1-2:data
+#else
+    EXPECT_TRUE(true);
+#endif
 }
 
 TEST(router, try_route_packet_loop)
@@ -484,6 +558,8 @@ routing_result test_packet_routing_iteration(const packet& p, router_settings di
 
     return result;
 }
+
+#ifndef APRS_ROUTE_DISABLE_AUTO_TESTING
 
 struct route_test
 {
@@ -716,6 +792,8 @@ bool has_marked_tests(const std::vector<route_test>& tests)
     return false;
 }
 
+#endif
+
 TEST(router, try_route_packet_auto_tests)
 {
 #ifndef APRS_ROUTE_DISABLE_AUTO_TESTING
@@ -742,6 +820,7 @@ TEST(router, try_route_packet_auto_tests)
 
 TEST(segment, try_parse_callsign)
 {
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
     std::string address;
     std::string callsign;
     int ssid = 0;
@@ -784,6 +863,9 @@ TEST(segment, try_parse_callsign)
 
     address = "N0CALL-20";
     EXPECT_FALSE(try_parse_callsign(address, callsign, ssid));
+#else
+    EXPECT_TRUE(true);
+#endif
 }
 
 int main(int argc, char** argv)

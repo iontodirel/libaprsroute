@@ -82,6 +82,248 @@
             "options": "preempt_front"
         },
         {
+            "id": "4ZCL8",
+            "comment": "Preempt tests: Preempt Drop",
+            "address": "CITYD",
+            "original_packet": "N0CALL>APRS,CITYA*,CITYB,CITYC,CITYD,CITYE:data",
+            "routed_packet": "N0CALL>APRS,CITYD*,CITYE:data",
+            "routed": "true",
+            "options": "preempt_drop"
+        },
+        {
+            "id": "4ZCL8",
+            "comment": "Preempt tests: Explicitely route a packet through the router's path",
+            "address": "DIGI",
+            "path": "CALLB",
+            "original_packet": "N0CALL>APRS,CALLA,CALLB:data",
+            "routed_packet": "N0CALL>APRS,DIGI,CALLB*,CALLA:data",
+            "routed": "true",
+            "options": "preempt_front"
+        },
+        {
+            "id": "4ZCL8",
+            "comment": "Preempt tests: Explicitely route a packet through the router's path",
+            "address": "DIGI",
+            "path": "CALLB",
+            "original_packet": "N0CALL>APRS,CALLA,CALLB:data",
+            "routed_packet": "N0CALL>APRS,DIGI,CALLB*:data",
+            "routed": "true",
+            "options": "preempt_truncate"
+        },
+        {
+            "id": "4ZCL8",
+            "comment": "Preempt tests: Explicitely route a packet through the router's path",
+            "address": "DIGI",
+            "path": "CALLB",
+            "original_packet": "N0CALL>APRS,CALLA,CALLB,CALLC,CALLD:data",
+            "routed_packet": "N0CALL>APRS,DIGI,CALLB*,CALLA,CALLC,CALLD:data",
+            "routed": "true",
+            "options": "preempt_front"
+        },
+        {
+            "id": "4ZCL8",
+            "comment": "Preempt tests: Explicitely route a packet through the router's path",
+            "address": "DIGI",
+            "path": "CALLD",
+            "original_packet": "N0CALL>APRS,CALLA,CALLB*,CALLC,CALLD,CALLE,CALLF,CALLG:data",
+            "routed_packet": "N0CALL>APRS,CALLA,CALLB,DIGI,CALLD*,CALLC,CALLE,CALLF,CALLG:data",
+            "routed": "true",
+            "options": "preempt_front"
+        },
+        {
+            "id": "4ZCL8",
+            "comment": "Preempt tests: Explicitely route a packet through the router's path",
+            "address": "DIGI",
+            "path": "CALLD",
+            "original_packet": "N0CALL>APRS,CALLA,CALLB*,CALLC,CALLD,CALLE,CALLF,CALLG:data",
+            "routed_packet": "N0CALL>APRS,CALLA,CALLB,DIGI,CALLD*,CALLE,CALLF,CALLG:data",
+            "routed": "true",
+            "options": "preempt_truncate"
+        },
+        {
+            "id": "4ZCL8",
+            "comment": "Preempt tests: Explicitely route a packet through the router's path",
+            "address": "DIGI",
+            "path": "CALLC",
+            "original_packet": "N0CALL>APRS,CALLA,CALLB*,CALLC,CALLD,CALLE,CALLF,CALLG:data",
+            "routed_packet": "N0CALL>APRS,CALLA,CALLB,DIGI,CALLC*,CALLD,CALLE,CALLF,CALLG:data",
+            "routed": "true",
+            "options": "preempt_truncate"
+        },
+        {
+            "id": "4ZCL8",
+            "comment": "Preempt tests: Explicitely route a packet through the router's path",
+            "address": "DIGI",
+            "path": "CALLC",
+            "original_packet": "N0CALL>APRS,CALLA,CALLB,CALLC,CALLD,CALLE,CALLF,CALLG:data",
+            "routed_packet": "N0CALL>APRS,DIGI,CALLC*,CALLD,CALLE,CALLF,CALLG:data",
+            "routed": "true",
+            "options": "preempt_truncate"
+        },
+        {
+            "id": "4ZCL8",
+            "comment": "Preempt tests: Explicitely route a packet through the router's path",
+            "address": "DIGI",
+            "path": "CALLC",
+            "original_packet": "N0CALL>APRS,CALLA,CALLB*,CALLC,CALLD,CALLE,CALLF,CALLG:data",
+            "routed_packet": "N0CALL>APRS,CALLA,CALLB,DIGI,CALLC*,CALLD,CALLE,CALLF,CALLG:data",
+            "routed": "true",
+            "options": "preempt_front"
+        },
+        {
+            "id": "4ZCL8",
+            "comment": "Preempt tests: Explicitely route a packet through the router's path",
+            "address": "DIGI",
+            "path": "CALLC",
+            "original_packet": "N0CALL>APRS,CALLA,CALLB*,CALLC,CALLD,CALLE,CALLF,CALLG:data",
+            "routed_packet": "N0CALL>APRS,DIGI,CALLC*,CALLD,CALLE,CALLF,CALLG:data",
+            "routed": "true",
+            "options": "preempt_drop"
+        },
+        {
+            "id": "4ZCL8",
+            "comment": "Preempt tests: Explicitely route a packet through the router's path",
+            "address": "DIGI",
+            "path": "CALLG",
+            "original_packet": "N0CALL>APRS,CALLA,CALLB*,CALLC,CALLD,CALLE,CALLF,CALLG:data",
+            "routed_packet": "N0CALL>APRS,DIGI,CALLG*:data",
+            "routed": "true",
+            "options": "preempt_drop"
+        },
+        {
+            "id": "4ZCL8",
+            "comment": "Preempt tests: Explicitely route a packet through the router's path",
+            "address": "DIGI",
+            "path": "CALLA",
+            "original_packet": "N0CALL>APRS,CALLA,CALLB,CALLC,CALLD,CALLE,CALLF,CALLG,CALLH:data",
+            "routed_packet": "N0CALL>APRS,DIGI*,CALLB,CALLC,CALLD,CALLE,CALLF,CALLG,CALLH:data",
+            "routed": "true",
+            "options": "preempt_drop"
+        },
+        {
+            "id": "4ZCL8",
+            "comment": "Preempt tests: Explicitely route a packet through the router's path",
+            "address": "DIGI",
+            "path": "CALLD",
+            "original_packet": "N0CALL>APRS,CALLA,CALLB*,CALLC,CALLD,CALLE,CALLF,CALLG:data",
+            "routed_packet": "N0CALL>APRS,DIGI,CALLD*,CALLE,CALLF,CALLG:data",
+            "routed": "true",
+            "options": "preempt_drop"
+        },
+        {
+            "id": "SYG8M",
+            "comment": "Explicit: Routing in a 8 address path",
+            "address": "H",
+            "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G,H:data",
+            "routed_packet": "N0CALL>APRS,H*,A,B,C,D,E,F,G:data",
+            "options": "preempt_front",
+            "routed": "true"
+        },
+        {
+            "id": "SYG8M",
+            "comment": "Explicit: Routing in a 8 address path",
+            "address": "H",
+            "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G,H:data",
+            "routed_packet": "N0CALL>APRS,H*:data",
+            "options": "preempt_truncate",
+            "routed": "true"
+        },
+        {
+            "id": "SYG8M",
+            "comment": "Explicit: Routing in a 8 address path",
+            "address": "H",
+            "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G*,H:data",
+            "routed_packet": "N0CALL>APRS,A,B,C,D,E,F,G,H*:data",
+            "options": "preempt_truncate",
+            "routed": "true"
+        },
+        {
+            "id": "SYG8M",
+            "comment": "Explicit: Routing in a 8 address path",
+            "address": "H",
+            "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G,H,I:data",
+            "routed_packet": "N0CALL>APRS,A,B,C,D,E,F,G,H,I:data",
+            "options": "preempt_truncate",
+            "routed": "false"
+        },
+        {
+            "id": "SYG8M",
+            "comment": "Explicit: Routing in a 8 address path",
+            "address": "H",
+            "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G,H*:data",
+            "routed_packet": "N0CALL>APRS,A,B,C,D,E,F,G,H*:data",
+            "options": "preempt_truncate",
+            "routed": "false"
+        },
+        {
+            "id": "SYG8M",
+            "comment": "Explicit: Routing in a 8 address path",
+            "address": "DIGI",
+            "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G*,DIGI:data",
+            "routed_packet": "N0CALL>APRS,A,B,C,D,E,F,G,DIGI*:data",
+            "options": "preempt_truncate",
+            "routed": "true"
+        },
+        {
+            "id": "SYG8M",
+            "comment": "Explicit: Routing in a 8 address path",
+            "address": "DIGI",
+            "path": "H",
+            "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G*,H:data",
+            "routed_packet": "N0CALL>APRS,A,B,C,D,E,F,G,DIGI*:data",
+            "options": "preempt_truncate",
+            "routed": "true"
+        },
+        {
+            "id": "SYG8M",
+            "comment": "Explicit: Routing in a 8 address path",
+            "address": "DIGI",
+            "path": "A",
+            "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G,H:data",
+            "routed_packet": "N0CALL>APRS,DIGI*,B,C,D,E,F,G,H:data",
+            "options": "preempt_truncate",
+            "routed": "true"
+        },
+        {
+            "id": "SYG8M",
+            "comment": "Explicit: Routing in a 8 address path",
+            "address": "DIGI",
+            "path": "A",
+            "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G:data",
+            "routed_packet": "N0CALL>APRS,DIGI,A*,B,C,D,E,F,G:data",
+            "options": "preempt_drop",
+            "routed": "true"
+        },
+        {
+            "id": "SYG8M",
+            "comment": "Explicit: Routing in a 8 address path",
+            "address": "DIGI",
+            "path": "A",
+            "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G:data",
+            "routed_packet": "N0CALL>APRS,DIGI,A*,B,C,D,E,F,G:data",
+            "options": "preempt_front",
+            "routed": "true"
+        },
+        {
+            "id": "SYG8M",
+            "comment": "Explicit: Routing in a 8 address path",
+            "address": "DIGI",
+            "path": "A",
+            "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G:data",
+            "routed_packet": "N0CALL>APRS,DIGI,A*,B,C,D,E,F,G:data",
+            "options": "preempt_mark",
+            "routed": "true"
+        },
+        {
+            "id": "SYG8M",
+            "comment": "Explicit: Routing in a 8 address path",
+            "address": "DIGI",
+            "path": "A",
+            "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G:data",
+            "routed_packet": "N0CALL>APRS,DIGI,A*,B,C,D,E,F,G:data",
+            "routed": "true"
+        },
+        {
             "comments": [
                 "-----------------------------------------------------------------------------------------------------",
                 "                                                                                                     ",
