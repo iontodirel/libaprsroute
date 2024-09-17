@@ -35,15 +35,15 @@ Other examples can be found in the tests directory.
 
 ## Goals
 
-- **Modularity**. This library is reusable, composable and standalone. It is written *without any coupling* to command line parsing code, configuration parsing code, memory management infrastructure, logging, or thread management, as it's typical will current digipeaters. This makes it easy to integrate in any project in an unintrusive way. This library has no dependencies, only relying on the C++ standard library.
-- **Diagnostics**. This library generates extensive diagnostics as part of its routing API, which allow for clean detailed diagnostics and logging, without actual dependency on stdout oa logging library.
+- **Modularity**. This library is reusable, composable and standalone. It is written *without any coupling* to command line parsing code, configuration parsing code, memory management infrastructure, logging, or thread management, as it is typical will current digipeaters. This makes it easy to integrate in any project in an unintrusive way. This library has no dependencies, only relying on the C++ standard library.
+- **Diagnostics**. This library generates extensive diagnostics as part of its routing API, which allow for clean detailed diagnostics and logging, without an actual dependency on stdout or a dependency on a logging library.
 - **Testability**. This library has a comprehensive set of tests to ensure quality and correctness. The library has been written with testability in mind.
-- **Documentation**. The documentation in the code, combined with the comprehensive tests and test assets, can be used for learning and understanding how the APRS digipeaters work.
-- **Cross Platform**. This library works on Linux, Windows or OSX systems. And has been tested with an MSVC and GCC compiler.
+- **Documentation**. The documentation in the code, combined with a comprehensive set of tests, can be used for learning and understanding about how the APRS network works.
+- **Cross Platform**. The library works on Linux, Windows or OSX systems. And has been tested with an MSVC, Clang and GCC compiler.
 
 ## Testing
 
-The ***tests*** directory contain a comprehensive sets of tests for the library. A test asset file (***routes.json***) contains various routing scenarios, and is used to drive the testing. This test asset is in a structured format, can be read by humans and programs, and can be used to study APRS routing, or used for standalone digipeater testing.
+The ***tests*** directory contain a comprehensive sets of tests. A test asset file (***routes.json***) contains various routing scenarios. This test asset is stored in a structured format, which can be read by humans or programs, and can be used to study APRS routing, or used for standalone digipeater testing.
 
 ## Development
 
