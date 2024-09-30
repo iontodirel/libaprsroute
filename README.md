@@ -4,7 +4,7 @@ C++ header only standalone APRS routing library
 
 ## Examples
 
-Decoding a packet:
+### Decoding a packet:
 
 ``` cpp
 packet p;
@@ -17,7 +17,7 @@ assert(p.path.size() == 1);
 assert(p.path[0] == "WIDE2-2");
 ```
 
-Routing a packet:
+### Routing a packet:
 
 ``` cpp
 router_settings digi { "DIGI", { "WIDE1" } };
@@ -31,7 +31,7 @@ assert(result.state == routing_state::routed);
 assert(to_string(result.routed_packet) == "N0CALL>APRS,DIGI*,WIDE1-2:data"); // N0CALL>APRS,DIGI*,WIDE1-2:data
 ```
 
-Routing diagnostics:
+### Routing diagnostics:
 
 ``` cpp
 router_settings digi { "DIGI", { "WIDE1", "WIDE2" }, routing_option::none, true };
@@ -77,7 +77,7 @@ assert(result.actions[2].end == 16);
 assert(result.actions[2].index == 0);
 ```
 
-Print routing diagnostics to string:
+### Print routing diagnostics to string:
 
 ``` cpp
 router_settings digi { "DIGI", { "WIDE1", "WIDE2" }, routing_option::none, true };
