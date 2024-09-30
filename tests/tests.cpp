@@ -39,6 +39,8 @@
 #include <fstream>
 #include <sstream>
 #include <locale>
+#include <fmt/format.h>
+#include <fmt/color.h>
 
 #include "../aprsroute.hpp"
 
@@ -280,7 +282,7 @@ TEST(packet, try_decode_packet)
     std::string packet_string;
     packet p;
 
-   // Test case: Basic packet with single path
+    // Test case: Basic packet with single path
     packet_string = "N0CALL>APRS,WIDE2-2:data";
     EXPECT_TRUE(try_decode_packet(packet_string, p));
     EXPECT_TRUE(p.from == "N0CALL");
@@ -395,6 +397,23 @@ TEST(packet, try_decode_packet)
     EXPECT_TRUE(p.path[2] == "");
     EXPECT_TRUE(p.path[3] == "CALLB");
     EXPECT_TRUE(to_string(p) == packet_string);
+#else
+    EXPECT_TRUE(true);
+#endif
+}
+
+TEST(packet, try_decode_packet_ctor)
+{
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+    packet p = "N0CALL>APRS,WIDE2-2:data";
+
+    EXPECT_TRUE(p.from == "N0CALL");
+    EXPECT_TRUE(p.to == "APRS");
+    EXPECT_TRUE(p.data == "data");
+    EXPECT_TRUE(p.path.size() == 1);
+    EXPECT_TRUE(p.path[0] == "WIDE2-2");
+
+    EXPECT_TRUE(p == "N0CALL>APRS,WIDE2-2:data");
 #else
     EXPECT_TRUE(true);
 #endif
@@ -532,7 +551,7 @@ TEST(router, simple_demo)
     router_settings digi { "DIGI", { "WIDE1" } };
     routing_result result;
 
-    packet p = { "N0CALL", "APRS", { "WIDE1-3" }, "data"}; // N0CALL>APRS,WIDE1-3:data
+    packet p = { "N0CALL", "APRS", { "WIDE1-3" }, "data" }; // N0CALL>APRS,WIDE1-3:data
 
     try_route_packet(p, digi, result);
 
@@ -1606,6 +1625,38 @@ TEST(router, try_route_packet_enable_diagnostics)
     EXPECT_TRUE(result.actions[3].start == 12);
     EXPECT_TRUE(result.actions[3].end == 12);
     EXPECT_TRUE(result.actions[3].index == 0);
+#else
+    EXPECT_TRUE(true);
+#endif
+}
+
+TEST(router, try_route_packet_color_diagnostics)
+{
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+    using namespace aprs::router;
+
+    router_settings digi { "DIGI", { "WIDE1", "WIDE2" }, routing_option::none, true };
+    routing_result result;
+
+    packet p = { "N0CALL", "APRS", { "WIDE1-2" }, "data"};
+
+    try_route_packet(p, digi, result);
+
+    std::string diag_string = to_string(result);
+
+    std::cout << diag_string << std::endl;
+
+    routing_diagnostic_display_lines diag_lines = format(result);
+
+    for (auto& l : diag_lines.lines)
+    {
+        l.message[0] = std::tolower(l.message[0]);
+
+        fmt::print(fg(fmt::color::blue_violet), "note: ");
+        fmt::print("{}\n", l.message);
+        fmt::print(fg(fmt::color::gray), "{:4}{}\n", "", l.packet_string);
+        fmt::print(fg(fmt::color::lime_green), "{:4}{}\n", "", l.highlight_string);
+    }
 #else
     EXPECT_TRUE(true);
 #endif

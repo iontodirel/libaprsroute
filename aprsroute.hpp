@@ -89,6 +89,13 @@ APRS_ROUTER_NAMESPACE_BEGIN
 
 struct packet
 {
+    packet() = default;
+    packet(const packet& other) = default;
+    packet(const std::string& from, const std::string& to, const std::vector<std::string>& path, const std::string& data);
+    packet(const char* packet_string);
+    packet(const std::string packet_string);
+    operator std::string() const;
+
     std::string from;
     std::string to;
     std::vector<std::string> path;
@@ -297,6 +304,18 @@ struct routing_diagnostic
     std::string message;
 };
 
+struct routing_diagnostic_display_line
+{
+    std::string message;
+    std::string packet_string;
+    std::string highlight_string;
+};
+
+struct routing_diagnostic_display_lines
+{
+    std::vector<routing_diagnostic_display_line> lines;
+};
+
 struct routing_result
 {
     bool routed = false;
@@ -325,6 +344,7 @@ APRS_ROUTER_INLINE bool enum_has_flag(routing_option value, routing_option flag)
 APRS_ROUTER_INLINE size_t hash(const packet& p);
 APRS_ROUTER_INLINE std::string to_string(const packet& p);
 APRS_ROUTER_INLINE std::string to_string(const routing_result& result);
+APRS_ROUTER_INLINE routing_diagnostic_display_lines format(const routing_result& result);
 APRS_ROUTER_INLINE bool operator==(const packet& lhs, const packet& rhs);
 APRS_ROUTER_INLINE bool operator!=(const packet& lhs, const packet& rhs);
 APRS_ROUTER_INLINE bool try_decode_packet(std::string_view packet_string, packet& result);
@@ -466,7 +486,8 @@ APRS_ROUTER_INLINE bool push_address_inserted_diagnostic(const std::vector<addre
 APRS_ROUTER_INLINE bool push_address_removed_diagnostic(const std::vector<address>& packet_addresses, size_t remove_address_index, bool enable_diagnostics, std::vector<routing_diagnostic>& d);
 APRS_ROUTER_INLINE bool create_address_move_diagnostic(const std::vector<address>& packet_addresses, size_t from_index, size_t to_index, bool enable_diagnostics, std::vector<routing_diagnostic>& d);
 APRS_ROUTER_INLINE bool create_truncate_address_range_diagnostic(const std::vector<address>& packet_addresses, size_t from_index, size_t to_index, bool enable_diagnostics, std::vector<routing_diagnostic>& d);
-APRS_ROUTER_INLINE std::string create_display_name_diagnostic(const routing_diagnostic& a, const packet& routed_packet);
+APRS_ROUTER_INLINE std::string create_display_name_diagnostic(const routing_diagnostic_display_line& line);
+APRS_ROUTER_INLINE routing_diagnostic_display_line create_diagnostic_print_line(const routing_diagnostic& diag, const packet& routed_packet);
 APRS_ROUTER_INLINE void unset_all_used_addresses(std::vector<address>& packet_addresses, size_t offset, size_t count);
 APRS_ROUTER_INLINE void unset_all_used_addresses(std::vector<address>& packet_addresses, size_t offset, size_t count, std::optional<size_t> maybe_ignore_index);
 APRS_ROUTER_INLINE void set_address_as_used(std::vector<address>& packet_addresses, size_t index);
@@ -510,6 +531,24 @@ APRS_ROUTER_NAMESPACE_END
 APRS_ROUTER_NAMESPACE_BEGIN
 
 #ifndef APRS_ROUTER_PUBLIC_FORWARD_DECLARATIONS_ONLY
+
+APRS_ROUTER_INLINE packet::packet(const std::string& from, const std::string& to, const std::vector<std::string>& path, const std::string& data) : from(from), to(to), path(path), data(data)
+{
+}
+
+APRS_ROUTER_INLINE packet::packet(const char* packet_string) : packet(std::string(packet_string))
+{
+}
+
+APRS_ROUTER_INLINE packet::packet(const std::string packet_string)
+{
+    try_decode_packet(packet_string, *this);
+}
+
+APRS_ROUTER_INLINE packet::operator std::string() const
+{
+    return to_string(*this);
+}
 
 APRS_ROUTER_INLINE routing_option operator|(routing_option lhs, routing_option rhs)
 {
@@ -619,7 +658,25 @@ APRS_ROUTER_INLINE std::string to_string(const routing_result& result)
     using namespace APRS_ROUTER_APRS_DETAIL_NAMESPACE;
 #endif
 
-    std::string diag;
+    routing_diagnostic_display_lines diag_lines = format(result);
+
+    std::string diag_string;
+
+    for (const auto& l : diag_lines.lines)
+    {
+        diag_string += create_display_name_diagnostic(l);
+    }
+
+    return diag_string;
+}
+
+APRS_ROUTER_INLINE routing_diagnostic_display_lines format(const routing_result& result)
+{
+#ifdef APRS_ROUTER_APRS_DETAIL_NAMESPACE
+    using namespace APRS_ROUTER_APRS_DETAIL_NAMESPACE;
+#endif
+
+    routing_diagnostic_display_lines diag_format;
 
     packet routed_packet = result.original_packet;
 
@@ -627,33 +684,33 @@ APRS_ROUTER_INLINE std::string to_string(const routing_result& result)
     {
         if (a.type == routing_action::remove)
         {
-            diag += create_display_name_diagnostic(a, routed_packet);
+            diag_format.lines.push_back(create_diagnostic_print_line(a, routed_packet));
             routed_packet.path.erase(routed_packet.path.begin() + a.index);
         }
         else if (a.type == routing_action::insert)
         {
             routed_packet.path.insert(routed_packet.path.begin() + a.index, a.address);
-            diag += create_display_name_diagnostic(a, routed_packet);
+            diag_format.lines.push_back(create_diagnostic_print_line(a, routed_packet));
         }
         else if (a.type == routing_action::set)
         {
             routed_packet.path[a.index].append("*");
-            diag += create_display_name_diagnostic(a, routed_packet);
+            diag_format.lines.push_back(create_diagnostic_print_line(a, routed_packet));
         }
         else if (a.type == routing_action::unset)
         {
-            diag += create_display_name_diagnostic(a, routed_packet);
+            diag_format.lines.push_back(create_diagnostic_print_line(a, routed_packet));
             routed_packet.path[a.index] = a.address;
         }
         else if (a.type == routing_action::replace ||
                  a.type == routing_action::decrement)
         {
             routed_packet.path[a.index] = a.address;
-            diag += create_display_name_diagnostic(a, routed_packet);
+            diag_format.lines.push_back(create_diagnostic_print_line(a, routed_packet));
         }
     }
 
-    return diag;
+    return diag_format;
 }
 
 APRS_ROUTER_INLINE bool operator==(const packet& lhs, const packet& rhs)
@@ -1797,7 +1854,7 @@ APRS_ROUTER_INLINE bool create_truncate_address_range_diagnostic(const std::vect
     return true;
 }
 
-APRS_ROUTER_INLINE std::string create_display_name_diagnostic(const routing_diagnostic& diag, const packet& routed_packet)
+APRS_ROUTER_INLINE std::string create_display_name_diagnostic(const routing_diagnostic_display_line& line)
 {
     // Creates a diagnostic message.
     //
@@ -1811,21 +1868,34 @@ APRS_ROUTER_INLINE std::string create_display_name_diagnostic(const routing_diag
     // End of example
 
     std::string diag_string;
-    diag_string.append(diag.message);
+
+    diag_string.append(line.message);
     diag_string.append(":");
     diag_string.append("\n");
     diag_string.append("\n");
-    diag_string.append(to_string(routed_packet));
+    diag_string.append(line.packet_string);
     diag_string.append("\n");
-    diag_string.append(std::string(diag.start, ' '));
-    diag_string.append(std::string(diag.end - diag.start, '~'));
+    diag_string.append(line.highlight_string);
+    diag_string.append("\n");
+    diag_string.append("\n");
+
+    return diag_string;
+}
+
+APRS_ROUTER_INLINE routing_diagnostic_display_line create_diagnostic_print_line(const routing_diagnostic& diag, const packet& routed_packet)
+{
+    routing_diagnostic_display_line line;
+
+    line.message = diag.message;
+    line.packet_string = to_string(routed_packet);
+    line.highlight_string.append(std::string(diag.start, ' '));
+    line.highlight_string.append(std::string(diag.end - diag.start, '~'));
     if (diag.type == routing_action::set)
     {
-        diag_string.append("~");
+        line.highlight_string.append("~");
     }
-    diag_string.append("\n");
-    diag_string.append("\n");
-    return diag_string;
+
+    return line;
 }
 
 APRS_ROUTER_INLINE void unset_all_used_addresses(std::vector<address>& packet_addresses, size_t offset, size_t count)

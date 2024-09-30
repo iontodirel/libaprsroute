@@ -17,6 +17,13 @@ assert(p.path.size() == 1);
 assert(p.path[0] == "WIDE2-2");
 ```
 
+### Decoding a packet using constructors:
+
+``` cpp
+packet p = "N0CALL>APRS,WIDE2-2:data";
+assert(p == "N0CALL>APRS,WIDE2-2:data");
+```
+
 ### Routing a packet:
 
 ``` cpp
@@ -77,7 +84,7 @@ assert(result.actions[2].end == 16);
 assert(result.actions[2].index == 0);
 ```
 
-### Print routing diagnostics to string:
+### Print routing diagnostics using to_string:
 
 ``` cpp
 router_settings digi { "DIGI", { "WIDE1", "WIDE2" }, routing_option::none, /*enable_diagnostics*/ true };
@@ -109,6 +116,22 @@ std::cout << diag_string << std::endl;
    N0CALL>APRS,DIGI*,WIDE1-1:data
                ~~~~~
 */
+```
+
+### Print routing diagnostics using format:
+
+``` cpp
+routing_result result;
+
+routing_diagnostic_display_lines diag_lines = format(result);
+
+for (auto& l : diag_lines.lines)
+{
+    fmt::print(fg(fmt::color::blue_violet), "note: ");
+    fmt::print("{}\n", l.message);
+    fmt::print(fg(fmt::color::gray), "{:4}{}\n", "", l.packet_string);
+    fmt::print(fg(fmt::color::lime_green), "{:4}{}\n", "", l.highlight_string);
+}
 ```
 
 Other examples can be found in the tests directory.
