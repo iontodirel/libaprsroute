@@ -34,7 +34,7 @@ assert(to_string(result.routed_packet) == "N0CALL>APRS,DIGI*,WIDE1-2:data"); // 
 Routing diagnostics:
 
 ``` cpp
-router_settings digi { "DIGI", { "WIDE1", "WIDE2" } };
+router_settings digi { "DIGI", { "WIDE1", "WIDE2" }, routing_option::none, true };
 routing_result result;
 
 packet p = { "N0CALL", "APRS", { "WIDE1-2" }, "data"};
@@ -75,6 +75,38 @@ assert(result.actions[2].type == routing_action::set);
 assert(result.actions[2].start == 12);
 assert(result.actions[2].end == 16);
 assert(result.actions[2].index == 0);
+```
+
+Print routing diagnostics to string:
+
+``` cpp
+router_settings digi { "DIGI", { "WIDE1", "WIDE2" }, routing_option::none, true };
+routing_result result;
+
+packet p = { "N0CALL", "APRS", { "WIDE1-2" }, "data"};
+
+try_route_packet(p, digi, result);
+
+std::string diag_string = to_string(result);
+
+std::cout << diag_string << std::endl;
+
+// Prints the following to stdout
+//
+// Packet address decremented:
+// 
+// N0CALL>APRS,WIDE1-1:data
+//             ~~~~~~~
+// 
+// Packet address inserted:
+// 
+// N0CALL>APRS,DIGI,WIDE1-1:data
+//             ~~~~
+// 
+// Packet address marked as 'set':
+// 
+// N0CALL>APRS,DIGI*,WIDE1-1:data
+//             ~~~~~
 ```
 
 Other examples can be found in the tests directory.
