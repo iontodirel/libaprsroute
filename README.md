@@ -97,11 +97,11 @@ Use the tests as examples of how to use the library.
 
 ## Development
 
-The test project can be opened in Visual Studio or VSCode.
-
-Install the dependencies listed in `install_dependencies.sh`, which include a compiler, the CMake build system, and a native build system like make.
+The test project can be opened in Visual Studio or VSCode. And it will work out of the box if the dependencies are installed.
 
 Install the CMake and C++ extensions in VSCode, or the Native Desktop workload inside Visual Studio (*if using Visual Studio*).
+
+On Linux systems, install the dependencies listed in `install_dependencies.sh`, which include a compiler, the CMake build system, and a native build system like make. Example for Debian systems: `apt-get install -y gcc g++ clang make cmake ninja-build`.
 
 ## Integration with CMake
 
