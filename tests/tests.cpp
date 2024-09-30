@@ -39,8 +39,18 @@
 #include <fstream>
 #include <sstream>
 #include <locale>
+
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4267 4127)
+#endif
+
 #include <fmt/format.h>
 #include <fmt/color.h>
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 #include "../aprsroute.hpp"
 
@@ -1650,7 +1660,7 @@ TEST(router, try_route_packet_color_diagnostics)
 
     for (auto& l : diag_lines.lines)
     {
-        l.message[0] = std::tolower(l.message[0]);
+        l.message[0] = static_cast<char>(std::tolower(l.message[0]));
 
         fmt::print(fg(fmt::color::blue_violet), "note: ");
         fmt::print("{}\n", l.message);
