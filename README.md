@@ -31,6 +31,52 @@ assert(result.state == routing_state::routed);
 assert(to_string(result.routed_packet) == "N0CALL>APRS,DIGI*,WIDE1-2:data"); // N0CALL>APRS,DIGI*,WIDE1-2:data
 ```
 
+Routing diagnostics:
+
+``` cpp
+router_settings digi { "DIGI", { "WIDE1", "WIDE2" } };
+routing_result result;
+
+packet p = { "N0CALL", "APRS", { "WIDE1-2" }, "data"};
+
+try_route_packet(p, digi, result);
+
+// N0CALL>APRS,WIDE1-2:data
+//             ~~~~~~~
+//             12 19 - Packet address decremented
+//
+// N0CALL>APRS,DIGI,WIDE1-1:data
+//             ~~~~
+//             12 16 - Packet address inserted
+//
+// N0CALL>APRS,DIGI,WIDE1-1:data
+//             ~~~~
+//             12 16 - Packet address marked as 'set'
+
+assert(result.actions.size() == 3);
+
+assert(result.actions[0].address == "WIDE1-1");
+assert(result.actions[0].target == applies_to::path);
+assert(result.actions[0].type == routing_action::decrement);
+assert(result.actions[0].start == 12);
+assert(result.actions[0].end == 19);
+assert(result.actions[0].index == 0);
+
+assert(result.actions[1].address == "DIGI");
+assert(result.actions[1].target == applies_to::path);
+assert(result.actions[1].type == routing_action::insert);
+assert(result.actions[1].start == 12);
+assert(result.actions[1].end == 16);
+assert(result.actions[1].index == 0);
+
+assert(result.actions[2].address == "DIGI");
+assert(result.actions[2].target == applies_to::path);
+assert(result.actions[2].type == routing_action::set);
+assert(result.actions[2].start == 12);
+assert(result.actions[2].end == 16);
+assert(result.actions[2].index == 0);
+```
+
 Other examples can be found in the tests directory.
 
 ## Goals
@@ -43,8 +89,28 @@ Other examples can be found in the tests directory.
 
 ## Testing
 
-The ***tests*** directory contain a comprehensive sets of tests. A test asset file (***routes.json***) contains various routing scenarios. This test asset is stored in a structured format, which can be read by humans or programs, and can be used to study APRS routing, or used for standalone digipeater testing.
+The ***tests*** directory contain a comprehensive sets of tests. `tests/tests.cpp` contains a comprehensive sets of tests, written using the Google Test framework.
+
+A test asset file `routes.json` contains various routing scenarios. This test asset is stored in a structured format, which can be read by humans or programs, and can be used to study APRS routing, or used for standalone digipeater testing.
+
+Use the tests as examples of how to use the library.
 
 ## Development
 
-The test project can be opened in Visual Studio or VSCode. Install the dependencies listed in install_dependencies.sh, which include a compiler, the CMake build system, and a native build system like make. Install the CMake and C++ extensions in VSCode, or the Native Desktop workload inside Visual Studio (*if using Visual Studio*).
+The test project can be opened in Visual Studio or VSCode.
+
+Install the dependencies listed in `install_dependencies.sh`, which include a compiler, the CMake build system, and a native build system like make.
+
+Install the CMake and C++ extensions in VSCode, or the Native Desktop workload inside Visual Studio (*if using Visual Studio*).
+
+## Integration with CMake
+
+As this is a header only library, you can simple download the header and use it:
+
+`file(DOWNLOAD
+    https://raw.githubusercontent.com/iontodirel/libaprsroute/main/aprsroute.hpp
+    ${CMAKE_SOURCE_DIR}/external/aprsroute.hpp)`
+
+Include the header in your source file:
+
+`#include "external/aprsroute.hpp"`
