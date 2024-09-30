@@ -877,34 +877,9 @@ void test_diagnostics_reconstruct_packet_by_index(const routing_result& result)
         return;
     }
 
-    EXPECT_TRUE(result.actions.size() > 0);
+    packet routed_packet;
 
-    packet routed_packet = result.original_packet;
-
-    for (const auto& a : result.actions)
-    {
-        if (a.type == routing_action::remove)
-        {
-            routed_packet.path.erase(routed_packet.path.begin() + a.index);
-        }
-        else if (a.type == routing_action::insert)
-        {
-            routed_packet.path.insert(routed_packet.path.begin() + a.index, a.address);
-        }
-        else if (a.type == routing_action::set)
-        {
-            routed_packet.path[a.index].append("*");
-        }
-        else if (a.type == routing_action::unset || a.type == routing_action::replace ||
-            a.type == routing_action::decrement)
-        {
-            routed_packet.path[a.index] = a.address;
-        }
-        else
-        {
-            EXPECT_TRUE(false);
-        }
-    }
+    EXPECT_TRUE(try_route_packet_by_index(result, routed_packet));
 
     bool result_bool = result.routed_packet == routed_packet;
 
@@ -927,54 +902,11 @@ void test_diagnostics_reconstruct_packet_by_start_end(const routing_result& resu
         return;
     }
 
-    EXPECT_TRUE(result.actions.size() > 0);
+    packet routed_packet;
 
-    std::string routed_packet = to_string(result.original_packet);
+    EXPECT_TRUE(try_route_packet_by_start_end(result, routed_packet));
 
-    for (const auto& a : result.actions)
-    {
-        size_t start = a.start;
-        size_t end = a.end;
-        size_t count = a.end - a.start;
-
-        if (a.type == routing_action::remove)
-        {
-            if (routed_packet[end + 1] == ':' || a.index == 0)
-            {
-                count++;
-            }
-            else if (a.index != 0)
-            {
-                start--;
-                count++;
-            }
-            routed_packet.erase(start, count);
-        }
-        else if (a.type == routing_action::insert)
-        {
-            routed_packet.insert(start, a.address);
-            if (routed_packet[end + 1] != ',' || a.index == 0)
-            {
-                routed_packet.insert(end, ",");
-            }
-        }
-        else if (a.type == routing_action::set)
-        {
-            routed_packet.insert(end, "*");
-        }
-        else if (a.type == routing_action::unset || a.type == routing_action::replace ||
-            a.type == routing_action::decrement)
-        {
-            routed_packet.erase(start, count);
-            routed_packet.insert(start, a.address);
-        }
-        else
-        {
-            EXPECT_TRUE(false);
-        }
-    }
-
-    bool result_bool = to_string(result.routed_packet) == routed_packet;
+    bool result_bool = result.routed_packet == routed_packet;
 
     EXPECT_TRUE(result_bool);
 
