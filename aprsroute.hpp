@@ -2299,10 +2299,73 @@ APRS_ROUTER_INLINE bool try_explicit_route(route_state& state)
 
 APRS_ROUTER_INLINE bool try_explicit_basic_route(route_state& state, size_t set_address_index)
 {
-    // Route a packet using simple explicit routing
-    // In this case we match the router's address or router's path
-    // and we are the first, the match does not have any address in front of us
+    // Route a packet using non-preemtive explicit routing.
     //
+    // In the simplest case, find a matching address and set it as 'used':
+    //
+    //    1) Unmark any 'used' addresses in front of the matched address:
+    //
+    //        Input: N0CALL>APRS,CALL*,DIGI:data
+    //                                 ~~~~
+    //                                 matched address based on router's address
+    //
+    //        Output: N0CALL>APRS,CALL,DIGI*:data
+    //                            ~~~~ ~~~~~
+    //                            ^    matched address marked as 'used' 
+    //                            |
+    //                            address marked as unused
+    //
+    //    2) Path based matching.
+    //       If the address matched is not the router's address, but matches the router's path addresses
+    //       we also need to insert the router's address in front:
+    //
+    //        2.a) Simplest case:
+    //
+    //            Router's address: DIGI
+    //            Router's path: CALLB
+    //
+    //            Input: N0CALL>APRS,CALLA*,CALLB:data
+    //                                      ~~~~~
+    //                                      matched address based on path
+    //
+    //            Output: N0CALL>APRS,CALLA,DIGI,CALLB*:data
+    //                                ~~~~~ ~~~~ ~~~~~~
+    //                                ^     ^    matched address marked as 'used' 
+    //                                |     inserted router address
+    //                                address marked as unused
+    //
+    //        2.b) If we cannot insert an address because the packet has 8 addresses in the path
+    //             then replace the matched address with the router's address:
+    //
+    //            Router's address: DIGI
+    //            Router's path: CALLB
+    //
+    //            Input: N0CALL>APRS,A,B,C,D,E,F,G*,CALLB:data
+    //                                              ~~~~~
+    //                                              matched address based on path
+    //
+    //            Output: N0CALL>APRS,A,B,C,D,E,F,G,DIGI*:data
+    //                                            ~ ~~~~~
+    //                                            ^ address replaced with router's address and marked as 'used' 
+    //                                            |
+    //                                            address marked as unused
+    //
+    //    3) A variation of 2.b when substitute_explicit_address is set. 
+    //       The matched address will be replaced by the route's address
+    //       even if we have space to insert the address
+    //
+    //        Router's address: DIGI
+    //        Router's path: CALLB
+    //
+    //        Input: N0CALL>APRS,CALLA*,CALLB:data
+    //                                  ~~~~~
+    //                                  matched address based on path
+    //
+    //        Output: N0CALL>APRS,CALLA,DIGI*:data
+    //                            ~~~~~ ~~~~~
+    //                            ^     address replaced with router's address and marked as 'used' 
+    //                            |
+    //                            address marked as unused
 
     std::vector<address>& packet_addresses = state.packet_addresses;
     const bool is_path_based_routing = state.is_path_based_routing;
