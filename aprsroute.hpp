@@ -41,6 +41,7 @@
 //   - Preemptive Digipeating: http://www.aprs.org/aprs12/preemptive-digipeating.txt
 //   - Q Construct: https://www.aprs-is.net/q.aspx
 //   - APRS digipeaters: https://dvbr.net/cloud/direwolf/direwolf_git_v1.7/direwolf-doc_git/APRS-Digipeaters.pdf
+//   - APRS digipeaters v2: https://github.com/wb2osz/direwolf-doc/blob/main/APRS-Digipeaters.pdf
 //   - How APRS paths work: https://blog.aprs.fi/2020/02/how-aprs-paths-work.html
 
 #pragma once
@@ -99,7 +100,7 @@ struct packet
 // ----------
 // route_self
 // ----------
-// 
+//
 // Enables routing packets originating from ourselves.
 // This option only works in explicit routing mode.
 //
@@ -108,7 +109,7 @@ struct packet
 // Will be routed as: DIGI>APRS,DIGI*:data
 //                    ~~~~      ~~~~~
 // However a packet using n-N routing: DIGI>APRS,WIDE2-2:data, will not be routed even with route_self set
-//                                     ~~~~ 
+//                                     ~~~~
 // -------------
 // preempt_front
 // -------------
@@ -203,12 +204,16 @@ enum class routing_option : int
     preempt_truncate = 4,               // Preemptively move our address behind the last used address and erase all other addresses.
     preempt_drop = 8,                   // Preemptively erase all addresses in front of our address.
     preempt_mark = 16,                  // Preemptively mark our address as used, while leaving the rest of the path as is.
-    substitute_complete_hops = 32,      // Replace an CALLn-N address with our address when N decrements to 0.
+    substitute_complete_hops = 32,      // Replace an PATHn-N address with our address when N is decremented to 0.
     trap_excessive_hops = 64,           // Replace a harmful path with our callsign to prevent network issues (e.g., WIDE7-7).
     reject_excessive_hops = 128,        // Reject the packet if the paths has excessive hops (e.g., PATH7-7).
     strict = 256,                       // Don't route if the packet is malformed
     preempt_n_N = 512,                  // Enables preemptive routing in packets using n-N routing
-    substitute_explicit_address = 1024  // Replace an address with the router's callsign when explicit routing
+    substitute_explicit_address = 1024, // Replace an address with the router's callsign when explicit routing
+    recommended = route_self | preempt_front |
+                  substitute_complete_hops | trap_excessive_hops |
+                  strict | preempt_n_N |
+                  substitute_explicit_address
 };
 
 // Routing settings:
@@ -220,7 +225,7 @@ enum class routing_option : int
 //
 //        unlike most digipeaters, this setting contains both aliases and n-N addresses at the same time
 //        however, they are different settings, and the router will process and prioritize them both correctly
-//    
+//
 //        ex: WIDE1,RELAY,WIDE2,WIDE3-2
 //            ~~~~~       ~~~~~
 //            n-N addresses the router will respond to
@@ -255,25 +260,40 @@ enum class routing_state
     routed,
     not_routed,
     already_routed,
-    no_matching_addresses,
     cannot_route_self
 };
 
 enum class routing_action
 {
+    none,
     insert,
     remove,
-    update,
+    replace,
+    unset,
+    set,
+    decrement,
     error,
     warn,
     message
 };
 
+enum class applies_to
+{
+    none,
+    from,
+    to,
+    path,
+    data
+};
+
 struct routing_diagnostic
 {
-    int start;
-    int end;
-    routing_action type;
+    applies_to target = applies_to::none;
+    size_t index = 0;
+    size_t start = 0;
+    size_t end = 0;
+    routing_action type = routing_action::none;
+    std::string address;
     std::string message;
 };
 
@@ -304,6 +324,9 @@ APRS_ROUTER_INLINE bool try_parse_routing_option(std::string_view str, routing_o
 APRS_ROUTER_INLINE bool enum_has_flag(routing_option value, routing_option flag);
 APRS_ROUTER_INLINE size_t hash(const packet& p);
 APRS_ROUTER_INLINE std::string to_string(const packet& p);
+APRS_ROUTER_INLINE std::string to_string(const routing_result& result);
+APRS_ROUTER_INLINE bool operator==(const packet& lhs, const packet& rhs);
+APRS_ROUTER_INLINE bool operator!=(const packet& lhs, const packet& rhs);
 APRS_ROUTER_INLINE bool try_decode_packet(std::string_view packet_string, packet& result);
 APRS_ROUTER_INLINE bool try_route_packet(const struct packet& packet, const router_settings& settings, routing_result& result);
 
@@ -336,7 +359,7 @@ enum class q_construct
     qAI  // Client: Trace packet.
 };
 
-enum class segment_type
+enum class address_kind
 {
     other,
     wide,
@@ -355,16 +378,32 @@ enum class segment_type
     opntrc
 };
 
-struct segment
+struct address
 {
     std::string text;
     int n = 0;
     int N = 0;
     int ssid = 0;
     bool mark = false;
-    segment_type type = segment_type::other;
+    address_kind kind = address_kind::other;
     q_construct q = q_construct::none;
-    size_t index = 0;
+    size_t index = 0;  // index inside the packet path
+    size_t offset = 0; // string offset within the packet
+    size_t length = 0; // the string length of the address
+};  
+
+struct route_state
+{
+    struct packet packet;
+    std::vector<address> packet_addresses;
+    router_settings settings;
+    std::optional<size_t> maybe_last_used_address_index;
+    std::optional<size_t> maybe_router_address_index;
+    std::vector<address> router_n_N_addresses;
+    std::vector<address> router_generic_addresses;
+    std::vector<routing_diagnostic> actions;
+    bool is_path_based_routing = false;
+    size_t unused_address_index = 0;
 };
 
 APRS_ROUTER_NAMESPACE_END
@@ -383,48 +422,78 @@ APRS_ROUTER_NAMESPACE_BEGIN
 
 APRS_ROUTER_DETAIL_NAMESPACE_BEGIN
 
-APRS_ROUTER_INLINE std::string to_string(const segment& p);
+APRS_ROUTER_INLINE std::string to_string(const struct address& address);
 APRS_ROUTER_INLINE q_construct parse_q_construct(const std::string& input);
-APRS_ROUTER_INLINE segment_type parse_segment_type(const std::string& text);
-APRS_ROUTER_INLINE bool try_parse_segment(std::string_view path, segment& s);
-APRS_ROUTER_INLINE bool try_parse_segments(const std::vector<std::string>& addresses, std::vector<segment>& result);
-APRS_ROUTER_INLINE bool try_parse_callsign(std::string address, std::string& callsign, int& ssid);
-APRS_ROUTER_INLINE bool try_parse_callsign_with_used_flag(std::string address, std::string& callsign, int& ssid);
-APRS_ROUTER_INLINE std::vector<segment> get_router_n_N_addresses(const std::vector<segment>& router_addresses);
-APRS_ROUTER_INLINE std::vector<segment> get_router_generic_addresses(const std::vector<segment>& router_addresses);
-APRS_ROUTER_INLINE std::vector<segment> parse_packet_addresses(const struct packet& packet);
-APRS_ROUTER_INLINE std::optional<std::pair<size_t, size_t>> find_first_unused_n_N_address_index(const std::vector<segment>& packet_addresses, const std::vector<segment>& router_addresses, routing_option options);
-APRS_ROUTER_INLINE std::optional<size_t> find_last_used_address_index(const std::vector<segment>& packet_addresses);
-APRS_ROUTER_INLINE std::optional<size_t> find_address_index(const std::vector<segment>& packet_addresses, size_t offset, std::string_view router_address, const std::vector<segment>& router_addresses);
-APRS_ROUTER_INLINE std::optional<size_t> find_unused_address_index(const std::vector<segment>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, std::string_view router_address, const std::vector<segment>& router_generic_addresses);
+APRS_ROUTER_INLINE address_kind parse_address_kind(const std::string& text);
+APRS_ROUTER_INLINE bool try_parse_address(std::string_view address_string, address& result);
+APRS_ROUTER_INLINE bool try_parse_addresses(const std::vector<std::string>& addresses, std::vector<address>& result);
+APRS_ROUTER_INLINE bool try_parse_callsign(std::string_view address_string, std::string& callsign, int& ssid);
+APRS_ROUTER_INLINE bool try_parse_callsign_with_used_flag(std::string address_string, std::string& callsign, int& ssid);
+APRS_ROUTER_INLINE std::vector<address> get_router_n_N_addresses(const std::vector<address>& router_addresses);
+APRS_ROUTER_INLINE std::vector<address> get_router_generic_addresses(const std::vector<address>& router_addresses);
+APRS_ROUTER_INLINE std::vector<address> parse_packet_addresses(const struct packet& packet);
+APRS_ROUTER_INLINE void init_addresses(route_state& state);
+APRS_ROUTER_INLINE std::optional<std::pair<size_t, size_t>> find_first_unused_n_N_address_index(const std::vector<address>& packet_addresses, const std::vector<address>& router_addresses, routing_option options);
+APRS_ROUTER_INLINE std::optional<size_t> find_last_used_address_index(const std::vector<address>& packet_addresses);
+APRS_ROUTER_INLINE std::optional<size_t> find_address_index(const std::vector<address>& packet_addresses, size_t offset, std::string_view router_address, const std::vector<address>& router_addresses);
+APRS_ROUTER_INLINE std::optional<size_t> find_unused_address_index(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, std::string_view router_address, const std::vector<address>& router_generic_addresses);
+APRS_ROUTER_INLINE void find_used_addresses(route_state& state);
 APRS_ROUTER_INLINE bool is_packet_valid(const struct packet& packet, routing_option options);
+APRS_ROUTER_INLINE bool is_packet_valid(const route_state& state);
 APRS_ROUTER_INLINE bool is_packet_from_us(const struct packet& packet, std::string_view router_address);
+APRS_ROUTER_INLINE bool is_packet_from_us(const route_state& state);
 APRS_ROUTER_INLINE bool is_packet_sent_to_us(const struct packet& packet, std::string_view router_address);
-APRS_ROUTER_INLINE bool has_packet_routing_ended(const std::vector<segment>& packet_addresses, std::optional<size_t> maybe_last_used_address_index);
-APRS_ROUTER_INLINE bool has_packet_been_routed_by_us(const std::vector<segment>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, std::string_view router_address);
+APRS_ROUTER_INLINE bool is_packet_sent_to_us(const route_state& state);
+APRS_ROUTER_INLINE bool has_packet_routing_ended(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index);
+APRS_ROUTER_INLINE bool has_packet_routing_ended(const route_state& state);
+APRS_ROUTER_INLINE bool has_packet_been_routed_by_us(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, std::string_view router_address);
+APRS_ROUTER_INLINE bool has_packet_been_routed_by_us(route_state& state);
 APRS_ROUTER_INLINE void init_routing_result(const struct packet& packet, routing_result& result);
-APRS_ROUTER_INLINE bool create_routing_result(const packet& p, const std::vector<segment>& packet_addresses, routing_result& result);
-APRS_ROUTER_INLINE bool create_routing_result(routing_state state, routing_result& result);
-APRS_ROUTER_INLINE void unset_all_used_addresses(std::vector<segment>& packet_addresses, size_t offset, size_t count);
-APRS_ROUTER_INLINE void set_address_as_used(std::vector<segment>& packet_addresses, size_t index);
-APRS_ROUTER_INLINE void set_address_as_used(std::vector<segment>& packet_addresses, segment& address);
-APRS_ROUTER_INLINE void update_addresses_index(std::vector<segment>& addresses);
-APRS_ROUTER_INLINE bool try_preempt_explicit_route(std::vector<segment>& packet_addresses, size_t router_address_index, size_t unused_address_index, bool is_path_based_routing, std::string_view router_address, routing_option options);
-APRS_ROUTER_INLINE bool try_preempt_transform_explicit_route(std::vector<segment>& packet_addresses, size_t router_address_index, size_t& set_address_index, routing_option options);
-APRS_ROUTER_INLINE bool try_insert_address(std::vector<segment>& packet_addresses, size_t index, std::string_view router_address);
+APRS_ROUTER_INLINE bool create_routing_result(const packet& p, const std::vector<address>& packet_addresses, routing_result& result);
+APRS_ROUTER_INLINE bool create_routing_result(route_state& state, routing_result& result);
+APRS_ROUTER_INLINE bool create_routing_result(const routing_state state, routing_result& result);
+APRS_ROUTER_INLINE bool create_routing_ended_result(const std::vector<address>& packet_addresses, bool enable_diagnostics, routing_result& result);
+APRS_ROUTER_INLINE bool create_routing_ended_result(const route_state& state, routing_result& result);
+APRS_ROUTER_INLINE bool create_routed_by_us_result(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, bool enable_diagnostics, routing_result& result);
+APRS_ROUTER_INLINE bool create_routed_by_us_result(const route_state& state, routing_result& result);
+APRS_ROUTER_INLINE bool push_routing_ended_diagnostic(const address& address, bool enable_diagnostics, std::vector<routing_diagnostic>& d);
+APRS_ROUTER_INLINE bool push_routed_by_us_diagnostic(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, bool enable_diagnostics, std::vector<routing_diagnostic>& d);
+APRS_ROUTER_INLINE bool push_address_set_diagnostic(const std::vector<address>& packet_addresses, size_t set_address_index, bool enable_diagnostics, std::vector<routing_diagnostic>& d);
+APRS_ROUTER_INLINE bool push_address_unset_diagnostic(const std::vector<address> &packet_addresses, std::optional<size_t> maybe_set_address_index, bool enable_diagnostics, std::vector<routing_diagnostic> &d);
+APRS_ROUTER_INLINE bool push_address_replaced_diagnostic(const std::vector<address>& packet_addresses, size_t set_address_index, std::string_view new_address, bool enable_diagnostics, std::vector<routing_diagnostic>& d);
+APRS_ROUTER_INLINE bool push_address_decremented_diagnostic(address& address, bool enable_diagnostics, std::vector<routing_diagnostic>& d);
+APRS_ROUTER_INLINE bool push_address_inserted_diagnostic(const std::vector<address>& packet_addresses, size_t insert_address_index, bool enable_diagnostics, std::vector<routing_diagnostic>& d);
+APRS_ROUTER_INLINE bool push_address_removed_diagnostic(const std::vector<address>& packet_addresses, size_t remove_address_index, bool enable_diagnostics, std::vector<routing_diagnostic>& d);
+APRS_ROUTER_INLINE bool create_address_move_diagnostic(const std::vector<address>& packet_addresses, size_t from_index, size_t to_index, bool enable_diagnostics, std::vector<routing_diagnostic>& d);
+APRS_ROUTER_INLINE bool create_truncate_address_range_diagnostic(const std::vector<address>& packet_addresses, size_t from_index, size_t to_index, bool enable_diagnostics, std::vector<routing_diagnostic>& d);
+APRS_ROUTER_INLINE std::string create_display_name_diagnostic(const routing_diagnostic& a, const packet& routed_packet);
+APRS_ROUTER_INLINE void unset_all_used_addresses(std::vector<address>& packet_addresses, size_t offset, size_t count);
+APRS_ROUTER_INLINE void unset_all_used_addresses(std::vector<address>& packet_addresses, size_t offset, size_t count, std::optional<size_t> maybe_ignore_index);
+APRS_ROUTER_INLINE void set_address_as_used(std::vector<address>& packet_addresses, size_t index);
+APRS_ROUTER_INLINE void set_address_as_used(std::vector<address>& packet_addresses, address& address);
+APRS_ROUTER_INLINE void update_addresses_index(std::vector<address>& addresses);
+APRS_ROUTER_INLINE void set_addresses_offset(const struct packet& packet, std::vector<address>& addresses);
+APRS_ROUTER_INLINE void update_addresses_offset(std::vector<address>& addresses, size_t initial_offset);
+APRS_ROUTER_INLINE void update_addresses_offset(std::vector<address>& addresses);
+APRS_ROUTER_INLINE bool try_preempt_explicit_route(route_state& state);
+APRS_ROUTER_INLINE bool try_preempt_transform_explicit_route(route_state& state);
+APRS_ROUTER_INLINE bool try_insert_address(std::vector<address>& packet_addresses, size_t index, std::string_view router_address);
 APRS_ROUTER_INLINE bool is_explicit_routing(bool is_routing_self, std::optional<size_t> maybe_router_address_index, routing_option options);
-APRS_ROUTER_INLINE bool try_explicit_route(std::vector<segment>& packet_addresses, std::string_view router_address, std::optional<size_t> maybe_last_used_address_index, std::optional<size_t> maybe_router_address_index, routing_option options);
-APRS_ROUTER_INLINE bool try_explicit_basic_route(std::vector<segment>& packet_addresses, bool is_path_based_routing, size_t unused_address_index, size_t set_address_index, std::string_view router_address, routing_option options);
-APRS_ROUTER_INLINE bool try_move_address_to_position(std::vector<segment>& packet_addresses, size_t from_index, size_t to_index);
-APRS_ROUTER_INLINE bool try_truncate_address_range(std::vector<segment>& packet_addresses, size_t from_index, size_t to_index);
-APRS_ROUTER_INLINE bool try_n_N_route(std::vector<segment>& packet_addresses, const std::vector<segment>& router_n_N_addresses, const std::string& router_address, routing_option options);
-APRS_ROUTER_INLINE bool try_n_N_route_no_trap(std::vector<segment>& packet_addresses, size_t& packet_n_N_address_index, std::string_view router_address, routing_option options);
-APRS_ROUTER_INLINE bool try_complete_n_N_route(std::vector<segment>& packet_addresses, segment& n_N_address, bool substitute_zero_hops);
-APRS_ROUTER_INLINE bool try_insert_n_N_route(std::vector<segment>& packet_addresses, size_t& packet_n_N_address_index, std::string_view router_address, bool substitute_zero_hops);
-APRS_ROUTER_INLINE bool try_trap_n_N_route(segment& packet_n_N_address, const segment& router_n_N_address, std::string_view router_address, routing_option options);
-APRS_ROUTER_INLINE bool try_substitute_complete_n_N_address(std::vector<segment>& packet_addresses, size_t packet_n_N_address_index, std::string_view router_address);
-APRS_ROUTER_INLINE bool try_decrement_address_n_N(std::vector<segment>& packet_addresses, size_t index);
-APRS_ROUTER_INLINE bool try_decrement_address_n_N(segment& s);
+APRS_ROUTER_INLINE bool is_explicit_routing(bool is_routing_self, const route_state& state);
+APRS_ROUTER_INLINE bool try_explicit_route(route_state& state);
+APRS_ROUTER_INLINE bool try_explicit_basic_route(route_state& state, size_t set_address_index);
+APRS_ROUTER_INLINE bool try_move_address_to_position(std::vector<address>& packet_addresses, size_t from_index, size_t to_index);
+APRS_ROUTER_INLINE bool try_truncate_address_range(std::vector<address>& packet_addresses, size_t from_index, size_t to_index);
+APRS_ROUTER_INLINE bool try_truncate_empty_addresses(route_state& state);
+APRS_ROUTER_INLINE bool try_n_N_route(route_state& state);
+APRS_ROUTER_INLINE bool try_n_N_route_no_trap(route_state& state, size_t packet_n_N_address_index);
+APRS_ROUTER_INLINE bool try_complete_n_N_route(route_state& state, address& n_N_address, bool substitute_zero_hops);
+APRS_ROUTER_INLINE bool try_insert_n_N_route(route_state& state, size_t& packet_n_N_address_index);
+APRS_ROUTER_INLINE bool try_trap_n_N_route(route_state& state, address& packet_n_N_address, const address& router_n_N_address);
+APRS_ROUTER_INLINE bool try_substitute_complete_n_N_address(route_state& state, size_t packet_n_N_address_index);
+APRS_ROUTER_INLINE bool try_decrement_n_N_address(std::vector<address>& packet_addresses, size_t index);
+APRS_ROUTER_INLINE bool try_decrement_n_N_address(address& s);
+APRS_ROUTER_INLINE bool try_decrement_n_N_address(route_state& state, address& s);
 
 APRS_ROUTER_NAMESPACE_END
 
@@ -447,51 +516,55 @@ APRS_ROUTER_INLINE routing_option operator|(routing_option lhs, routing_option r
     return static_cast<routing_option>(static_cast<int>(lhs) | static_cast<int>(rhs));
 }
 
-APRS_ROUTER_INLINE bool try_parse_routing_option(std::string_view str, routing_option& result)
+APRS_ROUTER_INLINE bool try_parse_routing_option(std::string_view text, routing_option& result)
 {
-    if (str == "none")
+    if (text == "none")
     {
         result = routing_option::none;
     }
-    else if (str == "route_self")
+    else if (text == "route_self")
     {
         result = routing_option::route_self;
     }
-    else if (str == "preempt_front")
+    else if (text == "preempt_front")
     {
         result = routing_option::preempt_front;
     }
-    else if (str == "preempt_truncate")
+    else if (text == "preempt_truncate")
     {
         result = routing_option::preempt_truncate;
     }
-    else if (str == "preempt_drop")
+    else if (text == "preempt_drop")
     {
         result = routing_option::preempt_drop;
     }
-    else if (str == "preempt_mark")
+    else if (text == "preempt_mark")
     {
         result = routing_option::preempt_mark;
     }
-    else if (str == "substitute_complete_hops")
+    else if (text == "substitute_complete_hops")
     {
         result = routing_option::substitute_complete_hops;
     }
-    else if (str == "substitute_explicit_address")
+    else if (text == "substitute_explicit_address")
     {
         result = routing_option::substitute_explicit_address;
     }
-    else if (str == "trap_excessive_hops")
+    else if (text == "trap_excessive_hops")
     {
         result = routing_option::trap_excessive_hops;
     }
-    else if (str == "reject_excessive_hops")
+    else if (text == "reject_excessive_hops")
     {
         result = routing_option::reject_excessive_hops;
     }
-    else if (str == "strict")
+    else if (text == "strict")
     {
         result = routing_option::strict;
+    }
+    else if (text == "recommended")
+    {
+        result = routing_option::recommended;
     }
     else
     {
@@ -506,38 +579,124 @@ APRS_ROUTER_INLINE bool enum_has_flag(routing_option value, routing_option flag)
     return (static_cast<int>(value) & static_cast<int>(flag)) != 0;
 }
 
-APRS_ROUTER_INLINE size_t hash(const packet& p)
+APRS_ROUTER_INLINE size_t hash(const struct packet& packet)
 {
     size_t result = 17; // Start with a prime number
-    result = result * 31 + std::hash<std::string>()(p.from);
-    result = result * 31 + std::hash<std::string>()(p.to);
-    result = result * 31 + std::hash<std::string>()(p.data);
+    result = result * 31 + std::hash<std::string>()(packet.from);
+    result = result * 31 + std::hash<std::string>()(packet.to);
+    result = result * 31 + std::hash<std::string>()(packet.data);
     return result;
 }
 
-APRS_ROUTER_INLINE std::string to_string(const packet& p)
+APRS_ROUTER_INLINE std::string to_string(const struct packet& packet)
 {
     // Does not guarantee formatting a correct packet string
     // if the input packet is invalid ex: missing path
 
-    std::string result = p.from + ">" + p.to;
+    std::string result = packet.from + ">" + packet.to;
 
-    if (!p.path.empty())
+    if (!packet.path.empty())
     {
         result += ",";
-        for (size_t i = 0; i < p.path.size(); ++i)
+        for (size_t i = 0; i < packet.path.size(); ++i)
         {
-            result += p.path[i];
-            if (i < p.path.size() - 1) // not the last one
+            result += packet.path[i];
+            if (i < packet.path.size() - 1) // not the last one
             {
                 result += ",";
             }
         }
     }
 
-    result += ":" + p.data;
+    result += ":" + packet.data;
 
     return result;
+}
+
+APRS_ROUTER_INLINE std::string to_string(const routing_result& result)
+{
+#ifdef APRS_ROUTER_APRS_DETAIL_NAMESPACE
+    using namespace APRS_ROUTER_APRS_DETAIL_NAMESPACE;
+#endif
+
+    std::string diag;
+
+    packet routed_packet = result.original_packet;
+
+    for (const auto &a : result.actions)
+    {
+        if (a.type == routing_action::remove)
+        {
+            diag += create_display_name_diagnostic(a, routed_packet);
+            routed_packet.path.erase(routed_packet.path.begin() + a.index);
+        }
+        else if (a.type == routing_action::insert)
+        {
+            routed_packet.path.insert(routed_packet.path.begin() + a.index, a.address);
+            diag += create_display_name_diagnostic(a, routed_packet);
+        }
+        else if (a.type == routing_action::set)
+        {
+            routed_packet.path[a.index].append("*");
+            diag += create_display_name_diagnostic(a, routed_packet);
+        }
+        else if (a.type == routing_action::unset)
+        {
+            diag += create_display_name_diagnostic(a, routed_packet);
+            routed_packet.path[a.index] = a.address;
+        }
+        else if (a.type == routing_action::replace ||
+                 a.type == routing_action::decrement)
+        {
+            routed_packet.path[a.index] = a.address;
+            diag += create_display_name_diagnostic(a, routed_packet);
+        }
+    }
+
+    return diag;
+}
+
+APRS_ROUTER_INLINE bool operator==(const packet& lhs, const packet& rhs)
+{
+    if (lhs.path.size() != rhs.path.size())
+    {
+        return false;
+    }
+
+    if (lhs.data.size() != rhs.data.size())
+    {
+        return false;
+    }
+
+    if (lhs.from.size() != rhs.from.size() || lhs.from != rhs.from)
+    {
+        return false;
+    }
+
+    if (lhs.to.size() != rhs.to.size() || lhs.to != rhs.to)
+    {
+        return false;
+    }
+
+    for (size_t i = 0; i < lhs.path.size() && i < rhs.path.size(); i++)
+    {
+        if (lhs.path[i].size() != rhs.path[i].size() || lhs.path[i] != rhs.path[i])
+        {
+            return false;
+        }
+    }
+
+    if (lhs.data != rhs.data)
+    {
+        return false;
+    }
+
+    return true;
+}
+
+APRS_ROUTER_INLINE bool operator!=(const packet& lhs, const packet& rhs)
+{
+    return !(lhs == rhs);
 }
 
 APRS_ROUTER_INLINE bool try_decode_packet(std::string_view packet_string, packet& result)
@@ -546,7 +705,7 @@ APRS_ROUTER_INLINE bool try_decode_packet(std::string_view packet_string, packet
     //                 ~~~~~~ ~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ~~~~
     //                 from   to   path                                       data
     //
-    // If packet string is invalid, filling the the packet fields is not guaranteed,
+    // If packet string is invalid, filling of the the packet fields is not guaranteed,
     // e.g. missing data separator ":", or missig "path"
 
     result.path.clear();
@@ -601,26 +760,23 @@ APRS_ROUTER_INLINE bool try_route_packet(const struct packet& packet, const rout
 
     init_routing_result(packet, result);
 
-    const std::string& router_address = settings.address;
-    const routing_option options = settings.options;
+    route_state state;
 
-    std::vector<segment> router_addresses;
-    try_parse_segments(settings.path, router_addresses);
-    
+    state.packet = packet;
+    state.settings = settings;
+
     // Addresses: N0CALL>APRS,CALL,WIDE1-1,WIDE2-2:data
     //                        ~~~~ ~~~~~~~ ~~~~~~~
     //
-    // n-N addresses: N0CALL>APRS,CALL,WIDE1-1,WIDE2-2:data 
+    // n-N addresses: N0CALL>APRS,CALL,WIDE1-1,WIDE2-2:data
     //                                 ~~~~~~~ ~~~~~~~
     //
-    // Generic addresses: N0CALL>APRS,CALL,WIDE1-1,WIDE2-2:data 
+    // Generic addresses: N0CALL>APRS,CALL,WIDE1-1,WIDE2-2:data
     //                                ~~~~
-    std::vector<segment> router_n_N_addresses = get_router_n_N_addresses(router_addresses);
-    std::vector<segment> router_generic_addresses = get_router_generic_addresses(router_addresses);
-    std::vector<segment> packet_addresses = parse_packet_addresses(packet);
+    init_addresses(state);
 
-    if (settings.address.empty() || !is_packet_valid(packet, options))
-    {   
+    if (settings.address.empty() || !is_packet_valid(state))
+    {
         return create_routing_result(routing_state::not_routed, result);
     }
 
@@ -631,39 +787,38 @@ APRS_ROUTER_INLINE bool try_route_packet(const struct packet& packet, const rout
     //                                     ~~~~
     //                   N0CALL>APRS,CALL*,DIGI,WIDE,WIDE1,ROUTE,WIDE2-2:data
     //                                          ~~~~
-    std::optional<size_t> maybe_last_used_address_index = find_last_used_address_index(packet_addresses);
-    std::optional<size_t> maybe_router_address_index = find_unused_address_index(packet_addresses, maybe_last_used_address_index, router_address, router_generic_addresses);
+    find_used_addresses(state);
 
     // Packet has finished routing: N0CALL>APRS,CALL,WIDE1,DIGI*:data
     //                                                     ~~~~~
-    if (has_packet_routing_ended(packet_addresses, maybe_last_used_address_index))
+    if (has_packet_routing_ended(state))
     {
-        return create_routing_result(routing_state::not_routed, result);
+        return create_routing_ended_result(state, result);
     }
 
     // Packet has already been routing by us: N0CALL>APRS,CALL,DIGI*,WIDE1-1,WIDE2-2:data
     //                                                         ~~~~~
-    if (has_packet_been_routed_by_us(packet_addresses, maybe_last_used_address_index, router_address))
+    if (has_packet_been_routed_by_us(state))
     {
-        return create_routing_result(routing_state::already_routed, result);
+        return create_routed_by_us_result(state, result);
     }
 
-    // Packet has been sent to us: N0CALL>DIGI,CALL,WIDE1-1,WIDE2-2:data 
+    // Packet has been sent to us: N0CALL>DIGI,CALL,WIDE1-1,WIDE2-2:data
     //                                    ~~~~
-    if (is_packet_sent_to_us(packet, router_address))
+    if (is_packet_sent_to_us(state))
     {
         return create_routing_result(routing_state::not_routed, result);
     }
 
-    // Packet has ben sent by us: DIGI>APRS,CALL,WIDE1-1,WIDE2-2:data 
+    // Packet has ben sent by us: DIGI>APRS,CALL,WIDE1-1,WIDE2-2:data
     //                            ~~~~
-    bool is_routing_self = is_packet_from_us(packet, router_address);
+    bool is_routing_self = is_packet_from_us(state);
 
-    if (is_explicit_routing(is_routing_self, maybe_router_address_index, options))
+    if (is_explicit_routing(is_routing_self, state))
     {
-        if (try_explicit_route(packet_addresses, router_address, maybe_last_used_address_index, maybe_router_address_index, options))
+        if (try_explicit_route(state))
         {
-            return create_routing_result(packet, packet_addresses, result);
+            return create_routing_result(state, result);
         }
         else
         {
@@ -677,9 +832,9 @@ APRS_ROUTER_INLINE bool try_route_packet(const struct packet& packet, const rout
         return create_routing_result(routing_state::cannot_route_self, result);
     }
 
-    if (try_n_N_route(packet_addresses, router_n_N_addresses, router_address, options))
+    if (try_n_N_route(state))
     {
-        return create_routing_result(packet, packet_addresses, result);
+        return create_routing_result(state, result);
     }
 
     return create_routing_result(routing_state::not_routed, result);
@@ -703,26 +858,26 @@ APRS_ROUTER_DETAIL_NAMESPACE_BEGIN
 
 #ifndef APRS_ROUTER_PUBLIC_FORWARD_DECLARATIONS_ONLY
 
-APRS_ROUTER_INLINE std::string to_string(const segment& p)
+APRS_ROUTER_INLINE std::string to_string(const struct address& address)
 {
-    if (p.text.empty())
+    if (address.text.empty())
     {
         return "";
     }
 
-    std::string result = p.text;
+    std::string result = address.text;
 
-    if (p.n > 0)
+    if (address.n > 0)
     {
-        result += std::to_string(p.n);
+        result += std::to_string(address.n);
     }
 
-    if (p.N > 0)
+    if (address.N > 0)
     {
-        result += "-" + std::to_string(p.N);
+        result += "-" + std::to_string(address.N);
     }
 
-    if (p.mark)
+    if (address.mark)
     {
         result += "*";
     }
@@ -734,16 +889,16 @@ APRS_ROUTER_INLINE q_construct parse_q_construct(const std::string& text)
 {
     static const std::unordered_map<std::string, q_construct> lookup_table =
     {
-        {"qAC", q_construct::qAC},
-        {"qAX", q_construct::qAX},
-        {"qAU", q_construct::qAU},
-        {"qAo", q_construct::qAo},
-        {"qAO", q_construct::qAO},
-        {"qAS", q_construct::qAS},
-        {"qAr", q_construct::qAr},
-        {"qAR", q_construct::qAR},
-        {"qAZ", q_construct::qAZ},
-        {"qAI", q_construct::qAI}
+        { "qAC", q_construct::qAC },
+        { "qAX", q_construct::qAX },
+        { "qAU", q_construct::qAU },
+        { "qAo", q_construct::qAo },
+        { "qAO", q_construct::qAO },
+        { "qAS", q_construct::qAS },
+        { "qAr", q_construct::qAr },
+        { "qAR", q_construct::qAR },
+        { "qAZ", q_construct::qAZ },
+        { "qAI", q_construct::qAI }
     };
 
     if (auto it = lookup_table.find(text); it != lookup_table.end())
@@ -754,23 +909,23 @@ APRS_ROUTER_INLINE q_construct parse_q_construct(const std::string& text)
     return q_construct::none;
 }
 
-APRS_ROUTER_INLINE segment_type parse_segment_type(const std::string& text)
+APRS_ROUTER_INLINE address_kind parse_address_kind(const std::string& text)
 {
-    static const std::unordered_map<std::string, segment_type> lookup_table =
+    static const std::unordered_map<std::string, address_kind> lookup_table =
     {
-        {"WIDE", segment_type::wide},
-        {"TRACE", segment_type::trace},
-        {"RELAY", segment_type::relay},
-        {"ECHO", segment_type::echo},
-        {"GATE", segment_type::gate},
-        {"TEMP", segment_type::temp},
-        {"TCPIP", segment_type::tcpip},
-        {"TCPXX", segment_type::tcpxx},
-        {"NOGATE", segment_type::nogate},
-        {"RFONLY", segment_type::rfonly},
-        {"IGATECALL", segment_type::igatecall},        
-        {"OPNTRK", segment_type::opntrk},
-        {"OPNTRC", segment_type::opntrc}
+        { "WIDE", address_kind::wide },
+        { "TRACE", address_kind::trace },
+        { "RELAY", address_kind::relay },
+        { "ECHO", address_kind::echo },
+        { "GATE", address_kind::gate },
+        { "TEMP", address_kind::temp },
+        { "TCPIP", address_kind::tcpip },
+        { "TCPXX", address_kind::tcpxx },
+        { "NOGATE", address_kind::nogate },
+        { "RFONLY", address_kind::rfonly },
+        { "IGATECALL", address_kind::igatecall },
+        { "OPNTRK", address_kind::opntrk },
+        { "OPNTRC", address_kind::opntrc }
     };
 
     if (auto it = lookup_table.find(text); it != lookup_table.end())
@@ -778,146 +933,151 @@ APRS_ROUTER_INLINE segment_type parse_segment_type(const std::string& text)
         return it->second;
     }
 
-    return segment_type::other;
+    return address_kind::other;
 }
 
-APRS_ROUTER_INLINE bool try_parse_segment(std::string_view path, segment& s)
+APRS_ROUTER_INLINE bool try_parse_address(std::string_view address_string, struct address& address)
 {
-    s.text = path;
-    s.mark = false;
-    s.ssid = 0;
+    address.text = address_string;
+    address.mark = false;
+    address.ssid = 0;
+    address.length = address_string.size();
 
-    q_construct q = parse_q_construct(s.text);
+    q_construct q = parse_q_construct(address.text);
 
-    s.q = q;
+    address.q = q;
 
     if (q != q_construct::none)
     {
-        s.n = 0;
-        s.N = 0;
-        s.type = segment_type::q;
+        address.n = 0;
+        address.N = 0;
+        address.kind = address_kind::q;
     }
     else
     {
-        if (!path.empty() && path.back() == '*')
+        if (!address_string.empty() && address_string.back() == '*')
         {
-            s.mark = true;
-            path.remove_suffix(1);
-            s.text = path;
-            s.N = 0;
-            s.n = 0;
+            address.mark = true;
+            address_string.remove_suffix(1);
+            address.text = address_string;
+            address.N = 0;
+            address.n = 0;
         }
 
-        auto sep_position = path.find("-");
+        auto sep_position = address_string.find("-");
 
         if (sep_position != std::string::npos)
         {
             // Check if there are digits before and after the dash
-            if (sep_position > 0 && isdigit(path[sep_position - 1]) && (sep_position + 1) < path.size() && isdigit(path[sep_position + 1]))
+            if (sep_position > 0 && isdigit(address_string[sep_position - 1]) && (sep_position + 1) < address_string.size() && isdigit(address_string[sep_position + 1]))
             {
                 // Ensure only one digit after the dash
-                if (sep_position + 2 == path.size())
+                if (sep_position + 2 == address_string.size())
                 {
                     // Left of the dash + digit
-                    s.text = path.substr(0, sep_position - 1);
+                    address.text = address_string.substr(0, sep_position - 1);
 
                     // Parse the n value (digit before the dash)
-                    s.n = path[sep_position - 1] - '0'; // Convert char to int
+                    address.n = address_string[sep_position - 1] - '0'; // Convert char to int
 
                     // Parse the N value (digit after the dash)
-                    s.N = path[sep_position + 1] - '0'; // Convert char to int
+                    address.N = address_string[sep_position + 1] - '0'; // Convert char to int
 
                     // Ensure valid range 1 - 7
-                    if (s.N <= 0 || s.N > 7 || s.n <= 0 || s.n > 7)
+                    if (address.N <= 0 || address.N > 7 || address.n <= 0 || address.n > 7)
                     {
-                        s.N = 0;
-                        s.n = 0;
-                        s.text = path;
+                        address.N = 0;
+                        address.n = 0;
+                        address.text = address_string;
                     }
                 }
             }
             // Handle parsing of a callsign SSID
-            else if ((sep_position + 1) < path.size() && isdigit(path[sep_position + 1]))
+            else if ((sep_position + 1) < address_string.size() && isdigit(address_string[sep_position + 1]))
             {
-                s.text = path;
-                s.N = 0;
-                s.n = 0;
+                address.text = address_string;
+                address.N = 0;
+                address.n = 0;
 
-                std::string ssid_str = std::string(path.substr(sep_position + 1));
+                std::string ssid_str = std::string(address_string.substr(sep_position + 1));
 
                 if (ssid_str.size() == 1 || (ssid_str.size() == 2 && std::isdigit(ssid_str[1])))
                 {
-                    s.ssid = atoi(ssid_str.c_str());
+                    address.ssid = atoi(ssid_str.c_str());
                 }
             }
         }
         else // If there's no '-', assume only text or text followed by a single digit
         {
-            s.text = path;
+            address.text = address_string;
 
             // Check for trailing digit without '-'
-            if (!path.empty() && isdigit(path.back()))
+            if (!address_string.empty() && isdigit(address_string.back()))
             {
-                s.n = path.back() - '0'; // Last digit is n
-                path.remove_suffix(1);   // Remove the digit from the text
-                s.text = path;
+                address.n = address_string.back() - '0'; // Last digit is n
+                address_string.remove_suffix(1);   // Remove the digit from the text
+                address.text = address_string;
 
-                if (s.n <= 0 || s.n > 7)
+                if (address.n <= 0 || address.n > 7)
                 {
-                    s.n = 0;
-                    s.text = path;
+                    address.n = 0;
+                    address.text = address_string;
                 }
             }
             else
             {
-                s.n = 0; // No digit found, default n to 0
+                address.n = 0; // No digit found, default n to 0
             }
 
-            s.N = 0; // No N specified, default to 0
+            address.N = 0; // No N specified, default to 0
         }
 
-        s.type = parse_segment_type(s.text);
+        address.kind = parse_address_kind(address.text);
     }
 
-    // Never fail. Failure to parse a segment means that n-N will not be set.
+    // Never fail. Failure to parse a address means that n-N will not be set.
     return true;
 }
 
-APRS_ROUTER_INLINE bool try_parse_segments(const std::vector<std::string>& addresses, std::vector<segment>& result)
+APRS_ROUTER_INLINE bool try_parse_addresses(const std::vector<std::string>& addresses, std::vector<address>& result)
 {
+    result.clear();
+    size_t i = 0;
     for (const auto& a : addresses)
     {
-        segment s;
-        try_parse_segment(a, s);
+        address s;
+        try_parse_address(a, s);
+        s.index = i;
+        i++;
         result.push_back(s);
     }
     return true;
 }
 
-APRS_ROUTER_INLINE bool try_parse_callsign(std::string address, std::string& callsign, int& ssid)
+APRS_ROUTER_INLINE bool try_parse_callsign(std::string_view address_string, std::string& callsign, int& ssid)
 {
-    if (address.empty())
+    if (address_string.empty())
     {
         return false;
     }
 
-    if (address.size() > 9)
+    if (address_string.size() > 9)
     {
         return false;
     }
 
-    auto sep_position = address.find("-");
+    auto sep_position = address_string.find("-");
 
     if (sep_position != std::string::npos)
     {
-        if (sep_position == address.size() - 1 || ((sep_position + 3) < address.size()))
+        if (sep_position == address_string.size() - 1 || ((sep_position + 3) < address_string.size()))
         {
             return false;
         }
 
-        callsign = address.substr(0, sep_position);
+        callsign = address_string.substr(0, sep_position);
 
-        std::string ssid_string = std::string(address.substr(sep_position + 1));
+        std::string ssid_string = std::string(address_string.substr(sep_position + 1));
 
         if (ssid_string[0] == '0')
         {
@@ -940,7 +1100,7 @@ APRS_ROUTER_INLINE bool try_parse_callsign(std::string address, std::string& cal
     }
     else
     {
-        callsign = address;
+        callsign = address_string;
         ssid = 0;
     }
 
@@ -962,26 +1122,26 @@ APRS_ROUTER_INLINE bool try_parse_callsign(std::string address, std::string& cal
     return true;
 }
 
-APRS_ROUTER_INLINE bool try_parse_callsign_with_used_flag(std::string address, std::string& callsign, int& ssid)
+APRS_ROUTER_INLINE bool try_parse_callsign_with_used_flag(std::string address_string, std::string& callsign, int& ssid)
 {
-    if (address.empty())
+    if (address_string.empty())
     {
         return false;
     }
 
-    if (address.back() == '*')
+    if (address_string.back() == '*')
     {
-        address = address.substr(0, address.size() - 1);
+        address_string = address_string.substr(0, address_string.size() - 1);
     }
 
-    return try_parse_callsign(address, callsign, ssid);
+    return try_parse_callsign(address_string, callsign, ssid);
 }
 
-APRS_ROUTER_INLINE std::vector<segment> get_router_n_N_addresses(const std::vector<segment>& router_addresses)
+APRS_ROUTER_INLINE std::vector<address> get_router_n_N_addresses(const std::vector<address>& router_addresses)
 {
-    std::vector<segment> result;
+    std::vector<address> result;
     size_t i = 0;
-    for (auto p : router_addresses)
+    for (auto p : router_addresses) // intentional copy of 'p'
     {
         if (p.n > 0)
         {
@@ -993,9 +1153,9 @@ APRS_ROUTER_INLINE std::vector<segment> get_router_n_N_addresses(const std::vect
     return result;
 }
 
-APRS_ROUTER_INLINE std::vector<segment> get_router_generic_addresses(const std::vector<segment>& router_addresses)
+APRS_ROUTER_INLINE std::vector<address> get_router_generic_addresses(const std::vector<address>& router_addresses)
 {
-    std::vector<segment> result;
+    std::vector<address> result;
     for (const auto& p : router_addresses)
     {
         if (p.n == 0)
@@ -1006,20 +1166,25 @@ APRS_ROUTER_INLINE std::vector<segment> get_router_generic_addresses(const std::
     return result;
 }
 
-APRS_ROUTER_INLINE std::vector<segment> parse_packet_addresses(const struct packet& packet)
+APRS_ROUTER_INLINE std::vector<address> parse_packet_addresses(const struct packet& packet)
 {
-    std::vector<segment> segments;
-    try_parse_segments(packet.path, segments);
-    size_t i = 0;
-    for (auto& s : segments)
-    {
-        s.index = i;
-        i++;
-    }
+    std::vector<address> segments;
+    try_parse_addresses(packet.path, segments);
+    set_addresses_offset(packet, segments);
     return segments;
 }
 
-APRS_ROUTER_INLINE std::optional<std::pair<size_t, size_t>> find_first_unused_n_N_address_index(const std::vector<segment>& packet_addresses, const std::vector<segment>& router_addresses, routing_option options)
+APRS_ROUTER_INLINE void init_addresses(route_state& state)
+{
+    std::vector<address> router_addresses;
+    try_parse_addresses(state.settings.path, router_addresses);
+
+    state.router_n_N_addresses = get_router_n_N_addresses(router_addresses);
+    state.router_generic_addresses = get_router_generic_addresses(router_addresses);
+    state.packet_addresses = parse_packet_addresses(state.packet);
+}
+
+APRS_ROUTER_INLINE std::optional<std::pair<size_t, size_t>> find_first_unused_n_N_address_index(const std::vector<address>& packet_addresses, const std::vector<address>& router_addresses, routing_option options)
 {
     // Find the first unused n-N address inside the packet
     // using the router's matching addresses
@@ -1037,25 +1202,28 @@ APRS_ROUTER_INLINE std::optional<std::pair<size_t, size_t>> find_first_unused_n_
 
     bool reject_excessive_hops = enum_has_flag(options, routing_option::reject_excessive_hops);
 
-    for (const auto& address : packet_addresses)
+    for (size_t i = 0; const auto& address : packet_addresses)
     {
-        for (const auto& p : router_addresses)
+        for (size_t j = 0; const auto& p : router_addresses)
         {
             if (address.n == p.n && address.N > 0 && address.text == p.text)
             {
                 if (reject_excessive_hops && p.N > 0 && address.N > p.N)
                 {
+                    j++;
                     continue;
                 }
-                return std::make_pair(address.index, p.index);
+                return std::make_pair(i, j);
             }
+            j++;
         }
+        i++;
     }
 
     return {};
 }
 
-APRS_ROUTER_INLINE std::optional<size_t> find_last_used_address_index(const std::vector<segment>& packet_addresses)
+APRS_ROUTER_INLINE std::optional<size_t> find_last_used_address_index(const std::vector<address>& packet_addresses)
 {
     // Find the last address that has been marked as "used" in the packet path.
     // For example, if the packet is: FROM>TO,CALL*,TEST,ADDRESS*,WIDE1-2:data
@@ -1078,8 +1246,10 @@ APRS_ROUTER_INLINE std::optional<size_t> find_last_used_address_index(const std:
     return {};
 }
 
-APRS_ROUTER_INLINE std::optional<size_t> find_address_index(const std::vector<segment>& packet_addresses, size_t offset, std::string_view router_address, const std::vector<segment>& router_addresses)
+APRS_ROUTER_INLINE std::optional<size_t> find_address_index(const std::vector<address>& packet_addresses, size_t offset, std::string_view router_address, const std::vector<address>& router_addresses)
 {
+    assert(offset < packet_addresses.size());
+
     for (size_t i = offset; i < packet_addresses.size(); i++)
     {
         if (packet_addresses[i].text == router_address)
@@ -1099,25 +1269,21 @@ APRS_ROUTER_INLINE std::optional<size_t> find_address_index(const std::vector<se
     return {};
 }
 
-APRS_ROUTER_INLINE std::optional<size_t> find_unused_address_index(const std::vector<segment>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, std::string_view router_address, const std::vector<segment>& router_generic_addresses)
+APRS_ROUTER_INLINE std::optional<size_t> find_unused_address_index(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, std::string_view router_address, const std::vector<address>& router_generic_addresses)
 {
     // Find unused address mathing router's address or an address in the router's path.
     // Start the search from the last used address.
     //
     // FROM>TO,CALL,ROUTE*,DIGI,WIDE2-1:data - if explicit routing by router address
     //                     ~~~~
+    //
     // FROM>TO,CALL,ROUTE*,WIDE,DIGI,WIDE2-1:data - if explicit routing by router generic addresses
     //                     ~~~~
+    //
     // FROM>TO,CALL,ROUTE*,DIGI,WIDE2-1:data - if n-N routing
     //                          ~~~~~~~
 
-    size_t start_search_address_index = 0;
-
-    // there might be no "used" address
-    if (maybe_last_used_address_index)
-    {
-        start_search_address_index = maybe_last_used_address_index.value();
-    }
+    size_t start_search_address_index = maybe_last_used_address_index.value_or(0);
 
     assert(start_search_address_index < packet_addresses.size());
 
@@ -1144,6 +1310,18 @@ APRS_ROUTER_INLINE std::optional<size_t> find_unused_address_index(const std::ve
     return {};
 }
 
+APRS_ROUTER_INLINE void find_used_addresses(route_state& state)
+{
+    state.maybe_last_used_address_index = find_last_used_address_index(state.packet_addresses);
+    state.maybe_router_address_index = find_unused_address_index(state.packet_addresses, state.maybe_last_used_address_index, state.settings.address, state.router_generic_addresses);
+    state.unused_address_index = state.maybe_last_used_address_index.value_or(-1) + 1;
+
+    if (state.maybe_router_address_index)
+    {
+        state.is_path_based_routing = state.packet_addresses[state.maybe_router_address_index.value()].text != state.settings.address;
+    }
+}
+
 APRS_ROUTER_INLINE bool is_packet_valid(const struct packet& packet, routing_option options)
 {
     if (packet.from.empty() || packet.to.empty())
@@ -1157,7 +1335,7 @@ APRS_ROUTER_INLINE bool is_packet_valid(const struct packet& packet, routing_opt
     }
 
     if (!enum_has_flag(options, routing_option::strict))
-    {        
+    {
         return true;
     }
 
@@ -1186,9 +1364,19 @@ APRS_ROUTER_INLINE bool is_packet_valid(const struct packet& packet, routing_opt
     return true;
 }
 
+APRS_ROUTER_INLINE bool is_packet_valid(const route_state& state)
+{
+    return is_packet_valid(state.packet, state.settings.options);
+}
+
 APRS_ROUTER_INLINE bool is_packet_from_us(const struct packet& packet, std::string_view router_address)
 {
     return packet.from == router_address;
+}
+
+APRS_ROUTER_INLINE bool is_packet_from_us(const route_state& state)
+{
+    return is_packet_from_us(state.packet, state.settings.address);
 }
 
 APRS_ROUTER_INLINE bool is_packet_sent_to_us(const struct packet& packet, std::string_view router_address)
@@ -1196,7 +1384,12 @@ APRS_ROUTER_INLINE bool is_packet_sent_to_us(const struct packet& packet, std::s
     return packet.to == router_address;
 }
 
-APRS_ROUTER_INLINE bool has_packet_routing_ended(const std::vector<segment>& packet_addresses, std::optional<size_t> maybe_last_used_address_index)
+APRS_ROUTER_INLINE bool is_packet_sent_to_us(const route_state& state)
+{
+    return is_packet_sent_to_us(state.packet, state.settings.address);
+}
+
+APRS_ROUTER_INLINE bool has_packet_routing_ended(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index)
 {
     // Packet routing ended: N0CALL>APRS,A,B,C,D,E,F,G,CALL*:data
     //                                                 ~~~~~
@@ -1211,14 +1404,20 @@ APRS_ROUTER_INLINE bool has_packet_routing_ended(const std::vector<segment>& pac
     {
         return (packet_addresses.size() == 0 || (maybe_last_used_address_index.value() == (packet_addresses.size() - 1)));
     }
+
     return false;
 }
 
-APRS_ROUTER_INLINE bool has_packet_been_routed_by_us(const std::vector<segment>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, std::string_view router_address)
+APRS_ROUTER_INLINE bool has_packet_routing_ended(const route_state& state)
+{
+    return has_packet_routing_ended(state.packet_addresses, state.maybe_last_used_address_index);
+}
+
+APRS_ROUTER_INLINE bool has_packet_been_routed_by_us(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, std::string_view router_address)
 {
     // Packet was routed by us: N0CALL>APRS,A,B,C,D,DIGI*,F,G,CALL:data
     //                                              ~~~~~
-    // 
+    //
     // A packet that has already been routed by us, should not be routed again
     // This should be true, even if the routed packet matches one of our aliases
     //
@@ -1234,9 +1433,14 @@ APRS_ROUTER_INLINE bool has_packet_been_routed_by_us(const std::vector<segment>&
 
     assert(last_used_address_index < packet_addresses.size());
 
-    const segment& last_used_address = packet_addresses[last_used_address_index];
+    const address& last_used_address = packet_addresses[last_used_address_index];
 
     return (last_used_address.text == router_address && last_used_address.mark);
+}
+
+APRS_ROUTER_INLINE bool has_packet_been_routed_by_us(route_state& state)
+{
+    return has_packet_been_routed_by_us(state.packet_addresses, state.maybe_last_used_address_index, state.settings.address);
 }
 
 APRS_ROUTER_INLINE void init_routing_result(const struct packet& packet, routing_result& result)
@@ -1245,17 +1449,18 @@ APRS_ROUTER_INLINE void init_routing_result(const struct packet& packet, routing
     result.success = false;
     result.original_packet = packet;
     result.routed_packet = packet;
+    result.actions.clear();
 }
 
-APRS_ROUTER_INLINE bool create_routing_result(const packet& p, const std::vector<segment>& packet_addresses, routing_result& result)
+APRS_ROUTER_INLINE bool create_routing_result(const struct packet& packet, const std::vector<address>& packet_addresses, routing_result& result)
 {
-    packet routed_packet = { p.from, p.to, {}, p.data };
+    struct packet routed_packet = { packet.from, packet.to, {}, packet.data };
 
-    for (auto segment : packet_addresses)
+    for (const auto& address : packet_addresses)
     {
-        if (!segment.text.empty())
+        if (!address.text.empty())
         {
-            routed_packet.path.push_back(to_string(segment));
+            routed_packet.path.push_back(to_string(address));
         }
     }
 
@@ -1267,16 +1472,368 @@ APRS_ROUTER_INLINE bool create_routing_result(const packet& p, const std::vector
     return true;
 }
 
-APRS_ROUTER_INLINE bool create_routing_result(routing_state state, routing_result& result)
+APRS_ROUTER_INLINE bool create_routing_result(route_state& state, routing_result& result)
+{
+    try_truncate_empty_addresses(state);
+    result.actions = state.actions;
+    return create_routing_result(state.packet, state.packet_addresses, result);
+}
+
+APRS_ROUTER_INLINE bool create_routing_result(const routing_state state, routing_result& result)
 {
     result.success = true;
     result.routed = (state == routing_state::routed);
     result.state = state;
-    
+
     return result.routed;
 }
 
-APRS_ROUTER_INLINE void unset_all_used_addresses(std::vector<segment>& packet_addresses, size_t offset, size_t count)
+APRS_ROUTER_INLINE bool create_routing_ended_result(const std::vector<address>& packet_addresses, bool enable_diagnostics, routing_result& result)
+{
+    push_routing_ended_diagnostic(packet_addresses.back(), enable_diagnostics, result.actions);
+    return create_routing_result(routing_state::not_routed, result);
+}
+
+APRS_ROUTER_INLINE bool create_routing_ended_result(const route_state& state, routing_result& result)
+{
+    return create_routing_ended_result(state.packet_addresses, state.settings.enable_diagnostics, result);
+}
+
+APRS_ROUTER_INLINE bool create_routed_by_us_result(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, bool enable_diagnostics, routing_result& result)
+{
+    push_routed_by_us_diagnostic(packet_addresses, maybe_last_used_address_index, enable_diagnostics, result.actions);
+    return create_routing_result(routing_state::already_routed, result);   
+}
+
+APRS_ROUTER_INLINE bool create_routed_by_us_result(const route_state& state, routing_result& result)
+{
+    return create_routed_by_us_result(state.packet_addresses, state.maybe_last_used_address_index, state.settings.enable_diagnostics, result);
+}
+
+APRS_ROUTER_INLINE bool push_routing_ended_diagnostic(const address& address, bool enable_diagnostics, std::vector<routing_diagnostic>& d)
+{
+    if (enable_diagnostics)
+    {
+        routing_diagnostic diag;
+
+        diag.target = applies_to::path;
+        diag.type = routing_action::warn;
+        diag.message = "Packet has finished routing";
+        diag.address = address.text;
+        diag.start = address.offset;
+        diag.end = diag.start + address.length;
+        diag.index = address.index;
+
+        d.push_back(diag);
+    }
+    return true;
+}
+
+APRS_ROUTER_INLINE bool push_routed_by_us_diagnostic(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, bool enable_diagnostics, std::vector<routing_diagnostic>& d)
+{
+    if (enable_diagnostics && maybe_last_used_address_index)
+    {
+        routing_diagnostic diag;
+
+        const address& address = packet_addresses[maybe_last_used_address_index.value()];
+
+        diag.target = applies_to::path;
+        diag.type = routing_action::warn;
+        diag.message = "Packet has already been routed";
+        diag.address = address.text;
+        diag.start = address.offset;
+        diag.end = diag.start + address.length;
+        diag.index = address.index;
+
+        d.push_back(diag);
+    }
+    return true;
+}
+
+APRS_ROUTER_INLINE bool push_address_set_diagnostic(const std::vector<address>& packet_addresses, size_t set_address_index, bool enable_diagnostics, std::vector<routing_diagnostic>& d)
+{
+    assert(set_address_index < packet_addresses.size());
+
+    if (enable_diagnostics)
+    {
+        routing_diagnostic diag;
+
+        const address& address = packet_addresses[set_address_index];
+
+        diag.target = applies_to::path;
+        diag.type = routing_action::set;
+        diag.message = "Packet address marked as 'set'";
+        diag.address = to_string(address);
+        diag.start = address.offset;
+        diag.end = diag.start + address.length;
+        diag.index = set_address_index;
+
+        if (address.mark && !diag.address.empty())
+        {
+            // Remove the '*' marker
+            diag.address.pop_back();
+            diag.end--;
+        }
+
+        d.push_back(diag);
+    }
+    return true;
+}
+
+APRS_ROUTER_INLINE bool push_address_unset_diagnostic(const std::vector<address> &packet_addresses, std::optional<size_t> maybe_set_address_index, bool enable_diagnostics, std::vector<routing_diagnostic> &d)
+{
+    // Called before unsetting addresses, before calling 'set_address_as_used'
+
+    size_t set_address_index = maybe_set_address_index.value_or(packet_addresses.size()); // intentionally out of bounds if not set
+
+    assert(!maybe_set_address_index || set_address_index < packet_addresses.size());
+    assert(packet_addresses.size() > 0);
+
+    if (enable_diagnostics)
+    {
+        size_t i = 0;
+        size_t offset = packet_addresses[0].offset;
+        for (const auto &address : packet_addresses)
+        {
+            size_t length = address.length;
+
+            if (address.mark && address.index != set_address_index)
+            {
+                routing_diagnostic diag;
+
+                diag.target = applies_to::path;
+                diag.type = routing_action::unset;
+                diag.message = "Packet address marked as 'unset'";
+                diag.address = to_string(address);
+                diag.start = offset;
+                diag.end = diag.start + length;
+                diag.index = i;
+
+                if (address.mark && !diag.address.empty())
+                {
+                    // Remove the '*' marker
+                    diag.address.pop_back();
+                }
+
+                d.push_back(diag);
+            }
+
+            if (address.mark)
+            {
+                length--;
+            }
+
+            offset += length + 1;
+
+            i++;
+        }
+    }
+    return true;
+}
+
+APRS_ROUTER_INLINE bool push_address_replaced_diagnostic(const std::vector<address>& packet_addresses, size_t set_address_index, std::string_view new_address, bool enable_diagnostics, std::vector<routing_diagnostic>& d)
+{
+    assert(set_address_index < packet_addresses.size());
+
+    if (enable_diagnostics)
+    {
+        routing_diagnostic diag;
+
+        const address& address = packet_addresses[set_address_index];
+
+        diag.target = applies_to::path;
+        diag.type = routing_action::replace;
+        diag.message = "Packet address replaced";
+        diag.address = new_address;
+        diag.start = address.offset;
+        diag.end = diag.start + address.length;
+        diag.index = set_address_index;
+
+        d.push_back(diag);
+    }
+    return true;
+}
+
+APRS_ROUTER_INLINE bool push_address_decremented_diagnostic(address& address, bool enable_diagnostics, std::vector<routing_diagnostic>& d)
+{
+    if (enable_diagnostics)
+    {
+        routing_diagnostic diag;
+
+        diag.target = applies_to::path;
+        diag.type = routing_action::decrement;
+        diag.message = "Packet address decremented";
+        diag.address = to_string(address);
+        diag.start = address.offset;
+        diag.end = diag.start + address.length;
+        diag.index = address.index;
+
+        // +2 as push_address_decremented_diagnostic is called after the address was decremented
+        // with the length decremented by 2 if N is 0
+        if (address.N == 0)
+        {
+            diag.end += 2;
+        }
+
+        d.push_back(diag);
+    }
+    return true;
+}
+
+APRS_ROUTER_INLINE bool push_address_inserted_diagnostic(const std::vector<address>& packet_addresses, size_t insert_address_index, bool enable_diagnostics, std::vector<routing_diagnostic>& d)
+{
+    assert(insert_address_index < packet_addresses.size());
+
+    if (enable_diagnostics)
+    {
+        routing_diagnostic diag;
+
+        const address& address = packet_addresses[insert_address_index];
+
+        diag.target = applies_to::path;
+        diag.type = routing_action::insert;
+        diag.message = "Packet address inserted";
+        diag.address = address.text;
+        diag.start = address.offset;
+        diag.end = diag.start + address.text.size();
+        diag.index = insert_address_index;
+
+        d.push_back(diag);
+    }
+    return true;
+}
+
+APRS_ROUTER_INLINE bool push_address_removed_diagnostic(const std::vector<address>& packet_addresses, size_t remove_address_index, bool enable_diagnostics, std::vector<routing_diagnostic>& d)
+{
+    assert(remove_address_index < packet_addresses.size());
+
+    if (enable_diagnostics)
+    {
+        routing_diagnostic diag;
+
+        const address& address = packet_addresses[remove_address_index];
+
+        diag.target = applies_to::path;
+        diag.type = routing_action::remove;
+        diag.message = "Packet address removed";
+        diag.address = address.text;
+        diag.start = address.offset;
+        diag.end = diag.start + address.text.size();
+        diag.index = remove_address_index;
+
+        d.push_back(diag);
+    }
+    return true;
+}
+
+APRS_ROUTER_INLINE bool create_address_move_diagnostic(const std::vector<address>& packet_addresses, size_t from_index, size_t to_index, bool enable_diagnostics, std::vector<routing_diagnostic>& d)
+{
+    assert(from_index < packet_addresses.size());
+    assert(to_index < packet_addresses.size());
+
+    if (enable_diagnostics)
+    {
+        routing_diagnostic remove_diag;
+
+        const address& removed_address = packet_addresses[from_index];
+
+        remove_diag.target = applies_to::path;
+        remove_diag.type = routing_action::remove;
+        remove_diag.message = "Packet address removed";
+        remove_diag.address = removed_address.text;
+        remove_diag.start = removed_address.offset;
+        remove_diag.end = remove_diag.start + removed_address.length;
+        remove_diag.index = from_index;
+
+        d.push_back(remove_diag);
+
+        routing_diagnostic insert_diag;
+
+        const address& inserted_address = packet_addresses[to_index];
+
+        insert_diag.target = applies_to::path;
+        insert_diag.type = routing_action::insert;
+        insert_diag.message = "Packet address inserted";
+        insert_diag.address = removed_address.text;
+        insert_diag.start = inserted_address.offset;
+        insert_diag.end = insert_diag.start + removed_address.length;
+        insert_diag.index = to_index;
+
+        d.push_back(insert_diag);
+    }
+    return true;
+}
+
+APRS_ROUTER_INLINE bool create_truncate_address_range_diagnostic(const std::vector<address>& packet_addresses, size_t from_index, size_t to_index, bool enable_diagnostics, std::vector<routing_diagnostic>& d)
+{
+    assert(from_index < packet_addresses.size());
+    assert(to_index < packet_addresses.size());
+
+    if (!enable_diagnostics)
+    {
+        return false;
+    }
+
+    assert(from_index < packet_addresses.size());
+
+    size_t initial_offset = packet_addresses[from_index].offset;
+
+    for (size_t i = from_index; i < packet_addresses.size() &&  i < to_index; i++)
+    {
+        routing_diagnostic diag;
+
+        const address& address = packet_addresses[i];
+
+        diag.target = applies_to::path;
+        diag.type = routing_action::remove;
+        diag.message = "Packet address removed";
+        diag.address = address.text;
+        diag.start = initial_offset;
+        diag.end = diag.start + address.length;
+        diag.index = from_index;
+
+        d.push_back(diag);
+    }
+    return true;
+}
+
+APRS_ROUTER_INLINE std::string create_display_name_diagnostic(const routing_diagnostic& diag, const packet& routed_packet)
+{
+    // Creates a diagnostic message.
+    //
+    // Beginning of example:
+    //
+    // Packet address removed:
+    //
+    // N0CALL>APRS,CALLA,CALLB,CALLC,CALLD:data
+    //                               ~~~~~
+    //
+    // End of example
+
+    std::string diag_string;
+    diag_string.append(diag.message);
+    diag_string.append(":");
+    diag_string.append("\n");
+    diag_string.append("\n");
+    diag_string.append(to_string(routed_packet));
+    diag_string.append("\n");
+    diag_string.append(std::string(diag.start, ' '));
+    diag_string.append(std::string(diag.end - diag.start, '~'));
+    if (diag.type == routing_action::set)
+    {
+        diag_string.append("~");
+    }
+    diag_string.append("\n");
+    diag_string.append("\n");
+    return diag_string;
+}
+
+APRS_ROUTER_INLINE void unset_all_used_addresses(std::vector<address>& packet_addresses, size_t offset, size_t count)
+{
+    unset_all_used_addresses(packet_addresses, offset, count, std::nullopt);
+}
+
+APRS_ROUTER_INLINE void unset_all_used_addresses(std::vector<address>& packet_addresses, size_t offset, size_t count, std::optional<size_t> maybe_ignore_index)
 {
     // Unset all addresses marked as used inside a packet path
     //
@@ -1284,13 +1841,26 @@ APRS_ROUTER_INLINE void unset_all_used_addresses(std::vector<segment>& packet_ad
     //                     ~~~~~~       ~~~~~~
     // Will be updated to: N0CALL>APRS,CALLA,CALLB,CALLC,CALLD,WIDE1-2:data
 
+    assert(offset < packet_addresses.size());
+    assert(count <= packet_addresses.size());
+
+    size_t ignore_index = maybe_ignore_index.value_or(packet_addresses.size()); // intentionally outside bounds if not set
+
+    size_t address_offset = packet_addresses[offset].offset;
+
     for (size_t i = offset, n = 0; i < packet_addresses.size() && n < count; i++, n++)
     {
-        packet_addresses[i].mark = false;
+        if (packet_addresses[i].mark && i != ignore_index)
+        {
+            packet_addresses[i].mark = false;
+            packet_addresses[i].length--;
+        }
+        packet_addresses[i].offset = address_offset;
+        address_offset += packet_addresses[i].length + 1; // +1 for the comma address separator ','
     }
 }
 
-APRS_ROUTER_INLINE void set_address_as_used(std::vector<segment>& packet_addresses, size_t index)
+APRS_ROUTER_INLINE void set_address_as_used(std::vector<address>& packet_addresses, size_t index)
 {
     // Mark an address at "index" as used: N0CALL>APRS,CALLA,CALLB,CALLC,CALLD,WIDE1-2:data
     //
@@ -1298,17 +1868,32 @@ APRS_ROUTER_INLINE void set_address_as_used(std::vector<segment>& packet_address
     //                                                                    ~~~~~~
 
     assert(index < packet_addresses.size());
-    unset_all_used_addresses(packet_addresses, 0, packet_addresses.size());
-    packet_addresses[index].mark = true;
+    set_address_as_used(packet_addresses, packet_addresses[index]);
 }
 
-APRS_ROUTER_INLINE void set_address_as_used(std::vector<segment>& packet_addresses, segment& packet_address)
+APRS_ROUTER_INLINE void set_address_as_used(std::vector<address>& packet_addresses, address& packet_address)
 {
     unset_all_used_addresses(packet_addresses, 0, packet_addresses.size());
+
+    if (packet_address.mark)
+    {
+        return;
+    }
+
     packet_address.mark = true;
+    packet_address.length++;
+
+    if (packet_addresses.size() > 1)
+    {
+        for (size_t i = packet_address.index, address_offset = packet_address.offset; i < packet_addresses.size(); i++)
+        {
+            packet_addresses[i].offset = address_offset;
+            address_offset += packet_addresses[i].length + 1; // +1 for the comma address separator ','
+        }
+    }
 }
 
-APRS_ROUTER_INLINE void update_addresses_index(std::vector<segment>& addresses)
+APRS_ROUTER_INLINE void update_addresses_index(std::vector<address>& addresses)
 {
     for (size_t i = 0; i < addresses.size(); i++)
     {
@@ -1316,42 +1901,122 @@ APRS_ROUTER_INLINE void update_addresses_index(std::vector<segment>& addresses)
     }
 }
 
-APRS_ROUTER_INLINE bool try_preempt_explicit_route(std::vector<segment>& packet_addresses, size_t router_address_index, size_t unused_address_index, bool is_path_based_routing, std::string_view router_address, routing_option options)
+APRS_ROUTER_INLINE void set_addresses_offset(const struct packet& packet, std::vector<address>& addresses)
 {
-    if (try_preempt_transform_explicit_route(packet_addresses, router_address_index, unused_address_index, options))
+    // +1 to account for the path separator ',', +1 to account for '>' separator
+    //
+    // Example:
+    //
+    // N0CALL>APRS,WIDE2-1:data
+    //       ~    ~
+    //      +1   +1
+    // ~~~~~~~~~~~~ - offset
+
+    size_t offset = packet.from.size() + packet.to.size() + 2;
+    update_addresses_offset(addresses, offset);
+}
+
+APRS_ROUTER_INLINE void update_addresses_offset(std::vector<address>& addresses, size_t initial_offset)
+{
+    // Updates addresses offsets, useful after an address was inserted, replaced or removed
+    // This function does not update the length of addresses, and assumes they are up to date
+    // This function should not be used if an address is updated in a way that will change the length ex: marked as set
+    // because the length will be innacurate and the offsets will not be correctly calculated
+    //
+    // Before:
+    //
+    // N0CALL>APRS,AB,ABC,ABCD:data
+    // ~~~~~~~~~~~~
+    // 0         12 - initial_offset
+    //
+    // N0CALL>APRS,AB,ABC,ABCD:data
+    //             ~~ ~~~ ~~~~
+    //             12 15  19  - Offsets
+    //
+    // After:
+    //
+    // N0CALL>APRS,ABCDE,AB,ABC,ABCD:data
+    //             ~~~~~ ~~ ~~~ ~~~~
+    //             12    18 21  25  - Offsets
+    //               ^
+    //             Packet address inserted
+    //
+    // Offsets updated for addresses: "AB", "ABC", and "ABCD"
+    // due to the inserted address "ABCDE"
+
+    for (size_t i = 0, offset = initial_offset; i < addresses.size(); i++)
     {
-        try_explicit_basic_route(packet_addresses, is_path_based_routing, unused_address_index, unused_address_index, router_address, options);
+        address& address = addresses[i];
+        address.offset = offset;
+        offset += address.length + 1; // +1 for the comma address separator ','
+    }
+}
+
+APRS_ROUTER_INLINE void update_addresses_offset(std::vector<address>& addresses)
+{
+    assert(addresses.size() > 0);
+    size_t initial_offset = addresses[0].offset;
+    update_addresses_offset(addresses, initial_offset);
+}
+
+APRS_ROUTER_INLINE bool try_preempt_explicit_route(route_state& state)
+{
+    if (try_preempt_transform_explicit_route(state))
+    {
+        try_explicit_basic_route(state, state.unused_address_index);
         return true;
     }
     return false;
 }
 
-APRS_ROUTER_INLINE bool try_preempt_transform_explicit_route(std::vector<segment>& packet_addresses, size_t router_address_index, size_t& set_address_index, routing_option options)
+APRS_ROUTER_INLINE bool try_preempt_transform_explicit_route(route_state& state)
 {
+    const bool enable_diagnostics = state.settings.enable_diagnostics;
+    const routing_option options = state.settings.options;
+    const size_t router_address_index = state.maybe_router_address_index.value();
+    std::vector<address>& packet_addresses = state.packet_addresses;
+    size_t& unused_address_index = state.unused_address_index;
+    std::vector<routing_diagnostic>& actions = state.actions;
+
     assert(router_address_index < packet_addresses.size());
-    assert(set_address_index < packet_addresses.size());
+    assert(unused_address_index < packet_addresses.size());
 
     if (enum_has_flag(options, routing_option::preempt_front))
     {
-        try_move_address_to_position(packet_addresses, router_address_index, set_address_index);
+        std::vector<routing_diagnostic> temp_d;
+        create_address_move_diagnostic(packet_addresses, router_address_index, unused_address_index, enable_diagnostics, actions);
+        if (try_move_address_to_position(packet_addresses, router_address_index, unused_address_index))
+        {
+            std::copy(temp_d.begin(), temp_d.end(), std::back_inserter(actions));
+        }
         return true;
     }
     else if (enum_has_flag(options, routing_option::preempt_truncate))
     {
-        try_truncate_address_range(packet_addresses, set_address_index, router_address_index);
+        std::vector<routing_diagnostic> temp_d;
+        create_truncate_address_range_diagnostic(packet_addresses, unused_address_index, router_address_index, enable_diagnostics, temp_d);
+        if (try_truncate_address_range(packet_addresses, unused_address_index, router_address_index))
+        {
+            std::copy(temp_d.begin(), temp_d.end(), std::back_inserter(actions));
+        }
         return true;
     }
     else if (enum_has_flag(options, routing_option::preempt_drop))
     {
-        try_truncate_address_range(packet_addresses, 0, router_address_index);
-        set_address_index = 0;
+        std::vector<routing_diagnostic> temp_d;
+        create_truncate_address_range_diagnostic(packet_addresses, 0, router_address_index, enable_diagnostics, temp_d);
+        if (try_truncate_address_range(packet_addresses, 0, router_address_index))
+        {
+            std::copy(temp_d.begin(), temp_d.end(), std::back_inserter(actions));
+        }
+        unused_address_index = 0;
         return true;
     }
 
     return false;
 }
 
-APRS_ROUTER_INLINE bool try_insert_address(std::vector<segment>& packet_addresses, size_t index, std::string_view router_address)
+APRS_ROUTER_INLINE bool try_insert_address(std::vector<address>& packet_addresses, size_t index, std::string_view router_address)
 {
     assert(index < packet_addresses.size());
 
@@ -1360,14 +2025,18 @@ APRS_ROUTER_INLINE bool try_insert_address(std::vector<segment>& packet_addresse
         return false;
     }
 
-    segment new_address;
+    address new_address;
     new_address.text = router_address;
+    new_address.length = router_address.size();
 
     assert(packet_addresses.size() < 8);
+
+    size_t initial_offset = packet_addresses[0].offset;
 
     packet_addresses.insert(packet_addresses.begin() + index, new_address);
 
     update_addresses_index(packet_addresses);
+    update_addresses_offset(packet_addresses, initial_offset);
 
     return true;
 }
@@ -1381,7 +2050,12 @@ APRS_ROUTER_INLINE bool is_explicit_routing(bool is_routing_self, std::optional<
     return false;
 }
 
-APRS_ROUTER_INLINE bool try_explicit_route(std::vector<segment>& packet_addresses, std::string_view router_address, std::optional<size_t> maybe_last_used_address_index, std::optional<size_t> maybe_router_address_index, routing_option options)
+APRS_ROUTER_INLINE bool is_explicit_routing(bool is_routing_self, const route_state& state)
+{
+    return is_explicit_routing(is_routing_self, state.maybe_router_address_index, state.settings.options);
+}
+
+APRS_ROUTER_INLINE bool try_explicit_route(route_state& state)
 {
     // If explicitly routing a packet through the router
     // find the router's address in the packet and mark it as used (*)
@@ -1392,9 +2066,16 @@ APRS_ROUTER_INLINE bool try_explicit_route(std::vector<segment>& packet_addresse
     // can be used with preemtive routing, one which prioritizes our address
     // and what that eliminates unused addresses from the packet.
 
+    const std::optional<size_t> maybe_router_address_index = state.maybe_router_address_index;
+#ifndef NDEBUG
+    const std::vector<address>& packet_addresses = state.packet_addresses;
+#endif
+    const size_t unused_address_index = state.unused_address_index;
+    const routing_option options = state.settings.options;
+
     if (!maybe_router_address_index)
     {
-        // We did not find router's address 
+        // We did not find router's address
         // or a generic router address in the packet path
         return false;
     }
@@ -1402,14 +2083,6 @@ APRS_ROUTER_INLINE bool try_explicit_route(std::vector<segment>& packet_addresse
     size_t router_address_index = maybe_router_address_index.value();
 
     assert(router_address_index < packet_addresses.size());
-
-    size_t unused_address_index = 0;
-
-    if (maybe_last_used_address_index)
-    {
-        unused_address_index = maybe_last_used_address_index.value() + 1;
-    }
-
     assert(unused_address_index < packet_addresses.size());
 
     // is_path_based_routing - this means that the matching address is not the router's address,
@@ -1429,7 +2102,6 @@ APRS_ROUTER_INLINE bool try_explicit_route(std::vector<segment>& packet_addresse
     //                                                  ~~~~~
     //                                                  is_path_based_routing=true
 
-    bool is_path_based_routing = packet_addresses[router_address_index].text != router_address;
     bool have_other_unused_addresses_ahead = router_address_index != unused_address_index;
 
     bool preempt_drop = enum_has_flag(options, routing_option::preempt_drop);
@@ -1438,12 +2110,12 @@ APRS_ROUTER_INLINE bool try_explicit_route(std::vector<segment>& packet_addresse
     // If preempt_drop mode is enabled, different processing of the packet is required
     if (!have_other_unused_addresses_ahead && !preempt_drop)
     {
-        try_explicit_basic_route(packet_addresses, is_path_based_routing, unused_address_index, router_address_index, router_address, options);
+        try_explicit_basic_route(state, router_address_index);
         return true;
     }
     else
     {
-        if (try_preempt_explicit_route(packet_addresses, router_address_index, unused_address_index, is_path_based_routing, router_address, options))
+        if (try_preempt_explicit_route(state))
         {
             return true;
         }
@@ -1452,17 +2124,34 @@ APRS_ROUTER_INLINE bool try_explicit_route(std::vector<segment>& packet_addresse
     return false;
 }
 
-APRS_ROUTER_INLINE bool try_explicit_basic_route(std::vector<segment>& packet_addresses, bool is_path_based_routing, size_t unused_address_index, size_t set_address_index, std::string_view router_address, routing_option options)
+APRS_ROUTER_INLINE bool try_explicit_basic_route(route_state& state, size_t set_address_index)
 {
+    // Route a packet using simple explicit routing
+    // In this case we match the router's address or router's path
+    // and we are the first, the match does not have any address in front of us
+    //
+
+    std::vector<address>& packet_addresses = state.packet_addresses;
+    const bool is_path_based_routing = state.is_path_based_routing;
+    const size_t unused_address_index = state.unused_address_index;
+    const std::string_view router_address = state.settings.address;
+    const routing_option options = state.settings.options;
+    const bool enable_diagnostics = state.settings.enable_diagnostics;
+    std::vector<routing_diagnostic>& actions = state.actions;
 
     assert(set_address_index < packet_addresses.size());
+    assert(unused_address_index < packet_addresses.size());
 
     bool substitute_explicit_address = enum_has_flag(options, routing_option::substitute_explicit_address);
 
     if (substitute_explicit_address)
     {
+        push_address_replaced_diagnostic(packet_addresses, set_address_index, router_address, enable_diagnostics, actions);
         packet_addresses[set_address_index].text = router_address;
+        packet_addresses[set_address_index].length = router_address.size();
+        push_address_unset_diagnostic(packet_addresses, set_address_index, enable_diagnostics, actions);
         set_address_as_used(packet_addresses, set_address_index);
+        push_address_set_diagnostic(packet_addresses, set_address_index, enable_diagnostics, actions);
         return true;
     }
 
@@ -1470,23 +2159,32 @@ APRS_ROUTER_INLINE bool try_explicit_basic_route(std::vector<segment>& packet_ad
     {
         if (try_insert_address(packet_addresses, unused_address_index, router_address))
         {
+            push_address_unset_diagnostic(packet_addresses, set_address_index, enable_diagnostics, actions);
             set_address_as_used(packet_addresses, set_address_index + 1);
+            push_address_inserted_diagnostic(packet_addresses, unused_address_index, enable_diagnostics, actions);
+            push_address_set_diagnostic(packet_addresses, set_address_index + 1, enable_diagnostics, actions);            
         }
         else
         {
+            push_address_replaced_diagnostic(packet_addresses, set_address_index, router_address, enable_diagnostics, actions);
             packet_addresses[set_address_index].text = router_address;
-            set_address_as_used(packet_addresses, set_address_index);
+            packet_addresses[set_address_index].length = router_address.size();
+            push_address_unset_diagnostic(packet_addresses, set_address_index, enable_diagnostics, actions);
+            set_address_as_used(packet_addresses, set_address_index);            
+            push_address_set_diagnostic(packet_addresses, set_address_index, enable_diagnostics, actions);
         }
     }
     else
     {
+        push_address_unset_diagnostic(packet_addresses, set_address_index, enable_diagnostics, actions);
         set_address_as_used(packet_addresses, set_address_index);
+        push_address_set_diagnostic(packet_addresses, set_address_index, enable_diagnostics, actions);
     }
 
     return true;
 }
 
-APRS_ROUTER_INLINE bool try_move_address_to_position(std::vector<segment>& packet_addresses, size_t from_index, size_t to_index)
+APRS_ROUTER_INLINE bool try_move_address_to_position(std::vector<address>& packet_addresses, size_t from_index, size_t to_index)
 {
     // Shift and re-insert and address into the packet path, typically used for "preempt_front"
     //
@@ -1499,6 +2197,7 @@ APRS_ROUTER_INLINE bool try_move_address_to_position(std::vector<segment>& packe
 
     assert(from_index < packet_addresses.size());
     assert(to_index < packet_addresses.size());
+    assert(from_index != to_index);
 
     if (from_index >= packet_addresses.size() ||
         to_index >= packet_addresses.size())
@@ -1511,7 +2210,9 @@ APRS_ROUTER_INLINE bool try_move_address_to_position(std::vector<segment>& packe
         return false;
     }
 
-    segment address = packet_addresses[from_index];
+    address address = packet_addresses[from_index];
+
+    size_t initial_offset = packet_addresses[0].offset;
 
     packet_addresses.erase(packet_addresses.begin() + from_index);
 
@@ -1519,10 +2220,13 @@ APRS_ROUTER_INLINE bool try_move_address_to_position(std::vector<segment>& packe
 
     packet_addresses.insert(packet_addresses.begin() + to_index, address);
 
+    update_addresses_index(packet_addresses);
+    update_addresses_offset(packet_addresses, initial_offset);
+
     return true;
 }
 
-APRS_ROUTER_INLINE bool try_truncate_address_range(std::vector<segment>& packet_addresses, size_t start_index, size_t end_index)
+APRS_ROUTER_INLINE bool try_truncate_address_range(std::vector<address>& packet_addresses, size_t start_index, size_t end_index)
 {
     // Truncate a range of addresses, typically used for "preempt_truncate"
     //
@@ -1533,6 +2237,9 @@ APRS_ROUTER_INLINE bool try_truncate_address_range(std::vector<segment>& packet_
     //                    ~~~~~~
     // The digipeated marker and re-insertion of "CALLD" isn't done by this function
 
+    assert(start_index < packet_addresses.size());
+    assert(end_index < packet_addresses.size());
+
     if (start_index >= packet_addresses.size() ||
         end_index >= packet_addresses.size() ||
         start_index >= end_index)
@@ -1540,20 +2247,50 @@ APRS_ROUTER_INLINE bool try_truncate_address_range(std::vector<segment>& packet_
         return false;
     }
 
-    segment address = packet_addresses[end_index];
-    
+    struct address address = packet_addresses[end_index];
+
+    size_t initial_offset = packet_addresses[0].offset;
+
     packet_addresses.erase(packet_addresses.begin() + start_index, packet_addresses.begin() + end_index + 1);
 
     assert(packet_addresses.size() < 8);
-    
+
     packet_addresses.insert(packet_addresses.begin() + start_index, address);
+
+    update_addresses_index(packet_addresses);
+    update_addresses_offset(packet_addresses, initial_offset);
 
     return true;
 }
 
-APRS_ROUTER_INLINE bool try_n_N_route(std::vector<segment>& packet_addresses, const std::vector<segment>& router_n_N_addresses, const std::string& router_address, routing_option options)
+APRS_ROUTER_INLINE bool try_truncate_empty_addresses(route_state& state)
 {
-    // Route an ADDRESSn-N address. 
+    std::vector<address>& packet_addresses = state.packet_addresses;
+    const bool enable_diagnostics = state.settings.enable_diagnostics;
+    std::vector<routing_diagnostic>& actions = state.actions;
+
+    for (size_t i = 0; i < packet_addresses.size();)
+    {
+        if (packet_addresses[i].text.empty())
+        {
+            push_address_removed_diagnostic(packet_addresses, i, enable_diagnostics, actions);
+            packet_addresses.erase(packet_addresses.begin() + i);
+        }
+        else
+        {
+            i++;
+        }
+    }
+
+    update_addresses_index(packet_addresses);
+    update_addresses_offset(packet_addresses);
+
+    return true;
+}
+
+APRS_ROUTER_INLINE bool try_n_N_route(route_state& state)
+{
+    // Route an ADDRESSn-N address.
     //
     // Route a packet through a routing "path" that matches an address with the n-N format (e.g., WIDE2-1).
     //
@@ -1591,6 +2328,10 @@ APRS_ROUTER_INLINE bool try_n_N_route(std::vector<segment>& packet_addresses, co
     // After step 3.a:  N0CALL>APRS,CALL,DIGI*,WIDE2-1:data
     // After step 3.b:  N0CALL>APRS,CALL,DIGI,WIDE1*,WIDE2-1:data
 
+    std::vector<address>& packet_addresses = state.packet_addresses;
+    const std::vector<address>& router_n_N_addresses = state.router_n_N_addresses;
+    const routing_option options = state.settings.options;
+
     auto unused_address_index_pair = find_first_unused_n_N_address_index(packet_addresses, router_n_N_addresses, options);
 
     if (!unused_address_index_pair)
@@ -1601,60 +2342,66 @@ APRS_ROUTER_INLINE bool try_n_N_route(std::vector<segment>& packet_addresses, co
     auto [address_n_N_index, router_n_N_index] = unused_address_index_pair.value();
 
     assert(address_n_N_index < packet_addresses.size());
-    assert(router_n_N_index < router_address.size());
+    assert(router_n_N_index < router_n_N_addresses.size());
 
-    if (try_trap_n_N_route(packet_addresses[address_n_N_index], router_n_N_addresses[router_n_N_index], router_address, options))
+    if (try_trap_n_N_route(state, packet_addresses[address_n_N_index], router_n_N_addresses[router_n_N_index]))
     {
         return true;
     }
 
-    try_n_N_route_no_trap(packet_addresses, address_n_N_index, router_address, options);
-    
+    try_n_N_route_no_trap(state, address_n_N_index);
+
     return true;
 }
 
-APRS_ROUTER_INLINE bool try_n_N_route_no_trap(std::vector<segment>& packet_addresses, size_t& packet_n_N_address_index, std::string_view router_address, routing_option options)
+APRS_ROUTER_INLINE bool try_n_N_route_no_trap(route_state& state, size_t packet_n_N_address_index)
 {
+    std::vector<address>& packet_addresses = state.packet_addresses;
+    const routing_option options = state.settings.options;
+    const bool enable_diagnostics = state.settings.enable_diagnostics;
+    std::vector<routing_diagnostic>& actions = state.actions;
+
     assert(packet_n_N_address_index < packet_addresses.size());
 
     bool substitute_zero_hops = enum_has_flag(options, routing_option::substitute_complete_hops);    
 
-    segment& n_N_address = packet_addresses[packet_n_N_address_index];
+    address& n_N_address = packet_addresses[packet_n_N_address_index];
 
     assert(n_N_address.n > 0);
 
-    try_decrement_address_n_N(n_N_address);
+    if (try_decrement_n_N_address(state, n_N_address))
+    {
+        push_address_decremented_diagnostic(n_N_address, enable_diagnostics, actions);
+    }
 
     // If we are in a position which will require us to insert more than 8 addresses
     // just return, the only thing we can do is increment the counter
-    
-    if (try_complete_n_N_route(packet_addresses, n_N_address, substitute_zero_hops))
+
+    if (try_complete_n_N_route(state, n_N_address, substitute_zero_hops))
     {
         return true;
     }
 
     if (substitute_zero_hops && n_N_address.N == 0)
     {
-        try_substitute_complete_n_N_address(packet_addresses, packet_n_N_address_index, router_address);
+        try_substitute_complete_n_N_address(state, packet_n_N_address_index);
         return true;
     }
 
-    try_insert_n_N_route(packet_addresses, packet_n_N_address_index, router_address, substitute_zero_hops);
+    try_insert_n_N_route(state, packet_n_N_address_index);
 
     return true;
 }
 
-APRS_ROUTER_INLINE bool try_complete_n_N_route(std::vector<segment>& packet_addresses, segment& n_N_address, bool substitute_zero_hops)
+APRS_ROUTER_INLINE bool try_complete_n_N_route(route_state& state, address& n_N_address, bool substitute_zero_hops)
 {
     // If we are in a position which will require us to insert more than 8 addresses
-    // just return, the only thing we can do is increment the counter
+    // just return, the only thing we can do is increment the n-N counter
     //
-    // This packet:
+    // Example:
     //
-    // FROM>TO,A,B,C,D,E,F,G,WIDE2-2:data
-    //         ~ ~ ~ ~ ~ ~ ~ ~~~~~~~
-    //
-    // Becomes:
+    // Input: FROM>TO,A,B,C,D,E,F,G,WIDE2-2:data
+    //                ~ ~ ~ ~ ~ ~ ~ ~~~~~~~
     //
     // Output: FROM>TO,A,B,C,D,E,F,G,WIDE2-1:data
     //                               ~~~~~~~
@@ -1663,6 +2410,10 @@ APRS_ROUTER_INLINE bool try_complete_n_N_route(std::vector<segment>& packet_addr
     // insertion even when the address count is 8. For example if we will
     // shortly shrink the packet path (substitute_complete_hops)
 
+    std::vector<address>& packet_addresses = state.packet_addresses;
+    const bool enable_diagnostics = state.settings.enable_diagnostics;
+    std::vector<routing_diagnostic>& actions = state.actions;
+
     if (packet_addresses.size() >= 8)
     {
         // The n-N address has no remaining hops, but we cannot substitute it
@@ -1670,7 +2421,9 @@ APRS_ROUTER_INLINE bool try_complete_n_N_route(std::vector<segment>& packet_addr
         // we also have more than 8 addresses, so just mark the completed address as "set"
         if (!substitute_zero_hops && n_N_address.N == 0)
         {
-            set_address_as_used(packet_addresses, n_N_address); 
+            push_address_unset_diagnostic(packet_addresses, n_N_address.index, enable_diagnostics, actions);
+            set_address_as_used(packet_addresses, n_N_address);
+            push_address_set_diagnostic(packet_addresses, n_N_address.index, enable_diagnostics, actions);
             return true;
         }
 
@@ -1686,46 +2439,71 @@ APRS_ROUTER_INLINE bool try_complete_n_N_route(std::vector<segment>& packet_addr
     return false;
 }
 
-APRS_ROUTER_INLINE bool try_insert_n_N_route(std::vector<segment>& packet_addresses, size_t& packet_n_N_address_index, std::string_view router_address, bool substitute_zero_hops)
+APRS_ROUTER_INLINE bool try_insert_n_N_route(route_state& state, size_t& packet_n_N_address_index)
 {
-    // Insert router's address in front of the n-N address:
-    // 
-    // Original packet: FROM>TO,CALL,WIDE2-1:data
-    //                               ~~~~~~~
+    // Insert the router's address in front of the n-N address:
     //
-    // Updated packet: FROM>TO,CALL,DIGI*,WIDE2-1:data
-    //                              ~~~~~
-    //                              Insert and mark the router's address as used
-    //                              n-N address is left unchanged by this function
+    // Example:
+    //
+    // Input:  FROM>TO,CALL,WIDE2-1:data
+    //                      ~~~~~~~
+    //
+    // Output: FROM>TO,CALL,DIGI*,WIDE2-1:data
+    //                      ~~~~~
+    //                      Insert and mark the router's address as used
+    //                      n-N address is left unchanged by this function
+
+    std::vector<address>& packet_addresses = state.packet_addresses;
+    const std::string_view router_address = state.settings.address;
+    const bool enable_diagnostics = state.settings.enable_diagnostics;
+    std::vector<routing_diagnostic>& actions = state.actions;
+    const bool substitute_zero_hops = enum_has_flag(state.settings.options, routing_option::substitute_complete_hops);
 
     assert(packet_n_N_address_index < packet_addresses.size());
     assert(packet_addresses.size() < 8);
 
-    segment& n_N_address = packet_addresses[packet_n_N_address_index];
+    struct address& n_N_address = packet_addresses[packet_n_N_address_index];
 
-    segment new_address;
-    new_address.text = router_address;    
-    new_address.type = segment_type::other;
+    struct address new_address;
+    new_address.text = router_address;
+    new_address.kind = address_kind::other;
+    new_address.length = router_address.size();
+
+    bool set_new_address_as_used = false;
 
     if (substitute_zero_hops || n_N_address.N > 0)
     {
-        set_address_as_used(packet_addresses, new_address);
+        set_new_address_as_used = true;
     }
     else
     {
+        push_address_unset_diagnostic(packet_addresses, n_N_address.index, enable_diagnostics, actions);
         set_address_as_used(packet_addresses, n_N_address);
+        push_address_set_diagnostic(packet_addresses, n_N_address.index, enable_diagnostics, actions);
     }
+
+    size_t initial_offset = packet_addresses[0].offset;
 
     packet_addresses.insert(packet_addresses.begin() + packet_n_N_address_index, new_address);
 
-    packet_n_N_address_index++;    
-
     update_addresses_index(packet_addresses);
+    update_addresses_offset(packet_addresses, initial_offset);
+
+    push_address_inserted_diagnostic(packet_addresses, packet_n_N_address_index, enable_diagnostics, actions);
+
+    if (set_new_address_as_used)
+    {
+        push_address_unset_diagnostic(packet_addresses, std::nullopt, enable_diagnostics, actions);
+        set_address_as_used(packet_addresses, packet_n_N_address_index);
+        push_address_set_diagnostic(packet_addresses, packet_n_N_address_index, enable_diagnostics, actions);
+    }
+
+    packet_n_N_address_index++;
 
     return true;
 }
 
-APRS_ROUTER_INLINE bool try_trap_n_N_route(segment& packet_n_N_address, const segment& router_n_N_address, std::string_view router_address, routing_option options)
+APRS_ROUTER_INLINE bool try_trap_n_N_route(route_state& state, address& packet_n_N_address, const address& router_n_N_address)
 {
     // Replace an excessive hop with the router's address
     // to stop the packet from harming the network
@@ -1736,7 +2514,7 @@ APRS_ROUTER_INLINE bool try_trap_n_N_route(segment& packet_n_N_address, const se
     // Example:
     //
     // Router path: WIDE2-2,WIDE7-2
-    //                      ~~~~~~~ 
+    //                      ~~~~~~~
     //                      router_n_N_address
     //
     // Input:  FROM>TO,WIDE7-7:data
@@ -1746,6 +2524,14 @@ APRS_ROUTER_INLINE bool try_trap_n_N_route(segment& packet_n_N_address, const se
     // Output: FROM>TO,DIGI*:data
     //                 ~~~~~
     //                 router_address
+    //
+    // Returns 'true' if the route is trapped, 'false' otherwise
+
+    std::vector<address>& packet_addresses = state.packet_addresses;
+    const std::string_view router_address = state.settings.address;
+    const routing_option options = state.settings.options;
+    const bool enable_diagnostics = state.settings.enable_diagnostics;
+    std::vector<routing_diagnostic>& actions = state.actions;
 
     bool trap_excessive_hops = enum_has_flag(options, routing_option::trap_excessive_hops);
 
@@ -1753,10 +2539,16 @@ APRS_ROUTER_INLINE bool try_trap_n_N_route(segment& packet_n_N_address, const se
     {
         if (router_n_N_address.N > 0 && packet_n_N_address.N > router_n_N_address.N)
         {
+            push_address_replaced_diagnostic(packet_addresses, packet_n_N_address.index, router_address, enable_diagnostics, actions);
+
             packet_n_N_address.text = router_address;
-            packet_n_N_address.mark = true;
+            packet_n_N_address.length = router_address.size();
             packet_n_N_address.n = 0;
             packet_n_N_address.N = 0;
+
+            push_address_unset_diagnostic(packet_addresses, packet_n_N_address.index, enable_diagnostics, actions);
+            set_address_as_used(packet_addresses, packet_n_N_address);
+            push_address_set_diagnostic(packet_addresses, packet_n_N_address.index, enable_diagnostics, actions);
 
             return true;
         }
@@ -1765,26 +2557,37 @@ APRS_ROUTER_INLINE bool try_trap_n_N_route(segment& packet_n_N_address, const se
     return false;
 }
 
-APRS_ROUTER_INLINE bool try_substitute_complete_n_N_address(std::vector<segment>& packet_addresses, size_t packet_n_N_address_index, std::string_view router_address)
+APRS_ROUTER_INLINE bool try_substitute_complete_n_N_address(route_state& state, size_t packet_n_N_address_index)
 {
-    assert(packet_n_N_address_index < packet_addresses.size());
-
-    // If the last n-N hop has been exhausted, replace the hop with the routr's address
+    // If the last n-N hop has been exhausted, replace the hop with the router's address
     //
     // Example:
+    //
     // Input:  FROM>TO,WIDE1-1,WIDE2-1:data
-    // Output: FROM>TO,DIGI*,WIDE2-1:data - replace WIDE1 with DIGI
+    // Output: FROM>TO,DIGI*,WIDE2-1:data - replace WIDE1 (after decrementing) with DIGI
 
-    segment& address = packet_addresses[packet_n_N_address_index];
+    std::vector<address>& packet_addresses = state.packet_addresses;
+    const std::string_view router_address = state.settings.address;
+    const bool enable_diagnostics = state.settings.enable_diagnostics;
+    std::vector<routing_diagnostic>& actions = state.actions;
+
+    assert(packet_n_N_address_index < packet_addresses.size());
+
+    address& address = packet_addresses[packet_n_N_address_index];
 
     if (address.N == 0)
     {
+        push_address_replaced_diagnostic(packet_addresses, address.index, router_address, enable_diagnostics, actions);
+
         address.text = router_address;
+        address.length = router_address.size();
         address.N = 0;
         address.n = 0;
-        address.type = segment_type::other;
+        address.kind = address_kind::other;
 
-        set_address_as_used(packet_addresses, address);
+        push_address_unset_diagnostic(packet_addresses, address.index, enable_diagnostics, actions);
+        set_address_as_used(packet_addresses, address);        
+        push_address_set_diagnostic(packet_addresses, address.index, enable_diagnostics, actions);
 
         return true;
     }
@@ -1792,26 +2595,49 @@ APRS_ROUTER_INLINE bool try_substitute_complete_n_N_address(std::vector<segment>
     return false;
 }
 
-APRS_ROUTER_INLINE bool try_decrement_address_n_N(std::vector<segment>& packet_addresses, size_t index)
+APRS_ROUTER_INLINE bool try_decrement_n_N_address(std::vector<address>& packet_addresses, size_t n_N_address_index)
 {
-    // Decrements an n-N address, ex: WIDE2-2 becomes WIDE2-1
+    // Decrements an n-N address
+    //
+    // Example: WIDE2-2 becomes WIDE2-1
+    //              ~~~             ~~~
 
-    assert(index < packet_addresses.size());
-    segment& s = packet_addresses[index];
-    return try_decrement_address_n_N(s);
+    assert(n_N_address_index < packet_addresses.size());
+    address& n_N_address = packet_addresses[n_N_address_index];
+    assert(n_N_address.N > 0);
+    return try_decrement_n_N_address(n_N_address);
 }
 
-APRS_ROUTER_INLINE bool try_decrement_address_n_N(segment& s)
+APRS_ROUTER_INLINE bool try_decrement_n_N_address(address& n_N_address)
 {
-    // Decrements an n-N address, ex: WIDE2-2 becomes WIDE2-1
+    // Decrements an n-N address
+    //
+    // Example: WIDE2-2 becomes WIDE2-1
+    //              ~~~             ~~~
 
-    if (s.N > 0)
+    assert(n_N_address.N > 0);
+
+    if (n_N_address.N > 0)
     {
-        s.N--;
+        n_N_address.N--;
+        if (n_N_address.N == 0)
+        {
+            n_N_address.length -= 2; // as '-N' is absent
+        }
         return true;
     }
 
     return false;
+}
+
+APRS_ROUTER_INLINE bool try_decrement_n_N_address(route_state& state, struct address& address)
+{
+    bool result = try_decrement_n_N_address(address);
+    if (result)
+    {
+        update_addresses_offset(state.packet_addresses);
+    }
+    return result;
 }
 
 #endif

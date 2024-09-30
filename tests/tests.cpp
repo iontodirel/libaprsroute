@@ -53,10 +53,10 @@ using namespace aprs::router::detail;
 
 routing_result test_packet_routing_iteration(const packet& p, router_settings digi, std::vector<std::string> addresses,  std::vector<size_t> digipeated_indices, int count);
 
-TEST(segment, to_string)
+TEST(address, to_string)
 {
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
-    segment s;
+    address s;
     s.text = "WIDE";
     s.n = 2;
     s.N = 1;
@@ -91,10 +91,10 @@ TEST(packet, to_string)
 #endif
 }
 
-TEST(segment, try_parse_segment)
+TEST(address, try_parse_address)
 {
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
-    segment s;
+    address s;
     std::string path;
 
     // -------------------------------------------------------------
@@ -102,173 +102,173 @@ TEST(segment, try_parse_segment)
     // -------------------------------------------------------------
 
     path = "WIDE7-5";
-    EXPECT_TRUE(try_parse_segment(path, s));
+    EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.mark == false);
     EXPECT_TRUE(s.n == 7);
     EXPECT_TRUE(s.N == 5);
     EXPECT_TRUE(s.text == "WIDE");
-    EXPECT_TRUE(s.type == segment_type::wide);
+    EXPECT_TRUE(s.kind == address_kind::wide);
 
     // -------------------------------------------------------------
     // Wide segment with a marker (*) but no digits after dash
     // -------------------------------------------------------------
 
     path = "WIDE*";
-    EXPECT_TRUE(try_parse_segment(path, s));
+    EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.mark == true);
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
     EXPECT_TRUE(s.text == "WIDE");
-    EXPECT_TRUE(s.type == segment_type::wide);
+    EXPECT_TRUE(s.kind == address_kind::wide);
 
     // -------------------------------------------------------------
     // Wide segment with only leading digits
     // -------------------------------------------------------------
 
     path = "WIDE5";
-    EXPECT_TRUE(try_parse_segment(path, s));
+    EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.mark == false);
     EXPECT_TRUE(s.n == 5);
     EXPECT_TRUE(s.N == 0);
     EXPECT_TRUE(s.text == "WIDE");
-    EXPECT_TRUE(s.type == segment_type::wide);
+    EXPECT_TRUE(s.kind == address_kind::wide);
 
     // -------------------------------------------------------------
     // Wide segment with leading digits and a mark
     // -------------------------------------------------------------
 
     path = "WIDE5*";
-    EXPECT_TRUE(try_parse_segment(path, s));
+    EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.mark == true);
     EXPECT_TRUE(s.n == 5);
     EXPECT_TRUE(s.N == 0);
     EXPECT_TRUE(s.text == "WIDE");
-    EXPECT_TRUE(s.type == segment_type::wide);
+    EXPECT_TRUE(s.kind == address_kind::wide);
 
     // -------------------------------------------------------------
     // Q construct segment
     // -------------------------------------------------------------
 
     path = "qAR";
-    EXPECT_TRUE(try_parse_segment(path, s));
+    EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.mark == false);
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
     EXPECT_TRUE(s.text == "qAR");
     EXPECT_TRUE(s.q == q_construct::qAR);
-    EXPECT_TRUE(s.type == segment_type::q);
+    EXPECT_TRUE(s.kind == address_kind::q);
 
     // -------------------------------------------------------------
     // Wide segment with both digits and a mark
     // -------------------------------------------------------------
 
     path = "WIDE7-7*";
-    EXPECT_TRUE(try_parse_segment(path, s));
+    EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.mark == true);
     EXPECT_TRUE(s.n == 7);
     EXPECT_TRUE(s.N == 7);
     EXPECT_TRUE(s.text == "WIDE");
-    EXPECT_TRUE(s.type == segment_type::wide);
+    EXPECT_TRUE(s.kind == address_kind::wide);
 
     // -------------------------------------------------------------
     // Other segment with text and digits
     // -------------------------------------------------------------
 
     path = "W7ION-10*";
-    EXPECT_TRUE(try_parse_segment(path, s));
+    EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.mark == true);
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
     EXPECT_TRUE(s.ssid == 10);
     EXPECT_TRUE(s.text == "W7ION-10");
-    EXPECT_TRUE(s.type == segment_type::other);
+    EXPECT_TRUE(s.kind == address_kind::other);
 
     // -------------------------------------------------------------
     // Segment with invalid callsign SSID
     // -------------------------------------------------------------
 
     path = "W7ION-1d";
-    EXPECT_TRUE(try_parse_segment(path, s));
+    EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.mark == false);
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
     EXPECT_TRUE(s.ssid == 0);
     EXPECT_TRUE(s.text == "W7ION-1d");
-    EXPECT_TRUE(s.type == segment_type::other);
+    EXPECT_TRUE(s.kind == address_kind::other);
 
     // -------------------------------------------------------------
     // Other segment without a mark (*) and with no n-N digits
     // -------------------------------------------------------------
 
     path = "N0CALL";
-    EXPECT_TRUE(try_parse_segment(path, s));
+    EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.mark == false);
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
     EXPECT_TRUE(s.text == "N0CALL");
-    EXPECT_TRUE(s.type == segment_type::other);
+    EXPECT_TRUE(s.kind == address_kind::other);
 
     // -------------------------------------------------------------
     // Additional test cases to cover edge cases
     // -------------------------------------------------------------
 
     path = "WIDE-1"; // Should not be valid, missing leading digits
-    EXPECT_TRUE(try_parse_segment(path, s));
+    EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.mark == false);
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
     EXPECT_TRUE(s.text == "WIDE-1"); // Entire text should be preserved if parsing n-N fails
-    EXPECT_TRUE(s.type == segment_type::other);
+    EXPECT_TRUE(s.kind == address_kind::other);
 
     path = "*WIDE"; // Leading mark with no valid segment
-    EXPECT_TRUE(try_parse_segment(path, s));
+    EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.mark == false);
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
     EXPECT_TRUE(s.text == "*WIDE");
-    EXPECT_TRUE(s.type == segment_type::other);
+    EXPECT_TRUE(s.kind == address_kind::other);
 
     path = "WIDE0-4"; // 0 is not valid for the leading digit (1-7 is the valid range)
-    EXPECT_TRUE(try_parse_segment(path, s));
+    EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
     EXPECT_TRUE(s.text == "WIDE0-4");
-    EXPECT_TRUE(s.type == segment_type::other);
+    EXPECT_TRUE(s.kind == address_kind::other);
 
     path = "WIDE8-4"; // 8 is not valid for the leading digit (1-7 is the valid range)
-    EXPECT_TRUE(try_parse_segment(path, s));
+    EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
     EXPECT_TRUE(s.text == "WIDE8-4");
-    EXPECT_TRUE(s.type == segment_type::other);
+    EXPECT_TRUE(s.kind == address_kind::other);
 
     path = "WIDE2-0";
-    EXPECT_TRUE(try_parse_segment(path, s));
+    EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
     EXPECT_TRUE(s.text == "WIDE2-0");
-    EXPECT_TRUE(s.type == segment_type::other);
+    EXPECT_TRUE(s.kind == address_kind::other);
 
     path = "WIDE4-2-0";
-    EXPECT_TRUE(try_parse_segment(path, s));
+    EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
     EXPECT_TRUE(s.text == "WIDE4-2-0");
-    EXPECT_TRUE(s.type == segment_type::other);
+    EXPECT_TRUE(s.kind == address_kind::other);
 
     path = "WIDE4-10";
-    EXPECT_TRUE(try_parse_segment(path, s));
+    EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
     EXPECT_TRUE(s.text == "WIDE4-10");
-    EXPECT_TRUE(s.type == segment_type::other);
+    EXPECT_TRUE(s.kind == address_kind::other);
 
     path = "WIDE14-1"; // Not really valid, but we don't care that it parses to 4-1
-    EXPECT_TRUE(try_parse_segment(path, s));
+    EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.n == 4);
     EXPECT_TRUE(s.N == 1);
     EXPECT_TRUE(s.text == "WIDE1");
-    EXPECT_TRUE(s.type == segment_type::other);
+    EXPECT_TRUE(s.kind == address_kind::other);
 #else
     EXPECT_TRUE(true);
 #endif
@@ -398,6 +398,39 @@ TEST(packet, try_decode_packet)
 #else
     EXPECT_TRUE(true);
 #endif
+}
+
+TEST(packet, equality)
+{
+    // Test: Equal packets
+    packet p1{"N0CALL", "APRS", {"CALLA", "CALLB"}, "data"};
+    packet p2{"N0CALL", "APRS", {"CALLA", "CALLB"}, "data"};
+    EXPECT_TRUE(p1 == p2);
+
+    // Test: Different 'from' field
+    packet p3{"OTHER", "APRS", {"CALLA", "CALLB"}, "data"};
+    EXPECT_FALSE(p1 == p3);
+
+    // Test: Different 'to' field
+    packet p4{"N0CALL", "OTHER", {"CALLA", "CALLB"}, "data"};
+    EXPECT_FALSE(p1 == p4);
+
+    // Test: Different path size
+    packet p5{"N0CALL", "APRS", {"CALLA"}, "data"};
+    EXPECT_FALSE(p1 == p5);
+
+    // Test: Different path contents
+    packet p6{"N0CALL", "APRS", {"CALLA", "CALLC"}, "data"};
+    EXPECT_FALSE(p1 == p6);
+
+    // Test: Different data
+    packet p7{"N0CALL", "APRS", {"CALLA", "CALLB"}, "other_data"};
+    EXPECT_FALSE(p1 == p7);
+
+    // Test: All fields empty
+    packet p8{"", "", {}, ""};
+    packet p9{"", "", {}, ""};
+    EXPECT_TRUE(p8 == p9);
 }
 
 TEST(router, try_route_packet_explicit_loop)
@@ -588,6 +621,9 @@ struct route_test
     bool routed = false;
     std::string options;
 };
+
+void test_diagnostics_reconstruct_packet_by_index(const routing_result& r);
+void test_diagnostics_reconstruct_packet_by_start_end(const routing_result& r);
 
 std::string to_lower(const std::string &str)
 {
@@ -783,6 +819,7 @@ void run_test(const route_test& test, const packet& p, const router_settings& se
             {
                 debugger_break();
             }
+            // route again for debugging purposes
             try_route_packet(p, settings, result);
         }
         EXPECT_TRUE(to_string(result.original_packet) == test.original_packet);
@@ -791,6 +828,131 @@ void run_test(const route_test& test, const packet& p, const router_settings& se
     if (!test.routed)
     {
         EXPECT_TRUE(to_string(result.original_packet) == to_string(result.routed_packet));
+    }
+
+    std::string diag_string = aprs::router::to_string(result);
+
+    printf("%s", diag_string.c_str());
+
+    test_diagnostics_reconstruct_packet_by_index(result);
+    test_diagnostics_reconstruct_packet_by_start_end(result);
+}
+
+void test_diagnostics_reconstruct_packet_by_index(const routing_result& result)
+{
+    using namespace aprs::router;
+    using namespace aprs::router::detail;
+
+    if (result.state != routing_state::routed)
+    {
+        return;
+    }
+
+    EXPECT_TRUE(result.actions.size() > 0);
+
+    packet routed_packet = result.original_packet;
+
+    for (const auto& a : result.actions)
+    {
+        if (a.type == routing_action::remove)
+        {
+            routed_packet.path.erase(routed_packet.path.begin() + a.index);
+        }
+        else if (a.type == routing_action::insert)
+        {
+            routed_packet.path.insert(routed_packet.path.begin() + a.index, a.address);
+        }
+        else if (a.type == routing_action::set)
+        {
+            routed_packet.path[a.index].append("*");
+        }
+        else if (a.type == routing_action::unset || a.type == routing_action::replace ||
+            a.type == routing_action::decrement)
+        {
+            routed_packet.path[a.index] = a.address;
+        }
+        else
+        {
+            EXPECT_TRUE(false);
+        }
+    }
+
+    bool result_bool = result.routed_packet == routed_packet;
+
+    EXPECT_TRUE(result_bool);
+
+    if (!result_bool)
+    {
+        // handy breakpoint location
+        printf("test failed\n");
+    }
+}
+
+void test_diagnostics_reconstruct_packet_by_start_end(const routing_result& result)
+{
+    using namespace aprs::router;
+    using namespace aprs::router::detail;
+
+    if (result.state != routing_state::routed)
+    {
+        return;
+    }
+
+    EXPECT_TRUE(result.actions.size() > 0);
+
+    std::string routed_packet = to_string(result.original_packet);
+
+    for (const auto& a : result.actions)
+    {
+        size_t start = a.start;
+        size_t end = a.end;
+        size_t count = a.end - a.start;
+
+        if (a.type == routing_action::remove)
+        {
+            if (routed_packet[end + 1] == ':' || a.index == 0)
+            {
+                count++;
+            }
+            else if (a.index != 0)
+            {
+                start--;
+                count++;
+            }
+            routed_packet.erase(start, count);
+        }
+        else if (a.type == routing_action::insert)
+        {
+            routed_packet.insert(start, a.address);
+            if (routed_packet[end + 1] != ',' || a.index == 0)
+            {
+                routed_packet.insert(end, ",");
+            }
+        }
+        else if (a.type == routing_action::set)
+        {
+            routed_packet.insert(end, "*");
+        }
+        else if (a.type == routing_action::unset || a.type == routing_action::replace ||
+            a.type == routing_action::decrement)
+        {
+            routed_packet.erase(start, count);
+            routed_packet.insert(start, a.address);
+        }
+        else
+        {
+            EXPECT_TRUE(false);
+        }
+    }
+
+    bool result_bool = to_string(result.routed_packet) == routed_packet;
+
+    EXPECT_TRUE(result_bool);
+
+    if (!result_bool)
+    {
+        // handy breakpoint location
+        printf("test failed\n");
     }
 }
 
@@ -820,8 +982,12 @@ TEST(router, try_route_packet_auto_tests)
         {
             continue;
         }
+
         packet p;
+
         router_settings settings;
+        settings.enable_diagnostics = true;
+
         if (try_get_routing_test_set(test, p, settings))
         {
             run_test(test, p, settings);
@@ -832,7 +998,7 @@ TEST(router, try_route_packet_auto_tests)
 #endif
 }
 
-TEST(segment, try_parse_callsign)
+TEST(address, try_parse_callsign)
 {
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
     std::string address;
@@ -877,6 +1043,769 @@ TEST(segment, try_parse_callsign)
 
     address = "N0CALL-20";
     EXPECT_FALSE(try_parse_callsign(address, callsign, ssid));
+#else
+    EXPECT_TRUE(true);
+#endif
+}
+
+TEST(router, try_route_packet_enable_diagnostics)
+{
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+    using namespace aprs::router;
+
+    router_settings digi { "DIGI", { "WIDE1" }, routing_option::none, true };
+    routing_result result;
+
+    // N0CALL>APRS,CALL,WIDE1,DIGI*:data
+    //                        ~~~~~
+    //                        23 28 - Packet has finished routing.
+
+    packet p = { "N0CALL", "APRS", { "CALL", "WIDE1", "DIGI*" }, "data"};
+    std::string packet_string = to_string(p);
+
+    try_route_packet(p, digi, result);
+
+    EXPECT_TRUE(result.actions.size() == 1);
+
+    const routing_diagnostic& diag = result.actions[0];
+
+    EXPECT_TRUE(diag.address == "DIGI");
+    EXPECT_TRUE(diag.target == applies_to::path);
+    EXPECT_TRUE(diag.type == routing_action::warn);
+    EXPECT_TRUE(diag.start == 23);
+    EXPECT_TRUE(diag.end == 28);
+    EXPECT_TRUE(diag.index == 2);
+
+    std::string action_address_str = packet_string.substr(result.actions[0].start, result.actions[0].end - result.actions[0].start);
+
+    EXPECT_TRUE(action_address_str == "DIGI*");
+
+    // N0CALL>APRS,CALL,DIGI*,WIDE1-1:data
+    //                  ~~~~~
+    //                  17 22 - Packet has already been routed.
+
+    p = { "N0CALL", "APRS", { "CALL", "DIGI*", "WIDE1-1" }, "data"};
+    packet_string = to_string(p);
+
+    try_route_packet(p, digi, result);
+
+    EXPECT_TRUE(result.actions.size() == 1);
+
+    EXPECT_TRUE(result.actions[0].address == "DIGI");
+    EXPECT_TRUE(result.actions[0].target == applies_to::path);
+    EXPECT_TRUE(result.actions[0].type == routing_action::warn);
+    EXPECT_TRUE(result.actions[0].start == 17);
+    EXPECT_TRUE(result.actions[0].end == 22);
+    EXPECT_TRUE(result.actions[0].index == 1);
+
+    action_address_str = packet_string.substr(result.actions[0].start, result.actions[0].end - result.actions[0].start);
+
+    EXPECT_TRUE(action_address_str == "DIGI*");
+
+    // N0CALL>APRS,A,B,C,D,E,F,G:data
+    //             ~
+    //           12 13 - Packet address replaced
+    //                   address = DIGI
+    //
+    // N0CALL>APRS,DIGI*,B,C,D,E,F,G:data
+    //             ~~~~
+    //             12 16 - Packet address marked as 'set'
+
+    digi.path = { "A" };
+    digi.options = routing_option::substitute_explicit_address;
+    p = { "N0CALL", "APRS", { "A", "B", "C", "D", "E", "F", "G" }, "data"};
+    packet_string = to_string(p);
+
+    try_route_packet(p, digi, result);
+
+    EXPECT_TRUE(result.actions.size() == 2);
+
+    EXPECT_TRUE(result.actions[0].address == "DIGI");
+    EXPECT_TRUE(result.actions[0].target == applies_to::path);
+    EXPECT_TRUE(result.actions[0].type == routing_action::replace);
+    EXPECT_TRUE(result.actions[0].start == 12);
+    EXPECT_TRUE(result.actions[0].end == 13);
+    EXPECT_TRUE(result.actions[0].index == 0);
+
+    EXPECT_TRUE(result.actions[1].address == "DIGI");
+    EXPECT_TRUE(result.actions[1].target == applies_to::path);
+    EXPECT_TRUE(result.actions[1].type == routing_action::set);
+    EXPECT_TRUE(result.actions[1].start == 12);
+    EXPECT_TRUE(result.actions[1].end == 16);
+    EXPECT_TRUE(result.actions[1].index == 0);
+
+    // N0CALL>APRS,A,B,C*,D,E,F,G:data
+    //                    ~
+    //                    19 20 - Packet address 'D' replaced with address 'DIGI'
+    //
+    // N0CALL>APRS,A,B,C*,DIGI,E,F,G:data
+    //                 ~~
+    //                 16 18 - Packet address marked as 'unset'
+    //
+    // N0CALL>APRS,A,B,C,DIGI,E,F,G:data
+    //                   ~~~~
+    //                   18 22 - Packet address marked as 'set'
+
+    digi.path = { "D" };
+    digi.options = routing_option::substitute_explicit_address;
+    p = { "N0CALL", "APRS", { "A", "B", "C*", "D", "E", "F", "G" }, "data"};
+    packet_string = to_string(p);
+
+    try_route_packet(p, digi, result);
+
+    EXPECT_TRUE(result.actions.size() == 3);
+
+    EXPECT_TRUE(result.actions[0].address == "DIGI");
+    EXPECT_TRUE(result.actions[0].target == applies_to::path);
+    EXPECT_TRUE(result.actions[0].type == routing_action::replace);
+    EXPECT_TRUE(result.actions[0].start == 19);
+    EXPECT_TRUE(result.actions[0].end == 20);
+    EXPECT_TRUE(result.actions[0].index == 3);
+
+    EXPECT_TRUE(result.actions[1].address == "C");
+    EXPECT_TRUE(result.actions[1].target == applies_to::path);
+    EXPECT_TRUE(result.actions[1].type == routing_action::unset);
+    EXPECT_TRUE(result.actions[1].start == 16);
+    EXPECT_TRUE(result.actions[1].end == 18);
+    EXPECT_TRUE(result.actions[1].index == 2);
+
+    EXPECT_TRUE(result.actions[2].address == "DIGI");
+    EXPECT_TRUE(result.actions[2].target == applies_to::path);
+    EXPECT_TRUE(result.actions[2].type == routing_action::set);
+    EXPECT_TRUE(result.actions[2].start == 18);
+    EXPECT_TRUE(result.actions[2].end == 22);
+    EXPECT_TRUE(result.actions[2].index == 3);
+
+    // N0CALL>APRS,A,B,C,D,E,F,G:data
+    //             ~
+    //            12 13 - Packet address marked as 'set'
+
+    digi.address = { "A" };
+    digi.path = {};
+    digi.options = routing_option::none;
+    p = { "N0CALL", "APRS", { "A", "B", "C", "D", "E", "F", "G" }, "data"};
+    packet_string = to_string(p);
+
+    try_route_packet(p, digi, result);
+
+    EXPECT_TRUE(result.actions.size() == 1);
+
+    EXPECT_TRUE(result.actions[0].address == "A");
+    EXPECT_TRUE(result.actions[0].target == applies_to::path);
+    EXPECT_TRUE(result.actions[0].type == routing_action::set);
+    EXPECT_TRUE(result.actions[0].start == 12);
+    EXPECT_TRUE(result.actions[0].end == 13);
+    EXPECT_TRUE(result.actions[0].index == 0);
+
+    // N0CALL>APRS,AB,ABC,ABCD,ABCDE:data
+    //                         ~~~~~
+    //                         24 29 - Packet address removed
+    //
+    // N0CALL>APRS,ABCDE,AB,ABC,ABCD:data
+    //             ~~~~~
+    //             12 17 - Packet address inserted
+    //
+    // N0CALL>APRS,ABCDE,AB,ABC,ABCD:data
+    //             ~~~~~
+    //             12 17 - Packet address marked as 'set'
+
+    digi.address = { "ABCDE" };
+    digi.path = {};
+    digi.options = routing_option::preempt_front;
+    p = { "N0CALL", "APRS", { "AB", "ABC", "ABCD", "ABCDE" }, "data"};
+    packet_string = to_string(p);
+
+    try_route_packet(p, digi, result);
+
+    EXPECT_TRUE(result.actions.size() == 3);
+
+    EXPECT_TRUE(result.actions[0].address == "ABCDE");
+    EXPECT_TRUE(result.actions[0].target == applies_to::path);
+    EXPECT_TRUE(result.actions[0].type == routing_action::remove);
+    EXPECT_TRUE(result.actions[0].start == 24);
+    EXPECT_TRUE(result.actions[0].end == 29);
+    EXPECT_TRUE(result.actions[0].index == 3);
+
+    EXPECT_TRUE(result.actions[1].address == "ABCDE");
+    EXPECT_TRUE(result.actions[1].target == applies_to::path);
+    EXPECT_TRUE(result.actions[1].type == routing_action::insert);
+    EXPECT_TRUE(result.actions[1].start == 12);
+    EXPECT_TRUE(result.actions[1].end == 17);
+    EXPECT_TRUE(result.actions[1].index == 0);
+
+    EXPECT_TRUE(result.actions[2].address == "ABCDE");
+    EXPECT_TRUE(result.actions[2].target == applies_to::path);
+    EXPECT_TRUE(result.actions[2].type == routing_action::set);
+    EXPECT_TRUE(result.actions[2].start == 12);
+    EXPECT_TRUE(result.actions[2].end == 17);
+    EXPECT_TRUE(result.actions[2].index == 0);
+
+    // N0CALL>APRS,CALLA,CALLB:data
+    //                   ~~~~~
+    //                   18 23 - Packet address removed
+    //
+    // N0CALL>APRS,CALLB,CALLA:data
+    //             ~~~~~
+    //             12 17 - Packet address inserted
+    //
+    // N0CALL>APRS,DIGI,CALLB,CALLA:data
+    //             ~~~~
+    //             12 16 - Packet address inserted
+    //
+    // N0CALL>APRS,DIGI,CALLB*,CALLA:data
+    //                  ~~~~~
+    //                  17 22 - Packet address marked as 'set'
+
+    digi.address = { "DIGI" };
+    digi.path = { "CALLB" };
+    digi.options = routing_option::preempt_front; // todo + substitute_explicit_address
+    p = { "N0CALL", "APRS", { "CALLA", "CALLB" }, "data"};
+    packet_string = to_string(p);
+
+    try_route_packet(p, digi, result);
+
+    EXPECT_TRUE(result.actions.size() == 4);
+
+    EXPECT_TRUE(result.actions[0].address == "CALLB");
+    EXPECT_TRUE(result.actions[0].target == applies_to::path);
+    EXPECT_TRUE(result.actions[0].type == routing_action::remove);
+    EXPECT_TRUE(result.actions[0].start == 18);
+    EXPECT_TRUE(result.actions[0].end == 23);
+    EXPECT_TRUE(result.actions[0].index == 1);
+
+    EXPECT_TRUE(result.actions[1].address == "CALLB");
+    EXPECT_TRUE(result.actions[1].target == applies_to::path);
+    EXPECT_TRUE(result.actions[1].type == routing_action::insert);
+    EXPECT_TRUE(result.actions[1].start == 12);
+    EXPECT_TRUE(result.actions[1].end == 17);
+    EXPECT_TRUE(result.actions[1].index == 0);
+
+    EXPECT_TRUE(result.actions[2].address == "DIGI");
+    EXPECT_TRUE(result.actions[2].target == applies_to::path);
+    EXPECT_TRUE(result.actions[2].type == routing_action::insert);
+    EXPECT_TRUE(result.actions[2].start == 12);
+    EXPECT_TRUE(result.actions[2].end == 16);
+    EXPECT_TRUE(result.actions[2].index == 0);
+
+    EXPECT_TRUE(result.actions[3].address == "CALLB");
+    EXPECT_TRUE(result.actions[3].target == applies_to::path);
+    EXPECT_TRUE(result.actions[3].type == routing_action::set);
+    EXPECT_TRUE(result.actions[3].start == 17);
+    EXPECT_TRUE(result.actions[3].end == 22);
+    EXPECT_TRUE(result.actions[3].index == 1);
+
+    // N0CALL>APRS,CITYA*,CITYB,CITYC,CITYD,CITYE:data
+    //             ~~~~~~
+    //             12 18 - Packet address removed
+    //
+    // N0CALL>APRS,CITYB,CITYC,CITYD,CITYE:data
+    //             ~~~~~
+    //             12 17 - Packet address removed
+    //
+    // N0CALL>APRS,CITYC,CITYD,CITYE:data
+    //             ~~~~~
+    //             12 17 - Packet address removed
+    //
+    // N0CALL>APRS,CITYD,CITYE:data
+    //             ~~~~~
+    //             12 17 - Packet address marked as 'set'
+
+    digi.address = { "CITYD" };
+    digi.path = {};
+    digi.options = routing_option::preempt_drop;
+    p = { "N0CALL", "APRS", { "CITYA*", "CITYB", "CITYC", "CITYD", "CITYE" }, "data"};
+    packet_string = to_string(p);
+
+    try_route_packet(p, digi, result);
+
+    EXPECT_TRUE(result.actions.size() == 4);
+
+    EXPECT_TRUE(result.actions[0].address == "CITYA");
+    EXPECT_TRUE(result.actions[0].target == applies_to::path);
+    EXPECT_TRUE(result.actions[0].type == routing_action::remove);
+    EXPECT_TRUE(result.actions[0].start == 12);
+    EXPECT_TRUE(result.actions[0].end == 18);
+    EXPECT_TRUE(result.actions[0].index == 0);
+
+    EXPECT_TRUE(result.actions[1].address == "CITYB");
+    EXPECT_TRUE(result.actions[1].target == applies_to::path);
+    EXPECT_TRUE(result.actions[1].type == routing_action::remove);
+    EXPECT_TRUE(result.actions[1].start == 12);
+    EXPECT_TRUE(result.actions[1].end == 17);
+    EXPECT_TRUE(result.actions[1].index == 0);
+
+    EXPECT_TRUE(result.actions[2].address == "CITYC");
+    EXPECT_TRUE(result.actions[2].target == applies_to::path);
+    EXPECT_TRUE(result.actions[2].type == routing_action::remove);
+    EXPECT_TRUE(result.actions[2].start == 12);
+    EXPECT_TRUE(result.actions[2].end == 17);
+    EXPECT_TRUE(result.actions[2].index == 0);
+
+    EXPECT_TRUE(result.actions[3].address == "CITYD");
+    EXPECT_TRUE(result.actions[3].target == applies_to::path);
+    EXPECT_TRUE(result.actions[3].type == routing_action::set);
+    EXPECT_TRUE(result.actions[3].start == 12);
+    EXPECT_TRUE(result.actions[3].end == 17);
+    EXPECT_TRUE(result.actions[3].index == 0);
+
+    // N0CALL>APRS,CALLA*,CALLB*,WIDE2-3:data
+    //                           ~~~~~~~
+    //                           26 33 - Packet address replaced
+    //
+    // N0CALL>APRS,CALLA*,CALLB*,WIDE2-3:data
+    //             ~~~~~~
+    //             12 18 - Packet address marked as 'unset'
+    //
+    // N0CALL>APRS,CALLA,CALLB*,WIDE2-3:data
+    //                   ~~~~~~
+    //                   18 24 - Packet address marked as 'unset'
+    //
+    // N0CALL>APRS,CALLA,CALLB,DIGI:data
+    //                         ~~~~
+    //                         24 28 - Packet address marked as 'set'
+
+    digi.address = { "DIGI" };
+    digi.path = { "WIDE2-2" };
+    digi.options = routing_option::trap_excessive_hops;
+    p = { "N0CALL", "APRS", { "CALLA*", "CALLB*", "WIDE2-3" }, "data"};
+    packet_string = to_string(p);
+
+    try_route_packet(p, digi, result);
+
+    EXPECT_TRUE(result.actions.size() == 4);
+
+    EXPECT_TRUE(result.actions[0].address == "DIGI");
+    EXPECT_TRUE(result.actions[0].target == applies_to::path);
+    EXPECT_TRUE(result.actions[0].type == routing_action::replace);
+    EXPECT_TRUE(result.actions[0].start == 26);
+    EXPECT_TRUE(result.actions[0].end == 33);
+    EXPECT_TRUE(result.actions[0].index == 2);
+
+    EXPECT_TRUE(result.actions[1].address == "CALLA");
+    EXPECT_TRUE(result.actions[1].target == applies_to::path);
+    EXPECT_TRUE(result.actions[1].type == routing_action::unset);
+    EXPECT_TRUE(result.actions[1].start == 12);
+    EXPECT_TRUE(result.actions[1].end == 18);
+    EXPECT_TRUE(result.actions[1].index == 0);
+
+    EXPECT_TRUE(result.actions[2].address == "CALLB");
+    EXPECT_TRUE(result.actions[2].target == applies_to::path);
+    EXPECT_TRUE(result.actions[2].type == routing_action::unset);
+    EXPECT_TRUE(result.actions[2].start == 18);
+    EXPECT_TRUE(result.actions[2].end == 24);
+    EXPECT_TRUE(result.actions[2].index == 1);
+
+    EXPECT_TRUE(result.actions[3].address == "DIGI");
+    EXPECT_TRUE(result.actions[3].target == applies_to::path);
+    EXPECT_TRUE(result.actions[3].type == routing_action::set);
+    EXPECT_TRUE(result.actions[3].start == 24);
+    EXPECT_TRUE(result.actions[3].end == 28);
+    EXPECT_TRUE(result.actions[3].index == 2);
+
+    // N0CALL>APRS,WIDE1-2:data
+    //             ~~~~~~~
+    //             12 19 - Packet address decremented
+    //
+    // N0CALL>APRS,DIGI,WIDE1-1:data
+    //             ~~~~
+    //             12 16 - Packet address inserted
+    //
+    // N0CALL>APRS,DIGI,WIDE1-1:data
+    //             ~~~~
+    //             12 16 - Packet address marked as 'set'
+
+    digi.address = { "DIGI" };
+    digi.path = { "WIDE1", "WIDE2" };
+    digi.options = routing_option::none;
+    p = { "N0CALL", "APRS", { "WIDE1-2" }, "data"};
+    packet_string = to_string(p);
+
+    try_route_packet(p, digi, result);
+
+    EXPECT_TRUE(result.actions.size() == 3);
+
+    EXPECT_TRUE(result.actions[0].address == "WIDE1-1");
+    EXPECT_TRUE(result.actions[0].target == applies_to::path);
+    EXPECT_TRUE(result.actions[0].type == routing_action::decrement);
+    EXPECT_TRUE(result.actions[0].start == 12);
+    EXPECT_TRUE(result.actions[0].end == 19);
+    EXPECT_TRUE(result.actions[0].index == 0);
+
+    EXPECT_TRUE(result.actions[1].address == "DIGI");
+    EXPECT_TRUE(result.actions[1].target == applies_to::path);
+    EXPECT_TRUE(result.actions[1].type == routing_action::insert);
+    EXPECT_TRUE(result.actions[1].start == 12);
+    EXPECT_TRUE(result.actions[1].end == 16);
+    EXPECT_TRUE(result.actions[1].index == 0);
+
+    EXPECT_TRUE(result.actions[2].address == "DIGI");
+    EXPECT_TRUE(result.actions[2].target == applies_to::path);
+    EXPECT_TRUE(result.actions[2].type == routing_action::set);
+    EXPECT_TRUE(result.actions[2].start == 12);
+    EXPECT_TRUE(result.actions[2].end == 16);
+    EXPECT_TRUE(result.actions[2].index == 0);
+
+    // N0CALL>APRS,CALL,WIDE1*,WIDE2-2:data
+    //                         ~~~~~~~
+    //                         24 31 - Packet address decremented
+    //
+    // N0CALL>APRS,CALL,WIDE1,DIGI,WIDE2-2:data
+    //                        ~~~~
+    //                        24 28 - Packet address inserted
+    //
+    // N0CALL>APRS,CALL,WIDE1*,WIDE2-2:data
+    //                  ~~~~~~
+    //                  17 23 - Packet address marked as 'unset'
+    //
+    // N0CALL>APRS,CALL,WIDE1,DIGI,WIDE2-2:data
+    //                        ~~~~
+    //                        23 27 - Packet address marked as 'set'
+
+    digi.address = { "DIGI" };
+    digi.path = { "WIDE2", "WIDE1" };
+    digi.options = routing_option::none;
+    p = { "N0CALL", "APRS", { "CALL", "WIDE1*", "WIDE2-2" }, "data"};
+    packet_string = to_string(p);
+
+    try_route_packet(p, digi, result);
+
+    EXPECT_TRUE(result.actions.size() == 4);
+
+    EXPECT_TRUE(result.actions[0].address == "WIDE2-1");
+    EXPECT_TRUE(result.actions[0].target == applies_to::path);
+    EXPECT_TRUE(result.actions[0].type == routing_action::decrement);
+    EXPECT_TRUE(result.actions[0].start == 24);
+    EXPECT_TRUE(result.actions[0].end == 31);
+    EXPECT_TRUE(result.actions[0].index == 2);
+
+    EXPECT_TRUE(result.actions[1].address == "DIGI");
+    EXPECT_TRUE(result.actions[1].target == applies_to::path);
+    EXPECT_TRUE(result.actions[1].type == routing_action::insert);
+    EXPECT_TRUE(result.actions[1].start == 24);
+    EXPECT_TRUE(result.actions[1].end == 28);
+    EXPECT_TRUE(result.actions[1].index == 2);
+
+    EXPECT_TRUE(result.actions[2].address == "WIDE1");
+    EXPECT_TRUE(result.actions[2].target == applies_to::path);
+    EXPECT_TRUE(result.actions[2].type == routing_action::unset);
+    EXPECT_TRUE(result.actions[2].start == 17);
+    EXPECT_TRUE(result.actions[2].end == 23);
+    EXPECT_TRUE(result.actions[2].index == 1);
+
+    EXPECT_TRUE(result.actions[3].address == "DIGI");
+    EXPECT_TRUE(result.actions[3].target == applies_to::path);
+    EXPECT_TRUE(result.actions[3].type == routing_action::set);
+    EXPECT_TRUE(result.actions[3].start == 23);
+    EXPECT_TRUE(result.actions[3].end == 27);
+    EXPECT_TRUE(result.actions[3].index == 2);
+
+    // N0CALL>APRS,CALL1,CALL2,CALL3,CALL4,CALL5,CALL6*,WIDE3-3:data
+    //                                                  ~~~~~~~
+    //                                                  49 56 - Packet address decremented
+    //
+    // N0CALL>APRS,CALL1,CALL2,CALL3,CALL4,CALL5,CALL6,DIGI,WIDE3-3:data
+    //                                                 ~~~~
+    //                                                 49 53 - Packet address inserted
+    //
+    // N0CALL>APRS,CALL1,CALL2,CALL3,CALL4,CALL5,CALL6*,WIDE3-3:data
+    //                                           ~~~~~~
+    //                                           42 48 - Packet address marked as 'unset'
+    //
+    // N0CALL>APRS,CALL1,CALL2,CALL3,CALL4,CALL5,CALL6,DIGI,WIDE3-3:data
+    //                                                 ~~~~
+    //                                                 48 52 - Packet address marked as 'set'
+
+    digi.address = { "DIGI" };
+    digi.path = { "WIDE3" };
+    digi.options = routing_option::none;
+    p = { "N0CALL", "APRS", { "CALL1", "CALL2", "CALL3", "CALL4", "CALL5", "CALL6*", "WIDE3-3" }, "data"};
+    packet_string = to_string(p);
+
+    try_route_packet(p, digi, result);
+
+    EXPECT_TRUE(result.actions.size() == 4);
+
+    EXPECT_TRUE(result.actions[0].address == "WIDE3-2");
+    EXPECT_TRUE(result.actions[0].target == applies_to::path);
+    EXPECT_TRUE(result.actions[0].type == routing_action::decrement);
+    EXPECT_TRUE(result.actions[0].start == 49);
+    EXPECT_TRUE(result.actions[0].end == 56);
+    EXPECT_TRUE(result.actions[0].index == 6);
+
+    EXPECT_TRUE(result.actions[1].address == "DIGI");
+    EXPECT_TRUE(result.actions[1].target == applies_to::path);
+    EXPECT_TRUE(result.actions[1].type == routing_action::insert);
+    EXPECT_TRUE(result.actions[1].start == 49);
+    EXPECT_TRUE(result.actions[1].end == 53);
+    EXPECT_TRUE(result.actions[1].index == 6);
+
+    EXPECT_TRUE(result.actions[2].address == "CALL6");
+    EXPECT_TRUE(result.actions[2].target == applies_to::path);
+    EXPECT_TRUE(result.actions[2].type == routing_action::unset);
+    EXPECT_TRUE(result.actions[2].start == 42);
+    EXPECT_TRUE(result.actions[2].end == 48);
+    EXPECT_TRUE(result.actions[2].index == 5);
+
+    EXPECT_TRUE(result.actions[3].address == "DIGI");
+    EXPECT_TRUE(result.actions[3].target == applies_to::path);
+    EXPECT_TRUE(result.actions[3].type == routing_action::set);
+    EXPECT_TRUE(result.actions[3].start == 48);
+    EXPECT_TRUE(result.actions[3].end == 52);
+    EXPECT_TRUE(result.actions[3].index == 6);
+
+    // N0CALL>APRS,,WIDE1-1:data
+    //              ~~~~~~~
+    //              13 20 - Packet address decremented
+    //
+    // N0CALL>APRS,,WIDE1:data
+    //              ~~~~~
+    //              13 18 - Packet address replaced
+    //
+    // N0CALL>APRS,,DIGI:data
+    //              ~~~~
+    //              13 17 - Packet address marked as 'set'
+    //
+    // N0CALL>APRS,,DIGI*:data
+    //             ~
+    //             12 12 - Packet address removed
+
+    digi.address = { "DIGI" };
+    digi.path = { "WIDE1" };
+    digi.options = routing_option::substitute_complete_hops;
+    p = { "N0CALL", "APRS", { "", "WIDE1-1" }, "data"};
+    packet_string = to_string(p);
+
+    try_route_packet(p, digi, result);
+
+    EXPECT_TRUE(result.actions.size() == 4);
+
+    EXPECT_TRUE(result.actions[0].address == "WIDE1");
+    EXPECT_TRUE(result.actions[0].target == applies_to::path);
+    EXPECT_TRUE(result.actions[0].type == routing_action::decrement);
+    EXPECT_TRUE(result.actions[0].start == 13);
+    EXPECT_TRUE(result.actions[0].end == 20);
+    EXPECT_TRUE(result.actions[0].index == 1);
+
+    EXPECT_TRUE(result.actions[1].address == "DIGI");
+    EXPECT_TRUE(result.actions[1].target == applies_to::path);
+    EXPECT_TRUE(result.actions[1].type == routing_action::replace);
+    EXPECT_TRUE(result.actions[1].start == 13);
+    EXPECT_TRUE(result.actions[1].end == 18);
+    EXPECT_TRUE(result.actions[1].index == 1);
+
+    EXPECT_TRUE(result.actions[2].address == "DIGI");
+    EXPECT_TRUE(result.actions[2].target == applies_to::path);
+    EXPECT_TRUE(result.actions[2].type == routing_action::set);
+    EXPECT_TRUE(result.actions[2].start == 13);
+    EXPECT_TRUE(result.actions[2].end == 17);
+    EXPECT_TRUE(result.actions[2].index == 1);
+
+    EXPECT_TRUE(result.actions[3].address == "");
+    EXPECT_TRUE(result.actions[3].target == applies_to::path);
+    EXPECT_TRUE(result.actions[3].type == routing_action::remove);
+    EXPECT_TRUE(result.actions[3].start == 12);
+    EXPECT_TRUE(result.actions[3].end == 12);
+    EXPECT_TRUE(result.actions[3].index == 0);
+#else
+    EXPECT_TRUE(true);
+#endif
+}
+
+TEST(routing_result, to_string)
+{
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+    // N0CALL>APRS,CALLA,CALLB*,CALLC,CALLD,CALLE,CALLF:data
+    //                                      ~~~~~
+    //                                      37 42 - Packet address removed
+    //
+    // N0CALL>APRS,CALLA,CALLB*,CALLE,CALLC,CALLD,CALLF:data
+    //                          ~~~~~
+    //                          25 30 - Packet address inserted
+    //
+    // N0CALL>APRS,CALLA,CALLB*,CALLE,CALLC,CALLD,CALLF:data
+    //                   ~~~~~~
+    //                   18 24 - Packet address set as 'unset'
+    //
+    // N0CALL>APRS,CALLA,CALLB,CALLE,CALLC,CALLD,CALLF:data
+    //                         ~~~~~
+    //                         24 29 - Packet address set as 'set' 
+
+    router_settings digi { "CALLE", { "" }, routing_option::preempt_front, true };
+    routing_result result;
+
+    packet p = { "N0CALL", "APRS", { "CALLA", "CALLB*", "CALLC", "CALLD", "CALLE", "CALLF" }, "data"};
+
+    try_route_packet(p, digi, result);
+
+    std::string diag_string = to_string(result);
+
+    printf("%s\n", diag_string.c_str());
+
+    EXPECT_TRUE(true);
+#else
+    EXPECT_TRUE(true);
+#endif
+}
+
+TEST(addresses, set_address_as_used)
+{
+    using namespace aprs::router;
+    using namespace aprs::router::detail;
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+
+    packet p = { "N0CALL", "APRS", { "CALLA", "CALLB*", "CALLC", "CALLD", "CALLE", "CALLF" }, "data"};
+
+    std::vector<address> segments;
+    try_parse_addresses(p.path, segments);
+    set_addresses_offset(p, segments);
+
+    // N0CALL>APRS,CALLA,CALLB*,CALLC,CALLD,CALLE,CALLF:data
+    //             ~~~~~ ~~~~~~ ~~~~~ ~~~~~ ~~~~~ ~~~~~
+    //             12 17 18 24  25 30 31 36 37 42 43 48
+
+    EXPECT_TRUE(segments[0].offset == 12);
+    EXPECT_TRUE(segments[0].length == 5);
+    EXPECT_TRUE(segments[0].mark == false);
+    EXPECT_TRUE(segments[1].offset == 18);
+    EXPECT_TRUE(segments[1].length == 6);
+    EXPECT_TRUE(segments[1].mark == true);
+    EXPECT_TRUE(segments[2].offset == 25);
+    EXPECT_TRUE(segments[2].length == 5);
+    EXPECT_TRUE(segments[2].mark == false);
+    EXPECT_TRUE(segments[3].offset == 31);
+    EXPECT_TRUE(segments[3].length == 5);
+    EXPECT_TRUE(segments[3].mark == false);
+    EXPECT_TRUE(segments[4].offset == 37);
+    EXPECT_TRUE(segments[4].length == 5);
+    EXPECT_TRUE(segments[4].mark == false);
+    EXPECT_TRUE(segments[5].offset == 43);
+    EXPECT_TRUE(segments[5].length == 5);
+    EXPECT_TRUE(segments[5].mark == false);
+
+    set_address_as_used(segments, 4);
+
+    // N0CALL>APRS,CALLA,CALLB,CALLC,CALLD,CALLE*,CALLF:data
+    //             ~~~~~ ~~~~~ ~~~~~ ~~~~~ ~~~~~~ ~~~~~
+    //             12 17 18 23 24 29 30 35 36 42  43 48
+
+    EXPECT_TRUE(segments[0].offset == 12);
+    EXPECT_TRUE(segments[0].length == 5);
+    EXPECT_TRUE(segments[0].mark == false);
+    EXPECT_TRUE(segments[1].offset == 18);
+    EXPECT_TRUE(segments[1].length == 5);
+    EXPECT_TRUE(segments[1].mark == false);
+    EXPECT_TRUE(segments[2].offset == 24);
+    EXPECT_TRUE(segments[2].length == 5);
+    EXPECT_TRUE(segments[2].mark == false);
+    EXPECT_TRUE(segments[3].offset == 30);
+    EXPECT_TRUE(segments[3].length == 5);
+    EXPECT_TRUE(segments[3].mark == false);
+    EXPECT_TRUE(segments[4].offset == 36);
+    EXPECT_TRUE(segments[4].length == 6);
+    EXPECT_TRUE(segments[4].mark == true);
+    EXPECT_TRUE(segments[5].offset == 43);
+    EXPECT_TRUE(segments[5].length == 5);
+    EXPECT_TRUE(segments[5].mark == false);
+
+#else
+    EXPECT_TRUE(true);
+#endif
+}
+
+TEST(diagnostic, push_address_unset_diagnostic)
+{
+    using namespace aprs::router;
+    using namespace aprs::router::detail;
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+
+    packet p = { "N0CALL", "APRS", { "CALLA*", "CALLB*", "CALLC", "WIDE2-2*", "CALLD*", "CALLE", "CALLF" }, "data"};
+
+    // Initialize offsets
+    std::vector<address> segments;
+    try_parse_addresses(p.path, segments);
+    set_addresses_offset(p, segments);
+
+    std::vector<routing_diagnostic> diag;
+    push_address_unset_diagnostic(segments, 5, true, diag);
+
+    // N0CALL>APRS,CALLA*,CALLB*,CALLC,WIDE2-2*,CALLD*,CALLE,CALLF:data
+    //             ~~~~~~
+    //             12 18 - Packet address marked as 'unset'
+    //
+    // N0CALL>APRS,CALLA,CALLB*,CALLC,WIDE2-2*,CALLD*,CALLE,CALLF:data
+    //                   ~~~~~~
+    //                   18 24 - Packet address marked as 'unset'
+    //
+    // N0CALL>APRS,CALLA,CALLB,CALLC,WIDE2-2*,CALLD*,CALLE,CALLF:data
+    //                               ~~~~~~~~
+    //                               30 38 - Packet address marked as 'unset'
+    //
+    // N0CALL>APRS,CALLA,CALLB,CALLC,WIDE2-2,CALLD*,CALLE,CALLF:data
+    //                                       ~~~~~~
+    //                                       38 44 - Packet address marked as 'unset'
+
+    EXPECT_TRUE(diag.size() == 4);
+
+    EXPECT_TRUE(diag[0].start == 12);
+    EXPECT_TRUE(diag[0].end == 18);
+    EXPECT_TRUE(diag[0].index == 0);
+    EXPECT_TRUE(diag[0].address == "CALLA");
+
+    EXPECT_TRUE(diag[1].start == 18);
+    EXPECT_TRUE(diag[1].end == 24);
+    EXPECT_TRUE(diag[1].index == 1);
+    EXPECT_TRUE(diag[1].address == "CALLB");
+
+    EXPECT_TRUE(diag[2].start == 30);
+    EXPECT_TRUE(diag[2].end == 38);
+    EXPECT_TRUE(diag[2].index == 3);
+    EXPECT_TRUE(diag[2].address == "WIDE2-2");
+
+    EXPECT_TRUE(diag[3].start == 38);
+    EXPECT_TRUE(diag[3].end == 44);
+    EXPECT_TRUE(diag[3].index == 4);
+    EXPECT_TRUE(diag[3].address == "CALLD");
+
+#else
+    EXPECT_TRUE(true);
+#endif
+}
+
+TEST(diagnostic, push_address_set_diagnostic)
+{
+    using namespace aprs::router;
+    using namespace aprs::router::detail;
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+
+    packet p = { "N0CALL", "APRS", { "CALLA*", "CALLB*", "CALLC", "WIDE2-2*", "CALLD*", "CALLE", "CALLF" }, "data"};
+
+    std::vector<address> segments;
+    try_parse_addresses(p.path, segments);
+    set_addresses_offset(p, segments);
+
+    set_address_as_used(segments, 5);
+
+    // Input:
+    //
+    // N0CALL>APRS,CALLA*,CALLB*,CALLC,WIDE2-2*,CALLD*,CALLE,CALLF:data
+    //                  ~      ~              ~      ~
+    // Output:
+    //
+    // N0CALL>APRS,CALLA,CALLB,CALLC,WIDE2-2,CALLD,CALLE*,CALLF:data
+    //                                                  ~
+
+    std::vector<routing_diagnostic> diag;
+    push_address_set_diagnostic(segments, 5, true, diag);
+
+    // N0CALL>APRS,CALLA,CALLB,CALLC,WIDE2-2,CALLD,CALLE*,CALLF:data
+    //                                             ~~~~~
+    //                                             44 49 - Packet address marked as 'set'
+
+    EXPECT_TRUE(diag[0].start == 44);
+    EXPECT_TRUE(diag[0].end == 49);
+    EXPECT_TRUE(diag[0].index == 5);
+    EXPECT_TRUE(diag[0].address == "CALLE");
+
 #else
     EXPECT_TRUE(true);
 #endif
