@@ -1141,7 +1141,7 @@ TEST(router, try_route_packet_enable_diagnostics)
     //             ~
     //            12 13 - Packet address marked as 'set'
 
-    digi.address = { "A" };
+    digi.address = "A";
     digi.path = {};
     digi.options = routing_option::none;
     p = { "N0CALL", "APRS", { "A", "B", "C", "D", "E", "F", "G" }, "data"};
@@ -1170,7 +1170,7 @@ TEST(router, try_route_packet_enable_diagnostics)
     //             ~~~~~
     //             12 17 - Packet address marked as 'set'
 
-    digi.address = { "ABCDE" };
+    digi.address = "ABCDE";
     digi.path = {};
     digi.options = routing_option::preempt_front;
     p = { "N0CALL", "APRS", { "AB", "ABC", "ABCD", "ABCDE" }, "data"};
@@ -1217,7 +1217,7 @@ TEST(router, try_route_packet_enable_diagnostics)
     //                  ~~~~~
     //                  17 22 - Packet address marked as 'set'
 
-    digi.address = { "DIGI" };
+    digi.address = "DIGI";
     digi.path = { "CALLB" };
     digi.options = routing_option::preempt_front; // todo + substitute_explicit_address
     p = { "N0CALL", "APRS", { "CALLA", "CALLB" }, "data"};
@@ -1271,7 +1271,7 @@ TEST(router, try_route_packet_enable_diagnostics)
     //             ~~~~~
     //             12 17 - Packet address marked as 'set'
 
-    digi.address = { "CITYD" };
+    digi.address = "CITYD";
     digi.path = {};
     digi.options = routing_option::preempt_drop;
     p = { "N0CALL", "APRS", { "CITYA*", "CITYB", "CITYC", "CITYD", "CITYE" }, "data"};
@@ -1325,7 +1325,7 @@ TEST(router, try_route_packet_enable_diagnostics)
     //                         ~~~~
     //                         24 28 - Packet address marked as 'set'
 
-    digi.address = { "DIGI" };
+    digi.address = "DIGI";
     digi.path = { "WIDE2-2" };
     digi.options = routing_option::trap_excessive_hops;
     p = { "N0CALL", "APRS", { "CALLA*", "CALLB*", "WIDE2-3" }, "data"};
@@ -1375,7 +1375,7 @@ TEST(router, try_route_packet_enable_diagnostics)
     //             ~~~~
     //             12 16 - Packet address marked as 'set'
 
-    digi.address = { "DIGI" };
+    digi.address = "DIGI";
     digi.path = { "WIDE1", "WIDE2" };
     digi.options = routing_option::none;
     p = { "N0CALL", "APRS", { "WIDE1-2" }, "data"};
@@ -1422,7 +1422,7 @@ TEST(router, try_route_packet_enable_diagnostics)
     //                        ~~~~
     //                        23 27 - Packet address marked as 'set'
 
-    digi.address = { "DIGI" };
+    digi.address = "DIGI";
     digi.path = { "WIDE2", "WIDE1" };
     digi.options = routing_option::none;
     p = { "N0CALL", "APRS", { "CALL", "WIDE1*", "WIDE2-2" }, "data"};
@@ -1476,7 +1476,7 @@ TEST(router, try_route_packet_enable_diagnostics)
     //                                                 ~~~~
     //                                                 48 52 - Packet address marked as 'set'
 
-    digi.address = { "DIGI" };
+    digi.address = "DIGI";
     digi.path = { "WIDE3" };
     digi.options = routing_option::none;
     p = { "N0CALL", "APRS", { "CALL1", "CALL2", "CALL3", "CALL4", "CALL5", "CALL6*", "WIDE3-3" }, "data"};
@@ -1530,7 +1530,7 @@ TEST(router, try_route_packet_enable_diagnostics)
     //             ~
     //             12 12 - Packet address removed
 
-    digi.address = { "DIGI" };
+    digi.address = "DIGI";
     digi.path = { "WIDE1" };
     digi.options = routing_option::substitute_complete_hops;
     p = { "N0CALL", "APRS", { "", "WIDE1-1" }, "data"};

@@ -91,6 +91,7 @@ struct packet
 {
     packet() = default;
     packet(const packet& other) = default;
+    packet& operator=(const packet& other) = default;
     packet(const std::string& from, const std::string& to, const std::vector<std::string>& path, const std::string& data);
     packet(const char* packet_string);
     packet(const std::string packet_string);
