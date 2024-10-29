@@ -152,7 +152,7 @@ struct packet
 // Will be routed as: N0CALL>APRS,DIGI*,CALLD,CALLE,CALLF:data
 //                                ~~~~~
 // ------------------------
-// substitute_complete_hops
+// substitute_complete_n_N_address
 // ------------------------
 //
 // Replace exaused hops.
@@ -162,7 +162,7 @@ struct packet
 // Will be routed as: N0CALL>APRS,CALLA,DIGI*,WIDE2-2:data
 //                                      ~~~~~
 // ------------------------
-// trap_excessive_hops
+// trap_limit_exceeding_n_N_address
 // ------------------------
 //
 // Replace excessive hops.
@@ -172,7 +172,7 @@ struct packet
 // Will be routed as: N0CALL>APRS,CALLA,DIGI*,WIDE2-2:data
 //                                      ~~~~~
 // ------------------------
-// reject_excessive_hops
+// reject_limit_exceeding_n_N_address
 // ------------------------
 //
 // Reject excessive hops.
@@ -207,19 +207,19 @@ struct packet
 enum class routing_option : int
 {
     none = 0,
-    route_self = 1,                     // Enable routing packets originating from ourselves.
-    preempt_front = 2,                  // Preemptively move our address to the front of the route.
-    preempt_truncate = 4,               // Preemptively move our address behind the last used address and erase all other addresses.
-    preempt_drop = 8,                   // Preemptively erase all addresses in front of our address.
-    preempt_mark = 16,                  // Preemptively mark our address as used, while leaving the rest of the path as is.
-    substitute_complete_hops = 32,      // Replace an PATHn-N address with our address when N is decremented to 0.
-    trap_excessive_hops = 64,           // Replace a harmful path with our callsign to prevent network issues (e.g., WIDE7-7).
-    reject_excessive_hops = 128,        // Reject the packet if the paths has excessive hops (e.g., PATH7-7).
-    strict = 256,                       // Don't route if the packet is malformed
-    preempt_n_N = 512,                  // Enables preemptive routing in packets using n-N routing
-    substitute_explicit_address = 1024, // Replace an address with the router's callsign when explicit routing
+    route_self = 1,                           // Enable routing packets originating from ourselves.
+    preempt_front = 2,                        // Preemptively move our address to the front of the route.
+    preempt_truncate = 4,                     // Preemptively move our address behind the last used address and erase all other addresses.
+    preempt_drop = 8,                         // Preemptively erase all addresses in front of our address.
+    preempt_mark = 16,                        // Preemptively mark our address as used, while leaving the rest of the path as is.
+    substitute_complete_n_N_address = 32,     // Replace an PATHn-N address with our address when N is decremented to 0.
+    trap_limit_exceeding_n_N_address = 64,    // Replace a harmful path with our callsign to prevent network issues (e.g., WIDE7-7).
+    reject_limit_exceeding_n_N_address = 128, // Reject the packet if the paths has excessive hops (e.g., PATH7-7).
+    strict = 256,                             // Don't route if the packet is malformed
+    preempt_n_N = 512,                        // Enables preemptive routing in packets using n-N routing
+    substitute_explicit_address = 1024,       // Replace an address with the router's callsign when explicit routing
     recommended = route_self | preempt_front |
-                  substitute_complete_hops | trap_excessive_hops |
+                  substitute_complete_n_N_address | trap_limit_exceeding_n_N_address |
                   strict | preempt_n_N |
                   substitute_explicit_address
 };
@@ -251,7 +251,7 @@ enum class routing_option : int
 //
 //        default setting: WIDE1-2,WIDE2-2,TRACE1-2,TRACE2-2,WIDE,RELAY,TRACE
 //
-// options - contains a list of options, ex: "preempt_front | trap_excessive_hops" will enable two options on the router
+// options - contains a list of options, ex: "preempt_front | trap_limit_exceeding_n_N_address" will enable two options on the router
 //
 // enable_diagnostics - generates routing diagnostics that can be accessed via the routing_result::actions
 
@@ -584,21 +584,21 @@ APRS_ROUTER_INLINE bool try_parse_routing_option(std::string_view text, routing_
     {
         result = routing_option::preempt_mark;
     }
-    else if (text == "substitute_complete_hops")
+    else if (text == "substitute_complete_n_N_address")
     {
-        result = routing_option::substitute_complete_hops;
+        result = routing_option::substitute_complete_n_N_address;
     }
     else if (text == "substitute_explicit_address")
     {
         result = routing_option::substitute_explicit_address;
     }
-    else if (text == "trap_excessive_hops")
+    else if (text == "trap_limit_exceeding_n_N_address")
     {
-        result = routing_option::trap_excessive_hops;
+        result = routing_option::trap_limit_exceeding_n_N_address;
     }
-    else if (text == "reject_excessive_hops")
+    else if (text == "reject_limit_exceeding_n_N_address")
     {
-        result = routing_option::reject_excessive_hops;
+        result = routing_option::reject_limit_exceeding_n_N_address;
     }
     else if (text == "strict")
     {
@@ -1356,12 +1356,12 @@ APRS_ROUTER_INLINE std::optional<std::pair<size_t, size_t>> find_first_unused_n_
     //                         ~~~~~
     // Found addresses in packet: WIDE2-2
     //
-    // If "reject_excessive_hops" is set, n-N addresses with excessive hops with
+    // If "reject_limit_exceeding_n_N_address" is set, n-N addresses with excessive hops with
     // be ignored: N0CALL>APRS,WIDE3-3,WIDE2-2:data
     //                         ~~~~~~~
     // Found addresses in packet: WIDE2-2
 
-    bool reject_excessive_hops = enum_has_flag(options, routing_option::reject_excessive_hops);
+    bool reject_limit_exceeding_n_N_address = enum_has_flag(options, routing_option::reject_limit_exceeding_n_N_address);
 
     for (size_t i = 0; const auto& address : packet_addresses)
     {
@@ -1369,7 +1369,7 @@ APRS_ROUTER_INLINE std::optional<std::pair<size_t, size_t>> find_first_unused_n_
         {
             if (address.n == p.n && address.N > 0 && address.text == p.text)
             {
-                if (reject_excessive_hops && p.N > 0 && address.N > p.N)
+                if (reject_limit_exceeding_n_N_address && p.N > 0 && address.N > p.N)
                 {
                     j++;
                     continue;
@@ -2541,9 +2541,9 @@ APRS_ROUTER_INLINE bool try_n_N_route(route_state& state)
     //
     //   3. If the N part of the ADDRESSn-N is decremented to 0, then:
     //
-    //      3.a. If "substitute_complete_hops" is set, remove the ADDRESSn-N where N is 0
+    //      3.a. If "substitute_complete_n_N_address" is set, remove the ADDRESSn-N where N is 0
     //
-    //      3.b. If "substitute_complete_hops" is not set, mark the ADDRESSn-N as "used"
+    //      3.b. If "substitute_complete_n_N_address" is not set, mark the ADDRESSn-N as "used"
     //
     //   4. Create and update the routing result to reflect these changes.
     //
@@ -2600,7 +2600,7 @@ APRS_ROUTER_INLINE bool try_n_N_route_no_trap(route_state& state, size_t packet_
 
     assert(packet_n_N_address_index < packet_addresses.size());
 
-    bool substitute_zero_hops = enum_has_flag(options, routing_option::substitute_complete_hops);    
+    bool substitute_zero_hops = enum_has_flag(options, routing_option::substitute_complete_n_N_address);    
 
     address& n_N_address = packet_addresses[packet_n_N_address_index];
 
@@ -2645,7 +2645,7 @@ APRS_ROUTER_INLINE bool try_complete_n_N_route(route_state& state, address& n_N_
     //
     // There are a few circumstances where we can still continue with the 
     // insertion even when the address count is 8. For example if we will
-    // shortly shrink the packet path (substitute_complete_hops)
+    // shortly shrink the packet path (substitute_complete_n_N_address)
 
     std::vector<address>& packet_addresses = state.packet_addresses;
     const bool enable_diagnostics = state.settings.enable_diagnostics;
@@ -2694,7 +2694,7 @@ APRS_ROUTER_INLINE bool try_insert_n_N_route(route_state& state, size_t& packet_
     const std::string_view router_address = state.settings.address;
     const bool enable_diagnostics = state.settings.enable_diagnostics;
     std::vector<routing_diagnostic>& actions = state.actions;
-    const bool substitute_zero_hops = enum_has_flag(state.settings.options, routing_option::substitute_complete_hops);
+    const bool substitute_zero_hops = enum_has_flag(state.settings.options, routing_option::substitute_complete_n_N_address);
 
     assert(packet_n_N_address_index < packet_addresses.size());
     assert(packet_addresses.size() < 8);
@@ -2770,9 +2770,9 @@ APRS_ROUTER_INLINE bool try_trap_n_N_route(route_state& state, address& packet_n
     const bool enable_diagnostics = state.settings.enable_diagnostics;
     std::vector<routing_diagnostic>& actions = state.actions;
 
-    bool trap_excessive_hops = enum_has_flag(options, routing_option::trap_excessive_hops);
+    bool trap_limit_exceeding_n_N_address = enum_has_flag(options, routing_option::trap_limit_exceeding_n_N_address);
 
-    if (trap_excessive_hops)
+    if (trap_limit_exceeding_n_N_address)
     {
         if (router_n_N_address.N > 0 && packet_n_N_address.N > router_n_N_address.N)
         {
