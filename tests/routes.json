@@ -608,7 +608,7 @@
             "original_packet": "N0CALL>APRS,WIDE2-3:data",
             "routed_packet": "N0CALL>APRS,WIDE2-3:data",
             "routed": "false",
-            "options": "reject_excessive_hops"
+            "options": "reject_limit_exceeding_n_N_address"
         },
         {
             "comments": [
@@ -809,7 +809,7 @@
             "path": "RELAY,WIDE1",
             "original_packet": "N0CALL>APRS,RELAY-1,WIDE1-1:data",
             "routed_packet": "N0CALL>APRS,RELAY-1,DIGI*:data",
-            "options": "substitute_complete_hops",
+            "options": "substitute_complete_n_N_address",
             "routed": "true"
         },
         {
@@ -829,7 +829,7 @@
             "original_packet": "N0CALL>APRS,RELAY-1,WIDE1-1:data",
             "routed_packet": "N0CALL>APRS,RELAY-1,DIGI*:data",
             "routed": "true",
-            "options": "substitute_complete_hops"
+            "options": "substitute_complete_n_N_address"
         },
         {
             "id": "82",
@@ -857,7 +857,7 @@
             "original_packet": "N0CALL>APRS,A,B,C,D,E,F,WIDE2-1:data",
             "routed_packet": "N0CALL>APRS,A,B,C,D,E,F,DIGI*:data",
             "routed": "true",
-            "options": "substitute_complete_hops"
+            "options": "substitute_complete_n_N_address"
         },
         {
             "id": "85",
@@ -867,7 +867,7 @@
             "original_packet": "N0CALL>APRS,WIDE2-3:data",
             "routed_packet": "N0CALL>APRS,WIDE2-3:data",
             "routed": "false",
-            "options": "reject_excessive_hops"
+            "options": "reject_limit_exceeding_n_N_address"
         },
         {
             "id": "86",
@@ -877,7 +877,7 @@
             "original_packet": "N0CALL>APRS,WIDE2-3:data",
             "routed_packet": "N0CALL>APRS,DIGI*,WIDE2-2:data",
             "routed": "true",
-            "options": "reject_excessive_hops"
+            "options": "reject_limit_exceeding_n_N_address"
         },
         {
             "id": "87",
@@ -896,7 +896,7 @@
             "original_packet": "N0CALL>APRS,WIDE2-3:data",
             "routed_packet": "N0CALL>APRS,DIGI*:data",
             "routed": "true",
-            "options": "trap_excessive_hops"
+            "options": "trap_limit_exceeding_n_N_address"
         },
         {
             "id": "89",
@@ -906,7 +906,7 @@
             "original_packet": "N0CALL>APRS,CALL*,WIDE2-3:data",
             "routed_packet": "N0CALL>APRS,CALL,DIGI*:data",
             "routed": "true",
-            "options": "trap_excessive_hops"
+            "options": "trap_limit_exceeding_n_N_address"
         },
         {
             "id": "90",
@@ -916,7 +916,7 @@
             "original_packet": "N0CALL>APRS,CALLA*,CALLB*,WIDE2-3:data",
             "routed_packet": "N0CALL>APRS,CALLA,CALLB,DIGI*:data",
             "routed": "true",
-            "options": "trap_excessive_hops"
+            "options": "trap_limit_exceeding_n_N_address"
         },
         {
             "id": "91",
@@ -926,7 +926,7 @@
             "original_packet": "N0CALL>APRS,WIDE2-3,WIDE1-2:data",
             "routed_packet": "N0CALL>APRS,WIDE2-3,DIGI*,WIDE1-1:data",
             "routed": "true",
-            "options": "reject_excessive_hops"
+            "options": "reject_limit_exceeding_n_N_address"
         },
         {
             "id": "92",
@@ -954,7 +954,7 @@
             "original_packet": "N0CALL>APRS,CALL,DIGI*,WIDE1-1:data",
             "routed_packet": "N0CALL>APRS,CALL,DIGI,ROUTER*:data",
             "routed": "true",
-            "options": "substitute_complete_hops"
+            "options": "substitute_complete_n_N_address"
         },
         {
             "id": "95",
@@ -964,7 +964,7 @@
             "original_packet": "N0CALL>APRS,CALL,DIGI,WIDE2*:data",
             "routed_packet": "N0CALL>APRS,CALL,DIGI,WIDE2*:data",
             "routed": "false",
-            "options": "substitute_complete_hops"
+            "options": "substitute_complete_n_N_address"
         },
         {
             "id": "96",
@@ -974,7 +974,7 @@
             "original_packet": "N0CALL>APRS,WIDE2-2,qAR,N0CALL:data",
             "routed_packet": "N0CALL>APRS,ROUTER*,WIDE2-1,qAR,N0CALL:data",
             "routed": "true",
-            "options": "substitute_complete_hops"
+            "options": "substitute_complete_n_N_address"
         },
         {
             "id": "97",
@@ -984,7 +984,7 @@
             "original_packet": "N0CALL>APRS,ROUTER*,WIDE2-1,qAR,N0CALL:data",
             "routed_packet": "N0CALL>APRS,ROUTER,DIGI*,qAR,N0CALL:data",
             "routed": "true",
-            "options": "substitute_complete_hops"
+            "options": "substitute_complete_n_N_address"
         },
         {
             "id": "98",
@@ -1003,7 +1003,7 @@
             "original_packet": "N0CALL>APRS,CALL,WIDE1*,WIDE2-2:data",
             "routed_packet": "N0CALL>APRS,CALL,WIDE1,DIGI*,WIDE2-1:data",
             "routed": "true",
-            "options": "substitute_complete_hops"
+            "options": "substitute_complete_n_N_address"
         },
         {
             "id": "100",
@@ -1013,7 +1013,7 @@
             "original_packet": "N0CALL>APRS,CALL,WIDE1*,WIDE2-2:data",
             "routed_packet": "N0CALL>APRS,CALL,WIDE1,DIGI*,WIDE2-1:data",
             "routed": "true",
-            "options": "substitute_complete_hops"
+            "options": "substitute_complete_n_N_address"
         },
         {
             "id": "101",
@@ -1023,7 +1023,7 @@
             "original_packet": "N0CALL>APRS,CALL,WIDE1*,WIDE2-1:data",
             "routed_packet": "N0CALL>APRS,CALL,WIDE1,DIGI*:data",
             "routed": "true",
-            "options": "substitute_complete_hops"
+            "options": "substitute_complete_n_N_address"
         },
         {
             "id": "102",
@@ -1105,7 +1105,7 @@
             "original_packet": "N0CALL>APRS,CALL1,CALL2,CALL3,CALL4,CALL5,CALL6,CALL7*,WIDE3-1:data",
             "routed_packet": "N0CALL>APRS,CALL1,CALL2,CALL3,CALL4,CALL5,CALL6,CALL7,DIGI*:data",
             "routed": "true",
-            "options": "substitute_complete_hops"
+            "options": "substitute_complete_n_N_address"
         },
         {
             "id": "111",
@@ -1115,7 +1115,7 @@
             "original_packet": "N0CALL>APRS,CALL1,CALL2,CALL3,CALL4,CALL5,CALL6,CALL7*,WIDE3-1:data",
             "routed_packet": "N0CALL>APRS,CALL1,CALL2,CALL3,CALL4,CALL5,CALL6,CALL7,DIGI*:data",
             "routed": "true",
-            "options": "substitute_complete_hops"
+            "options": "substitute_complete_n_N_address"
         },
         {
             "id": "112",
@@ -1175,7 +1175,7 @@
             "original_packet": "N0CALL>APRS,,WIDE1-1:data",
             "routed_packet": "N0CALL>APRS,DIGI*:data",
             "routed": "true",
-            "options": "substitute_complete_hops"
+            "options": "substitute_complete_n_N_address"
         },
         {
             "id": "117",
@@ -1185,7 +1185,7 @@
             "original_packet": "N0CALL>APRS,WIDE1-1:",
             "routed_packet": "N0CALL>APRS,DIGI*:",
             "routed": "true",
-            "options": "substitute_complete_hops"
+            "options": "substitute_complete_n_N_address"
         },
         {
             "id": "118",
@@ -1258,7 +1258,7 @@
             "path": "WIDE1",
             "original_packet": "N0CALL>APRS,CALL--1,WIDE1-1:data",
             "routed_packet": "N0CALL>APRS,CALL--1,DIGI*:data",
-            "options": "substitute_complete_hops",
+            "options": "substitute_complete_n_N_address",
             "routed": "true"
         },
         {
@@ -1268,7 +1268,7 @@
             "path": "WIDE1",
             "original_packet": "N0CALL>APRS,CALL--1,WIDE1-1:data",
             "routed_packet": "N0CALL>APRS,CALL--1,WIDE1-1:data",
-            "options": "substitute_complete_hops,strict",
+            "options": "substitute_complete_n_N_address,strict",
             "routed": "false"
         },
         {
@@ -1297,7 +1297,7 @@
             "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G*,WIDE2-2:data",
             "routed_packet": "N0CALL>APRS,A,B,C,D,E,F,G*,WIDE2-1:data",
             "routed": "true",
-            "options": "substitute_complete_hops"
+            "options": "substitute_complete_n_N_address"
         },
         {
             "id": "130",
@@ -1306,7 +1306,7 @@
             "path": "WIDE2",
             "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G*,WIDE2-1:data",
             "routed_packet": "N0CALL>APRS,A,B,C,D,E,F,G,DIGI*:data",
-            "options": "substitute_complete_hops",
+            "options": "substitute_complete_n_N_address",
             "routed": "true"
         },
         {
@@ -1335,7 +1335,7 @@
             "original_packet": "N0CALL>APRS,A,B,C,D,E,F,WIDE2-2:data",
             "routed_packet": "N0CALL>APRS,A,B,C,D,E,F,DIGI*,WIDE2-1:data",
             "routed": "true",
-            "options": "substitute_complete_hops"
+            "options": "substitute_complete_n_N_address"
         },
         {
             "id": "134",

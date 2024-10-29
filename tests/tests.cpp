@@ -504,7 +504,7 @@ TEST(router, try_route_packet_n_N_loop)
     // -------------------------------------------------------------
 
     digi.path = {"WIDE1", "WIDE2", "WIDE3"};
-    digi.options = routing_option::substitute_complete_hops;
+    digi.options = routing_option::substitute_complete_n_N_address;
 
     packet p = {"N0CALL", "APRS", {"WIDE1-2", "CALL", "WIDE2-2", "ROUTE", "WIDE3-2"}, "data"};
     result.routed_packet = p;
@@ -524,7 +524,7 @@ TEST(router, try_route_packet_n_N_loop)
     // -------------------------------------------------------------
 
     digi.path = {"WIDE1","WIDE2"};
-    digi.options = routing_option::substitute_complete_hops;
+    digi.options = routing_option::substitute_complete_n_N_address;
 
     p = {"N0CALL", "APRS", {"WIDE1-1", "WIDE2-7"}, "data"};
     result.routed_packet = p;
@@ -543,10 +543,10 @@ TEST(router, try_route_packet_n_N_loop)
 TEST(routing_option, enum_has_flag)
 {
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
-    routing_option op = routing_option::preempt_front | routing_option::substitute_complete_hops;
+    routing_option op = routing_option::preempt_front | routing_option::substitute_complete_n_N_address;
 
     EXPECT_TRUE(enum_has_flag(op, routing_option::preempt_front));
-    EXPECT_TRUE(enum_has_flag(op, routing_option::substitute_complete_hops));
+    EXPECT_TRUE(enum_has_flag(op, routing_option::substitute_complete_n_N_address));
     EXPECT_TRUE(enum_has_flag(op, routing_option::route_self) == false);
 #else
     EXPECT_TRUE(true);
@@ -1327,7 +1327,7 @@ TEST(router, try_route_packet_enable_diagnostics)
 
     digi.address = "DIGI";
     digi.path = { "WIDE2-2" };
-    digi.options = routing_option::trap_excessive_hops;
+    digi.options = routing_option::trap_limit_exceeding_n_N_address;
     p = { "N0CALL", "APRS", { "CALLA*", "CALLB*", "WIDE2-3" }, "data"};
     packet_string = to_string(p);
 
@@ -1532,7 +1532,7 @@ TEST(router, try_route_packet_enable_diagnostics)
 
     digi.address = "DIGI";
     digi.path = { "WIDE1" };
-    digi.options = routing_option::substitute_complete_hops;
+    digi.options = routing_option::substitute_complete_n_N_address;
     p = { "N0CALL", "APRS", { "", "WIDE1-1" }, "data"};
     packet_string = to_string(p);
 
