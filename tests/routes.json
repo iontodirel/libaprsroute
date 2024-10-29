@@ -106,12 +106,32 @@
             "address": "DIGI",
             "path": "CALLB",
             "original_packet": "N0CALL>APRS,CALLA,CALLB:data",
+            "routed_packet": "N0CALL>APRS,DIGI*,CALLA:data",
+            "routed": "true",
+            "options": "preempt_front,substitute_explicit_address"
+        },
+        {
+            "id": "10",
+            "comment": "Preempt tests: Explicitely route a packet through the router's path",
+            "address": "DIGI",
+            "path": "CALLB",
+            "original_packet": "N0CALL>APRS,CALLA,CALLB:data",
             "routed_packet": "N0CALL>APRS,DIGI,CALLB*:data",
             "routed": "true",
             "options": "preempt_truncate"
         },
         {
-            "id": "10",
+            "id": "11",
+            "comment": "Preempt tests: Explicitely route a packet through the router's path",
+            "address": "DIGI",
+            "path": "CALLB",
+            "original_packet": "N0CALL>APRS,CALLA,CALLB:data",
+            "routed_packet": "N0CALL>APRS,DIGI*:data",
+            "routed": "true",
+            "options": "preempt_truncate,substitute_explicit_address"
+        },
+        {
+            "id": "12",
             "comment": "Preempt tests: Explicitely route a packet through the router's path",
             "address": "DIGI",
             "path": "CALLB",
@@ -121,7 +141,7 @@
             "options": "preempt_front"
         },
         {
-            "id": "11",
+            "id": "13",
             "comment": "Preempt tests: Explicitely route a packet through the router's path",
             "address": "DIGI",
             "path": "CALLD",
@@ -131,7 +151,17 @@
             "options": "preempt_front"
         },
         {
-            "id": "12",
+            "id": "14",
+            "comment": "Preempt tests: Explicitely route a packet through the router's path",
+            "address": "DIGI",
+            "path": "CALLD",
+            "original_packet": "N0CALL>APRS,CALLA,CALLB*,CALLC,CALLD,CALLE,CALLF,CALLG:data",
+            "routed_packet": "N0CALL>APRS,CALLA,CALLB,DIGI*,CALLC,CALLE,CALLF,CALLG:data",
+            "routed": "true",
+            "options": "preempt_front,substitute_explicit_address"
+        },
+        {
+            "id": "15",
             "comment": "Preempt tests: Explicitely route a packet through the router's path",
             "address": "DIGI",
             "path": "CALLD",
@@ -141,7 +171,17 @@
             "options": "preempt_truncate"
         },
         {
-            "id": "13",
+            "id": "16",
+            "comment": "Preempt tests: Explicitely route a packet through the router's path",
+            "address": "DIGI",
+            "path": "CALLD",
+            "original_packet": "N0CALL>APRS,CALLA,CALLB*,CALLC,CALLD,CALLE,CALLF,CALLG:data",
+            "routed_packet": "N0CALL>APRS,CALLA,CALLB,DIGI*,CALLE,CALLF,CALLG:data",
+            "routed": "true",
+            "options": "preempt_truncate,substitute_explicit_address"
+        },
+        {
+            "id": "17",
             "comment": "Preempt tests: Explicitely route a packet through the router's path",
             "address": "DIGI",
             "path": "CALLC",
@@ -151,7 +191,7 @@
             "options": "preempt_truncate"
         },
         {
-            "id": "14",
+            "id": "18",
             "comment": "Preempt tests: Explicitely route a packet through the router's path",
             "address": "DIGI",
             "path": "CALLC",
@@ -161,7 +201,7 @@
             "options": "preempt_truncate"
         },
         {
-            "id": "15",
+            "id": "19",
             "comment": "Preempt tests: Explicitely route a packet through the router's path",
             "address": "DIGI",
             "path": "CALLC",
@@ -171,7 +211,7 @@
             "options": "preempt_front"
         },
         {
-            "id": "16",
+            "id": "20",
             "comment": "Preempt tests: Explicitely route a packet through the router's path",
             "address": "DIGI",
             "path": "CALLC",
@@ -181,7 +221,7 @@
             "options": "preempt_drop"
         },
         {
-            "id": "17",
+            "id": "21",
             "comment": "Preempt tests: Explicitely route a packet through the router's path",
             "address": "DIGI",
             "path": "CALLG",
@@ -191,7 +231,17 @@
             "options": "preempt_drop"
         },
         {
-            "id": "18",
+            "id": "22",
+            "comment": "Preempt tests: Explicitely route a packet through the router's path",
+            "address": "DIGI",
+            "path": "CALLG",
+            "original_packet": "N0CALL>APRS,CALLA,CALLB*,CALLC,CALLD,CALLE,CALLF,CALLG:data",
+            "routed_packet": "N0CALL>APRS,DIGI*:data",
+            "routed": "true",
+            "options": "preempt_drop,substitute_explicit_address"
+        },
+        {
+            "id": "23",
             "comment": "Preempt tests: Explicitely route a packet through the router's path",
             "address": "DIGI",
             "path": "CALLA",
@@ -201,7 +251,7 @@
             "options": "preempt_drop"
         },
         {
-            "id": "19",
+            "id": "24",
             "comment": "Preempt tests: Explicitely route a packet through the router's path",
             "address": "DIGI",
             "path": "CALLD",
@@ -211,7 +261,7 @@
             "options": "preempt_drop"
         },
         {
-            "id": "20",
+            "id": "25",
             "comment": "Explicit: Routing in a 8 address path",
             "address": "H",
             "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G,H:data",
@@ -220,7 +270,7 @@
             "routed": "true"
         },
         {
-            "id": "21",
+            "id": "26",
             "comment": "Explicit: Routing in a 8 address path",
             "address": "H",
             "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G,H:data",
@@ -229,7 +279,7 @@
             "routed": "true"
         },
         {
-            "id": "22",
+            "id": "27",
             "comment": "Explicit: Routing in a 8 address path",
             "address": "H",
             "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G*,H:data",
@@ -238,7 +288,7 @@
             "routed": "true"
         },
         {
-            "id": "23",
+            "id": "28",
             "comment": "Explicit: Routing in a 8 address path",
             "address": "H",
             "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G,H,I:data",
@@ -247,7 +297,7 @@
             "routed": "false"
         },
         {
-            "id": "24",
+            "id": "29",
             "comment": "Explicit: Routing in a 8 address path",
             "address": "H",
             "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G,H*:data",
@@ -256,7 +306,7 @@
             "routed": "false"
         },
         {
-            "id": "25",
+            "id": "30",
             "comment": "Explicit: Routing in a 8 address path",
             "address": "DIGI",
             "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G*,DIGI:data",
@@ -265,7 +315,7 @@
             "routed": "true"
         },
         {
-            "id": "26",
+            "id": "31",
             "comment": "Explicit: Routing in a 8 address path",
             "address": "DIGI",
             "path": "H",
@@ -275,7 +325,7 @@
             "routed": "true"
         },
         {
-            "id": "27",
+            "id": "32",
             "comment": "Explicit: Routing in a 8 address path",
             "address": "DIGI",
             "path": "A",
@@ -285,7 +335,7 @@
             "routed": "true"
         },
         {
-            "id": "28",
+            "id": "33",
             "comment": "Explicit: Routing in a 8 address path",
             "address": "DIGI",
             "path": "A",
@@ -295,7 +345,7 @@
             "routed": "true"
         },
         {
-            "id": "29",
+            "id": "34",
             "comment": "Explicit: Routing in a 8 address path",
             "address": "DIGI",
             "path": "A",
@@ -305,7 +355,7 @@
             "routed": "true"
         },
         {
-            "id": "30",
+            "id": "35",
             "comment": "Explicit: Routing in a 8 address path",
             "address": "DIGI",
             "path": "A",
@@ -315,7 +365,7 @@
             "routed": "true"
         },
         {
-            "id": "31",
+            "id": "36",
             "comment": "Explicit: Routing in a 8 address path",
             "address": "DIGI",
             "path": "A",
@@ -324,7 +374,7 @@
             "routed": "true"
         },
         {
-            "id": "32",
+            "id": "37",
             "comment": "Explicit: Routing with substituting explicit addresses",
             "address": "DIGI",
             "path": "A",
@@ -334,7 +384,7 @@
             "options": "substitute_explicit_address"
         },
         {
-            "id": "33",
+            "id": "38",
             "comment": "Explicit: Routing with substituting explicit addresses",
             "address": "DIGI",
             "path": "C",
@@ -344,7 +394,7 @@
             "options": "substitute_explicit_address"
         },
         {
-            "id": "34",
+            "id": "39",
             "comment": "Explicit: Routing with substituting explicit addresses",
             "address": "DIGI",
             "path": "C",
@@ -354,7 +404,7 @@
             "options": "substitute_explicit_address,preempt_front"
         },
         {
-            "id": "35",
+            "id": "40",
             "comment": "Explicit: Routing with substituting explicit addresses",
             "address": "DIGI",
             "path": "C",
@@ -364,7 +414,7 @@
             "options": "substitute_explicit_address,preempt_drop"
         },
         {
-            "id": "36",
+            "id": "41",
             "comment": "Explicit: Routing with substituting explicit addresses",
             "address": "DIGI",
             "path": "C",
@@ -374,7 +424,7 @@
             "options": "substitute_explicit_address,preempt_drop"
         },
         {
-            "id": "37",
+            "id": "42",
             "comment": "Explicit: Routing with substituting explicit addresses",
             "address": "DIGI",
             "path": "C",
@@ -384,7 +434,7 @@
             "options": "substitute_explicit_address,preempt_truncate"
         },
         {
-            "id": "38",
+            "id": "43",
             "comment": "Explicit: Routing with substituting explicit addresses",
             "address": "DIGI",
             "path": "C",
@@ -394,7 +444,7 @@
             "options": "substitute_explicit_address,preempt_truncate"
         },
         {
-            "id": "39",
+            "id": "44",
             "comment": "Explicit: Routing with substituting explicit addresses",
             "address": "DIGI",
             "path": "A",
@@ -417,7 +467,7 @@
             ]
         },
         {
-            "id": "40",
+            "id": "45",
             "comment": "Non-routing tests: Don't route a packet that was sent to us",
             "address": "DIGI",
             "path": "WIDE1",
@@ -426,7 +476,7 @@
             "routed": "false"
         },
         {
-            "id": "41",
+            "id": "46",
             "comment": "Non-routing tests: Don't route a packet that was sent by us",
             "address": "DIGI",
             "path": "WIDE1",
@@ -435,7 +485,7 @@
             "routed": "false"
         },
         {
-            "id": "42",
+            "id": "47",
             "comment": "Non-routing tests: Don't route a packet that was sent to us (routing options set to allow self routing')",
             "address": "DIGI",
             "path": "WIDE1",
@@ -445,7 +495,7 @@
             "options": "route_self"
         },
         {
-            "id": "43",
+            "id": "48",
             "comment": "Non-routing tests: Don't route a packet that we have already routed",
             "address": "DIGI",
             "path": "WIDE1,WIDE2",
@@ -454,7 +504,7 @@
             "routed": "false"
         },
         {
-            "id": "44",
+            "id": "49",
             "comment": "Non-routing tests: Don't route a packet that we have already routed based on path",
             "address": "ROUTE",
             "path": "DIGI",
@@ -463,7 +513,7 @@
             "routed": "false"
         },
         {
-            "id": "45",
+            "id": "50",
             "comment": "Non-routing tests: Don't route a packet that has finished routing",
             "address": "DIGI",
             "path": "WIDE1,WIDE2",
@@ -472,7 +522,7 @@
             "routed": "false"
         },
         {
-            "id": "46",
+            "id": "51",
             "comment": "Non-routing tests: Don't route a packet that has finished routing, even if it has unfinished routes",
             "address": "DIGI",
             "path": "WIDE1,WIDE2,WIDE3",
@@ -481,7 +531,7 @@
             "routed": "false"
         },
         {
-            "id": "47",
+            "id": "52",
             "comment": "Non-routing tests: Don't route a packet that has finished routing, even if it has an invalid WIDEn-N address",
             "address": "DIGI",
             "path": "WIDE1,WIDE2,WIDE3",
@@ -490,7 +540,7 @@
             "routed": "false"
         },
         {
-            "id": "48",
+            "id": "53",
             "comment": "Non-routing tests: Don't route a packet that has finished routing, with multiple digipeated addresses",
             "address": "DIGI",
             "path": "WIDE1,WIDE2,WIDE3",
@@ -499,7 +549,7 @@
             "routed": "false"
         },
         {
-            "id": "49",
+            "id": "54",
             "comment": "Non-routing tests: Don't route a a packet that is directly addressed to us, but with addresses in front",
             "address": "DIGI",
             "path": "WIDE2",
@@ -508,7 +558,7 @@
             "routed": "false"
         },
         {
-            "id": "50",
+            "id": "55",
             "comment": "Non-routing tests: Don't route a a packet that is directly addressed to us as we have to wait for other addresses first",
             "address": "DIGI",
             "original_packet": "N0CALL>APRS,CALL,DIGI:data",
@@ -516,7 +566,7 @@
             "routed": "false"
         },
         {
-            "id": "51",
+            "id": "56",
             "comment": "Non-routing tests: Don't route a packet with an empty path",
             "address": "DIGI",
             "original_packet": "N0CALL>APRS:data",
@@ -524,7 +574,7 @@
             "routed": "false"
         },
         {
-            "id": "52",
+            "id": "57",
             "comment": "Non-routing tests: Don't route a packet with an invalid WIDE2-0 path",
             "address": "DIGI",
             "path": "WIDE2",
@@ -533,7 +583,7 @@
             "routed": "false"
         },
         {
-            "id": "53",
+            "id": "58",
             "comment": "Non-routing tests: Don't route a packet with an invalid WIDE8-2 path",
             "address": "DIGI",
             "path": "WIDE2,WIDE8",
@@ -542,7 +592,7 @@
             "routed": "false"
         },
         {
-            "id": "54",
+            "id": "59",
             "comment": "Non-routing tests: Don't route a packet with an exhausted WIDE2 path",
             "address": "DIGI",
             "path": "WIDE1,WIDE2",
@@ -551,7 +601,7 @@
             "routed": "false"
         },
         {
-            "id": "55",
+            "id": "60",
             "comment": "Non-routing tests: Reject excessive n-N hops",
             "address": "DIGI",
             "path": "WIDE2-2",
@@ -574,7 +624,7 @@
             ]
         },
         {
-            "id": "56",
+            "id": "61",
             "comment": "Generic path: Explicitely route a packet through the router's generic path",
             "address": "DIGI",
             "path": "CALL",
@@ -583,7 +633,7 @@
             "routed": "true"
         },
         {
-            "id": "57",
+            "id": "62",
             "comment": "Generic path: Explicitely route a packet through the router's generic path, with some addresses already routed",
             "address": "DIGI",
             "path": "CALLB",
@@ -605,7 +655,7 @@
             ]
         },
         {
-            "id": "58",
+            "id": "63",
             "comment": "Explicit: Routing a packet through multiple routers - Step 1/8",
             "address": "DIGIA",
             "original_packet": "N0CALL>APRS,DIGIA,DIGIB,DIGIC,DIGID,DIGIE,DIGIF,DIGIG,DIGIH:data",
@@ -613,7 +663,7 @@
             "routed": "true"
         },
         {
-            "id": "59",
+            "id": "64",
             "comment": "Explicit: Routing a packet through multiple routers - Step 2/8",
             "address": "DIGIB",
             "original_packet": "N0CALL>APRS,DIGIA*,DIGIB,DIGIC,DIGID,DIGIE,DIGIF,DIGIG,DIGIH:data",
@@ -621,7 +671,7 @@
             "routed": "true"
         },
         {
-            "id": "60",
+            "id": "65",
             "comment": "Explicit: Routing a packet through multiple routers - Step 3/8",
             "address": "DIGIC",
             "original_packet": "N0CALL>APRS,DIGIA,DIGIB*,DIGIC,DIGID,DIGIE,DIGIF,DIGIG,DIGIH:data",
@@ -629,7 +679,7 @@
             "routed": "true"
         },
         {
-            "id": "61",
+            "id": "66",
             "comment": "Explicit: Routing a packet through multiple routers - Step 4/8",
             "address": "DIGID",
             "original_packet": "N0CALL>APRS,DIGIA,DIGIB,DIGIC*,DIGID,DIGIE,DIGIF,DIGIG,DIGIH:data",
@@ -637,7 +687,7 @@
             "routed": "true"
         },
         {
-            "id": "62",
+            "id": "67",
             "comment": "Explicit: Routing a packet through multiple routers - Step 5/8",
             "address": "DIGIE",
             "original_packet": "N0CALL>APRS,DIGIA,DIGIB,DIGIC,DIGID*,DIGIE,DIGIF,DIGIG,DIGIH:data",
@@ -645,7 +695,7 @@
             "routed": "true"
         },
         {
-            "id": "63",
+            "id": "68",
             "comment": "Explicit: Routing a packet through multiple routers - Step 6/8",
             "address": "DIGIF",
             "original_packet": "N0CALL>APRS,DIGIA,DIGIB,DIGIC,DIGID,DIGIE*,DIGIF,DIGIG,DIGIH:data",
@@ -653,7 +703,7 @@
             "routed": "true"
         },
         {
-            "id": "64",
+            "id": "69",
             "comment": "Explicit: Routing a packet through multiple routers - Step 7/8",
             "address": "DIGIG",
             "path": "",
@@ -662,7 +712,7 @@
             "routed": "true"
         },
         {
-            "id": "65",
+            "id": "70",
             "comment": "Explicit: Routing a packet through multiple routers - Step 8/8",
             "address": "DIGIH",
             "path": "",
@@ -671,7 +721,7 @@
             "routed": "true"
         },
         {
-            "id": "66",
+            "id": "71",
             "comment": "Explicit: Explicitely route a packet through the router's callsigns",
             "address": "DIGI",
             "original_packet": "N0CALL>APRS,DIGI,ROUTE:data",
@@ -679,7 +729,7 @@
             "routed": "true"
         },
         {
-            "id": "67",
+            "id": "72",
             "comment": "Explicit: Explicitely route a packet through the router's callsigns",
             "address": "DIGI",
             "original_packet": "N0CALL>APRS,CALL*,DIGI:data",
@@ -687,7 +737,7 @@
             "routed": "true"
         },
         {
-            "id": "68",
+            "id": "73",
             "comment": "Explicit: Explicitely route a packet that has to wait on the first digipeter to route first",
             "address": "DIGI",
             "original_packet": "N0CALL>APRS,CALL,DIGI:data",
@@ -695,7 +745,7 @@
             "routed": "false"
         },
         {
-            "id": "69",
+            "id": "74",
             "comment": "Explicit: Routing a packet that has an alias in the path but also the digipeater callsign",
             "address": "DIGI",
             "path": "WIDE1",
@@ -704,7 +754,7 @@
             "routed": "true"
         },
         {
-            "id": "70",
+            "id": "75",
             "comment": "Explicit: Attempting to route a packet that we've sent with explicit self routing set",
             "address": "N0CALL",
             "path": "WIDE2",
@@ -714,7 +764,7 @@
             "options": "route_self"
         },
         {
-            "id": "71",
+            "id": "76",
             "comment": "Explicit: Attempting to route an explicit packet",
             "address": "DIGI",
             "original_packet": "N0CALL>APRS,RELAY*,DIGI:data",
@@ -735,7 +785,7 @@
             ]
         },
         {
-            "id": "72",
+            "id": "77",
             "comment": "n-N routing: Path ordering.",
             "address": "DIGI",
             "path": "WIDE2,WIDE1",
@@ -744,7 +794,7 @@
             "routed": "true"
         },
         {
-            "id": "73",
+            "id": "78",
             "comment": "n-N routing: Path ordering.",
             "address": "DIGI",
             "path": "WIDE1,WIDE2",
@@ -753,7 +803,7 @@
             "routed": "true"
         },
         {
-            "id": "74",
+            "id": "79",
             "comment": "n-N routing: Test how an invalid path like 'RELAY-1' is handled in n-N routing.",
             "address": "DIGI",
             "path": "RELAY,WIDE1",
@@ -763,7 +813,7 @@
             "routed": "true"
         },
         {
-            "id": "75",
+            "id": "80",
             "comment": "n-N routing: Test how an invalid path like 'RELAY-1' is handled in n-N routing.",
             "address": "DIGI",
             "path": "RELAY,WIDE1",
@@ -772,7 +822,7 @@
             "routed": "true"
         },
         {
-            "id": "76",
+            "id": "81",
             "comment": "n-N routing: Test how an invalid path like 'RELAY-1' is handled in n-N routing.",
             "address": "DIGI",
             "path": "RELAY,WIDE1",
@@ -782,7 +832,7 @@
             "options": "substitute_complete_hops"
         },
         {
-            "id": "77",
+            "id": "82",
             "comment": "n-N routing: Test generic path priority routing",
             "address": "DIGI",
             "path": "RELAY,WIDE1",
@@ -791,7 +841,7 @@
             "routed": "true"
         },
         {
-            "id": "78",
+            "id": "83",
             "comment": "n-N routing: Substitute n-N address at the edge of the max addresses",
             "address": "DIGI",
             "path": "WIDE2",
@@ -800,7 +850,7 @@
             "routed": "true"
         },
         {
-            "id": "79",
+            "id": "84",
             "comment": "n-N routing: Substitute n-N address at the edge of the max addresses, with hop substitution enabled",
             "address": "DIGI",
             "path": "WIDE2",
@@ -810,7 +860,7 @@
             "options": "substitute_complete_hops"
         },
         {
-            "id": "80",
+            "id": "85",
             "comment": "n-N routing: Reject excessive hops",
             "address": "DIGI",
             "path": "WIDE2-2",
@@ -820,7 +870,7 @@
             "options": "reject_excessive_hops"
         },
         {
-            "id": "81",
+            "id": "86",
             "comment": "n-N routing: Reject excessive hops",
             "address": "DIGI",
             "path": "WIDE2-3",
@@ -830,7 +880,7 @@
             "options": "reject_excessive_hops"
         },
         {
-            "id": "82",
+            "id": "87",
             "comment": "n-N routing: Reject excessive hops",
             "address": "DIGI",
             "path": "WIDE2-1",
@@ -839,7 +889,7 @@
             "routed": "true"
         },
         {
-            "id": "83",
+            "id": "88",
             "comment": "n-N routing: Trap excessive hops",
             "address": "DIGI",
             "path": "WIDE2-2",
@@ -849,7 +899,7 @@
             "options": "trap_excessive_hops"
         },
         {
-            "id": "84",
+            "id": "89",
             "comment": "n-N routing: Trap excessive hops",
             "address": "DIGI",
             "path": "WIDE2-2",
@@ -859,7 +909,7 @@
             "options": "trap_excessive_hops"
         },
         {
-            "id": "85",
+            "id": "90",
             "comment": "n-N routing: Trap excessive hops",
             "address": "DIGI",
             "path": "WIDE2-2",
@@ -869,7 +919,7 @@
             "options": "trap_excessive_hops"
         },
         {
-            "id": "86",
+            "id": "91",
             "comment": "n-N routing: Allow some routing when some routes are rejected due to excessive hops",
             "address": "DIGI",
             "path": "WIDE2-2,WIDE1",
@@ -879,7 +929,7 @@
             "options": "reject_excessive_hops"
         },
         {
-            "id": "87",
+            "id": "92",
             "comment": "n-N routing: Simple decrease N-hop count through the router",
             "address": "DIGI",
             "path": "WIDE1",
@@ -888,7 +938,7 @@
             "routed": "true"
         },
         {
-            "id": "88",
+            "id": "93",
             "comment": "n-N routing: Route a digipeated packet through a 2nd digipeater",
             "address": "ROUTE",
             "path": "WIDE1",
@@ -897,7 +947,7 @@
             "routed": "true"
         },
         {
-            "id": "89",
+            "id": "94",
             "comment": "n-N routing: Route a digipeated packet through a 3rd aand final digipeater",
             "address": "ROUTER",
             "path": "WIDE1",
@@ -907,7 +957,7 @@
             "options": "substitute_complete_hops"
         },
         {
-            "id": "90",
+            "id": "95",
             "comment": "n-N routing: Trying to route a packet that has exaused N-hops",
             "address": "ROUTER",
             "path": "WIDE2",
@@ -917,7 +967,7 @@
             "options": "substitute_complete_hops"
         },
         {
-            "id": "91",
+            "id": "96",
             "comment": "n-N routing: Routing a packet with qAR construct",
             "address": "ROUTER",
             "path": "WIDE2",
@@ -927,7 +977,7 @@
             "options": "substitute_complete_hops"
         },
         {
-            "id": "92",
+            "id": "97",
             "comment": "n-N routing: Routing the same digipeated packet with a different digipeater",
             "address": "DIGI",
             "path": "WIDE2",
@@ -937,7 +987,7 @@
             "options": "substitute_complete_hops"
         },
         {
-            "id": "93",
+            "id": "98",
             "comment": "n-N routing: Routing the same digipeated packet another time but with a different digipeater",
             "address": "REPEATER",
             "path": "WIDE2",
@@ -946,7 +996,7 @@
             "routed": "false"
         },
         {
-            "id": "94",
+            "id": "99",
             "comment": "n-N routing: Routing a packet that has been digipeated before with a different WIDE path. Using WIDE1-1 and WIDE2-1 paths",
             "address": "DIGI",
             "path": "WIDE2,WIDE1",
@@ -956,7 +1006,7 @@
             "options": "substitute_complete_hops"
         },
         {
-            "id": "95",
+            "id": "100",
             "comment": "n-N routing: Routing a packet that has been digipeated before with a different WIDE path. Using WIDE1-1 and WIDE2-1 paths",
             "address": "DIGI",
             "path": "WIDE1,WIDE2",
@@ -966,7 +1016,7 @@
             "options": "substitute_complete_hops"
         },
         {
-            "id": "96",
+            "id": "101",
             "comment": "n-N routing: Routing a packet that has been digipeated before with a different WIDE path. Using WIDE1-1 and WIDE2-1 paths",
             "address": "DIGI",
             "path": "WIDE1,WIDE2",
@@ -976,7 +1026,7 @@
             "options": "substitute_complete_hops"
         },
         {
-            "id": "97",
+            "id": "102",
             "comment": "n-N routing: Try to route a packet with no supported WIDE paths",
             "address": "DIGI",
             "path": "WIDE1,WIDE2",
@@ -985,7 +1035,7 @@
             "routed": "false"
         },
         {
-            "id": "98",
+            "id": "103",
             "comment": "n-N routing: Try to route a packet with no supported WIDE paths",
             "address": "DIGI",
             "path": "WIDE1",
@@ -994,7 +1044,7 @@
             "routed": "false"
         },
         {
-            "id": "99",
+            "id": "104",
             "comment": "n-N routing: Trying to route a packet that has a matching path, but also the digipeater's address (addresses upfront)",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1003,7 +1053,7 @@
             "routed": "false"
         },
         {
-            "id": "100",
+            "id": "105",
             "comment": "n-N routing: Trying to route a packet that has a matching path, but also the digipeater's address (addresses upfront)",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1012,7 +1062,7 @@
             "routed": "false"
         },
         {
-            "id": "101",
+            "id": "106",
             "comment": "n-N routing: Trying to route a packet that has a matching router path, but also matches the router's address",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1021,7 +1071,7 @@
             "routed": "true"
         },
         {
-            "id": "102",
+            "id": "107",
             "comment": "n-N routing: Long path routing with 7 addresses",
             "address": "DIGI",
             "path": "WIDE3",
@@ -1030,7 +1080,7 @@
             "routed": "true"
         },
         {
-            "id": "103",
+            "id": "108",
             "comment": "n-N routing: Long path routing with 8 addresses",
             "address": "DIGI",
             "path": "WIDE3",
@@ -1039,7 +1089,7 @@
             "routed": "true"
         },
         {
-            "id": "104",
+            "id": "109",
             "comment": "n-N routing: Long path routing with 8 addresses",
             "address": "DIGI",
             "path": "WIDE3",
@@ -1048,7 +1098,7 @@
             "routed": "true"
         },
         {
-            "id": "105",
+            "id": "110",
             "comment": "n-N routing: Long path routing with 8 addresses",
             "address": "DIGI",
             "path": "WIDE3",
@@ -1058,7 +1108,7 @@
             "options": "substitute_complete_hops"
         },
         {
-            "id": "106",
+            "id": "111",
             "comment": "n-N routing: Long path routing with 8 addresses",
             "address": "DIGI",
             "path": "WIDE3",
@@ -1068,7 +1118,7 @@
             "options": "substitute_complete_hops"
         },
         {
-            "id": "107",
+            "id": "112",
             "comment": "n-N routing: No matches",
             "address": "CALLA",
             "path": "WIDE1",
@@ -1077,13 +1127,23 @@
             "routed": "false"
         },
         {
-            "id": "108",
+            "id": "113",
             "comment": "n-N routing: Attempting to route a packet that we've sent",
             "address": "DIGI",
             "path": "WIDE2",
             "original_packet": "DIGI>APRS,WIDE2-2,DIGI:data",
             "routed_packet": "DIGI>APRS,WIDE2-2,DIGI:data",
             "routed": "false"
+        },
+        {
+            "id": "114",
+            "comment": "n-N routing: Test packet routing prioritization",
+            "address": "DIGI",
+            "path": "WIDE2,CALL",
+            "original_packet": "N0CALL>APRS,WIDE2-2,CALL:data",
+            "routed_packet": "N0CALL>APRS,DIGI,CALL*,WIDE2-2:data",
+            "options": "preempt_front",
+            "routed": "true"
         },
         {
             "comments": [
@@ -1099,7 +1159,7 @@
             ]
         },
         {
-            "id": "109",
+            "id": "115",
             "comment": "Edge cases: Routing with matching SSID",
             "address": "DIGI-7",
             "path": "DIGI",
@@ -1108,7 +1168,7 @@
             "routed": "true"
         },
         {
-            "id": "110",
+            "id": "116",
             "comment": "Edge cases: Empty callsign in path",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1118,7 +1178,7 @@
             "options": "substitute_complete_hops"
         },
         {
-            "id": "111",
+            "id": "117",
             "comment": "Edge cases: Packet with no data",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1128,7 +1188,7 @@
             "options": "substitute_complete_hops"
         },
         {
-            "id": "112",
+            "id": "118",
             "comment": "Edge cases: Invalid packet",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1137,7 +1197,7 @@
             "routed": "false"
         },
         {
-            "id": "113",
+            "id": "119",
             "comment": "Edge cases: Invalid packet",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1146,7 +1206,7 @@
             "routed": "false"
         },
         {
-            "id": "114",
+            "id": "120",
             "comment": "Edge cases: Invalid packet",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1155,7 +1215,7 @@
             "routed": "false"
         },
         {
-            "id": "115",
+            "id": "121",
             "comment": "Edge cases: Invalid packet",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1164,7 +1224,7 @@
             "routed": "false"
         },
         {
-            "id": "116",
+            "id": "122",
             "comment": "Edge cases: Invalid packet",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1173,7 +1233,7 @@
             "routed": "false"
         },
         {
-            "id": "117",
+            "id": "123",
             "comment": "Edge cases: Invalid packet",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1182,7 +1242,7 @@
             "routed": "false"
         },
         {
-            "id": "118",
+            "id": "124",
             "comment": "Edge case: Invalid path length",
             "address": "A",
             "path": "WIDE1",
@@ -1192,7 +1252,7 @@
             "options": "strict"
         },
         {
-            "id": "119",
+            "id": "125",
             "comment": "Edge case: Negative SSID (invalid)",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1202,7 +1262,7 @@
             "routed": "true"
         },
         {
-            "id": "120",
+            "id": "126",
             "comment": "Edge case: Negative SSID (invalid)",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1212,7 +1272,7 @@
             "routed": "false"
         },
         {
-            "id": "121",
+            "id": "127",
             "comment": "Edge case: Inplace n-N address update in a max path, no digipeated marker",
             "address": "DIGI",
             "path": "WIDE2",
@@ -1221,7 +1281,7 @@
             "routed": "true"
         },
         {
-            "id": "122",
+            "id": "128",
             "comment": "Edge case: Inplace n-N address update in a max path, previous address digipeated",
             "address": "DIGI",
             "path": "WIDE2",
@@ -1230,7 +1290,7 @@
             "routed": "true"
         },
         {
-            "id": "123",
+            "id": "129",
             "comment": "Edge case: Inplace n-N address update in a max path, previous address digipeated, with hop substitution enabled",
             "address": "DIGI",
             "path": "WIDE2",
@@ -1240,7 +1300,7 @@
             "options": "substitute_complete_hops"
         },
         {
-            "id": "124",
+            "id": "130",
             "comment": "Edge case: Inplace n-N address update in a max path, exhaused address replaced",
             "address": "DIGI",
             "path": "WIDE2",
@@ -1250,7 +1310,7 @@
             "routed": "true"
         },
         {
-            "id": "125",
+            "id": "131",
             "comment": "Edge case: Inplace n-N address update in a max path, exhaused address replaced",
             "address": "DIGI",
             "path": "WIDE2",
@@ -1259,7 +1319,7 @@
             "routed": "true"
         },
         {
-            "id": "126",
+            "id": "132",
             "comment": "Edge case: Subsitute n-N address at the edge of the max addresses",
             "address": "DIGI",
             "path": "WIDE2",
@@ -1268,7 +1328,7 @@
             "routed": "true"
         },
         {
-            "id": "127",
+            "id": "133",
             "comment": "Edge case: Substitute n-N address at the edge of the max addresses, with hop substitution enabled",
             "address": "DIGI",
             "path": "WIDE2",
@@ -1278,7 +1338,7 @@
             "options": "substitute_complete_hops"
         },
         {
-            "id": "128",
+            "id": "134",
             "comment": "Edge cases: Invalid path",
             "address": "DIGI",
             "path": "WIDE-",
@@ -1286,7 +1346,7 @@
             "routed": "false"
         },
         {
-            "id": "129",
+            "id": "135",
             "comment": "Edge cases: Invalid path",
             "address": "DIGI",
             "path": "WIDE-2",
@@ -1294,7 +1354,7 @@
             "routed": "false"
         },
         {
-            "id": "130",
+            "id": "136",
             "comment": "Edge cases: Invalid path",
             "address": "DIGI",
             "path": "WIDE2-",
@@ -1302,7 +1362,7 @@
             "routed": "false"
         },
         {
-            "id": "131",
+            "id": "137",
             "comment": "Edge cases: Invalid path",
             "address": "DIGI",
             "path": "WIDE0-2",
@@ -1310,7 +1370,7 @@
             "routed": "false"
         },
         {
-            "id": "132",
+            "id": "138",
             "comment": "Edge cases: Invalid path",
             "address": "DIGI",
             "path": "WIDE",
@@ -1318,7 +1378,7 @@
             "routed": "false"
         },
         {
-            "id": "133",
+            "id": "139",
             "comment": "Edge cases: Invalid path",
             "address": "DIGI",
             "path": "WIDE2-0",
