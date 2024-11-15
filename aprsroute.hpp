@@ -52,8 +52,12 @@
 #include <cassert>
 #include <optional>
 
+
+#ifndef APRS_ROUTER_NAMESPACE
+#define APRS_ROUTER_NAMESPACE aprs::router
+#endif
 #ifndef APRS_ROUTER_NAMESPACE_BEGIN
-#define APRS_ROUTER_NAMESPACE_BEGIN namespace aprs::router {
+#define APRS_ROUTER_NAMESPACE_BEGIN namespace APRS_ROUTER_NAMESPACE {
 #endif
 #ifndef APRS_ROUTER_NAMESPACE_END
 #define APRS_ROUTER_NAMESPACE_END }
@@ -67,14 +71,26 @@
 #ifndef APRS_ROUTER_DETAIL_NAMESPACE_BEGIN
 #define APRS_ROUTER_DETAIL_NAMESPACE_BEGIN namespace APRS_ROUTER_APRS_DETAIL_NAMESPACE {
 #endif
-#ifndef APRS_ROUTER_APRS_DETAIL_NS_REF
-#define APRS_ROUTER_APRS_DETAIL_NS_REF APRS_ROUTER_APRS_DETAIL_NAMESPACE :: 
-#endif
 #ifndef APRS_ROUTER_DETAIL_NAMESPACE_END
 #define APRS_ROUTER_DETAIL_NAMESPACE_END }
 #endif
 #ifdef APRS_ROUTER_PUBLIC_FORWARD_DECLARATIONS_ONLY
 // Intentionally left empty
+#endif
+#ifndef APRS_ROUTER_ENABLE_PACKET_SUPPORT
+#define APRS_ROUTER_ENABLE_PACKET_SUPPORT true
+#endif
+#ifndef APRS_ROUTER_PACKET_NAMESPACE
+#define APRS_ROUTER_PACKET_NAMESPACE APRS_ROUTER_NAMESPACE
+#endif
+#ifndef APRS_ROUTER_PACKET_NAMESPACE_BEGIN
+#define APRS_ROUTER_PACKET_NAMESPACE_BEGIN namespace APRS_ROUTER_PACKET_NAMESPACE {
+#endif
+#ifndef APRS_ROUTER_PACKET_NAMESPACE_END
+#define APRS_ROUTER_PACKET_NAMESPACE_END }
+#endif
+#ifndef APRS_ROUTER_PACKET_NAMESPACE_REFERENCE
+#define APRS_ROUTER_PACKET_NAMESPACE_REFERENCE APRS_ROUTER_PACKET_NAMESPACE ::
 #endif
 
 // **************************************************************** //
@@ -85,7 +101,9 @@
 //                                                                  //
 // **************************************************************** //
 
-APRS_ROUTER_NAMESPACE_BEGIN
+APRS_ROUTER_PACKET_NAMESPACE_BEGIN
+
+#if APRS_ROUTER_ENABLE_PACKET_SUPPORT
 
 struct packet
 {
@@ -102,6 +120,12 @@ struct packet
     std::vector<std::string> path;
     std::string data;
 };
+
+#endif
+
+APRS_ROUTER_PACKET_NAMESPACE_END
+
+APRS_ROUTER_NAMESPACE_BEGIN
 
 // Routing options:
 //
@@ -135,6 +159,7 @@ struct packet
 //
 // Enables preemtive routing for explicitly routed packets.
 // With this option, our address is moved behind the last used address, and all other addresses are erased.
+// This is the same as Direwolf's "TRACE" routing option.
 //
 // This packet: N0CALL>APRS,CALLA,CALLB*,CALLC,DIGI,CALLD,CALLE,CALLF:data
 //                                             ~~~~
@@ -321,8 +346,8 @@ struct routing_result
 {
     bool routed = false;
     bool success = false;
-    packet original_packet;
-    packet routed_packet;
+    APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet original_packet;
+    APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet routed_packet;
     routing_state state;
     std::vector<routing_diagnostic> actions;
 };
@@ -337,19 +362,28 @@ APRS_ROUTER_NAMESPACE_END
 //                                                                  //
 // **************************************************************** //
 
+APRS_ROUTER_PACKET_NAMESPACE_BEGIN
+
+#if APRS_ROUTER_ENABLE_PACKET_SUPPORT
+
+APRS_ROUTER_INLINE bool operator==(const packet& lhs, const packet& rhs);
+APRS_ROUTER_INLINE bool operator!=(const packet& lhs, const packet& rhs);
+APRS_ROUTER_INLINE size_t hash(const packet& p);
+APRS_ROUTER_INLINE std::string to_string(const packet& p);
+APRS_ROUTER_INLINE bool try_decode_packet(std::string_view packet_string, packet& result);
+
+#endif
+
+APRS_ROUTER_PACKET_NAMESPACE_END
+
 APRS_ROUTER_NAMESPACE_BEGIN
 
 APRS_ROUTER_INLINE routing_option operator|(routing_option lhs, routing_option rhs);
 APRS_ROUTER_INLINE bool try_parse_routing_option(std::string_view str, routing_option& result);
 APRS_ROUTER_INLINE bool enum_has_flag(routing_option value, routing_option flag);
-APRS_ROUTER_INLINE size_t hash(const packet& p);
-APRS_ROUTER_INLINE std::string to_string(const packet& p);
 APRS_ROUTER_INLINE std::string to_string(const routing_result& result);
 APRS_ROUTER_INLINE routing_diagnostic_display_lines format(const routing_result& result);
-APRS_ROUTER_INLINE bool operator==(const packet& lhs, const packet& rhs);
-APRS_ROUTER_INLINE bool operator!=(const packet& lhs, const packet& rhs);
-APRS_ROUTER_INLINE bool try_decode_packet(std::string_view packet_string, packet& result);
-APRS_ROUTER_INLINE bool try_route_packet(const struct packet& packet, const router_settings& settings, routing_result& result);
+APRS_ROUTER_INLINE bool try_route_packet(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, const router_settings& settings, routing_result& result);
 
 APRS_ROUTER_NAMESPACE_END
 
@@ -415,7 +449,7 @@ struct address
 
 struct route_state
 {
-    struct packet packet;
+    struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet packet;
     std::vector<address> packet_addresses;
     router_settings settings;
     std::optional<size_t> maybe_last_used_address_index;
@@ -443,8 +477,8 @@ APRS_ROUTER_NAMESPACE_BEGIN
 
 APRS_ROUTER_DETAIL_NAMESPACE_BEGIN
 
-APRS_ROUTER_INLINE bool try_route_packet_by_index(const struct routing_result& routing_result, packet& result);
-APRS_ROUTER_INLINE bool try_route_packet_by_start_end(const struct routing_result& routing_result, packet& result);
+APRS_ROUTER_INLINE bool try_route_packet_by_index(const struct routing_result& routing_result, APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& result);
+APRS_ROUTER_INLINE bool try_route_packet_by_start_end(const struct routing_result& routing_result, APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& result);
 APRS_ROUTER_INLINE std::string to_string(const struct address& address);
 APRS_ROUTER_INLINE q_construct parse_q_construct(const std::string& input);
 APRS_ROUTER_INLINE address_kind parse_address_kind(const std::string& text);
@@ -454,25 +488,25 @@ APRS_ROUTER_INLINE bool try_parse_callsign(std::string_view address_string, std:
 APRS_ROUTER_INLINE bool try_parse_callsign_with_used_flag(std::string address_string, std::string& callsign, int& ssid);
 APRS_ROUTER_INLINE std::vector<address> get_router_n_N_addresses(const std::vector<address>& router_addresses);
 APRS_ROUTER_INLINE std::vector<address> get_router_generic_addresses(const std::vector<address>& router_addresses);
-APRS_ROUTER_INLINE std::vector<address> parse_packet_addresses(const struct packet& packet);
+APRS_ROUTER_INLINE std::vector<address> parse_packet_addresses(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet);
 APRS_ROUTER_INLINE void init_addresses(route_state& state);
 APRS_ROUTER_INLINE std::optional<std::pair<size_t, size_t>> find_first_unused_n_N_address_index(const std::vector<address>& packet_addresses, const std::vector<address>& router_addresses, routing_option options);
 APRS_ROUTER_INLINE std::optional<size_t> find_last_used_address_index(const std::vector<address>& packet_addresses);
 APRS_ROUTER_INLINE std::optional<size_t> find_address_index(const std::vector<address>& packet_addresses, size_t offset, std::string_view router_address, const std::vector<address>& router_addresses);
 APRS_ROUTER_INLINE std::optional<size_t> find_unused_address_index(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, std::string_view router_address, const std::vector<address>& router_generic_addresses);
 APRS_ROUTER_INLINE void find_used_addresses(route_state& state);
-APRS_ROUTER_INLINE bool is_packet_valid(const struct packet& packet, routing_option options);
+APRS_ROUTER_INLINE bool is_packet_valid(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, routing_option options);
 APRS_ROUTER_INLINE bool is_packet_valid(const route_state& state);
-APRS_ROUTER_INLINE bool is_packet_from_us(const struct packet& packet, std::string_view router_address);
+APRS_ROUTER_INLINE bool is_packet_from_us(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, std::string_view router_address);
 APRS_ROUTER_INLINE bool is_packet_from_us(const route_state& state);
-APRS_ROUTER_INLINE bool is_packet_sent_to_us(const struct packet& packet, std::string_view router_address);
+APRS_ROUTER_INLINE bool is_packet_sent_to_us(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, std::string_view router_address);
 APRS_ROUTER_INLINE bool is_packet_sent_to_us(const route_state& state);
 APRS_ROUTER_INLINE bool has_packet_routing_ended(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index);
 APRS_ROUTER_INLINE bool has_packet_routing_ended(const route_state& state);
 APRS_ROUTER_INLINE bool has_packet_been_routed_by_us(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, std::string_view router_address);
 APRS_ROUTER_INLINE bool has_packet_been_routed_by_us(route_state& state);
-APRS_ROUTER_INLINE void init_routing_result(const struct packet& packet, routing_result& result);
-APRS_ROUTER_INLINE bool create_routing_result(const packet& p, const std::vector<address>& packet_addresses, routing_result& result);
+APRS_ROUTER_INLINE void init_routing_result(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, routing_result& result);
+APRS_ROUTER_INLINE bool create_routing_result(const APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& p, const std::vector<address>& packet_addresses, routing_result& result);
 APRS_ROUTER_INLINE bool create_routing_result(route_state& state, routing_result& result);
 APRS_ROUTER_INLINE bool create_routing_result(const routing_state state, routing_result& result);
 APRS_ROUTER_INLINE bool create_routing_ended_result(const std::vector<address>& packet_addresses, bool enable_diagnostics, routing_result& result);
@@ -490,13 +524,13 @@ APRS_ROUTER_INLINE bool push_address_removed_diagnostic(const std::vector<addres
 APRS_ROUTER_INLINE bool create_address_move_diagnostic(const std::vector<address>& packet_addresses, size_t from_index, size_t to_index, bool enable_diagnostics, std::vector<routing_diagnostic>& d);
 APRS_ROUTER_INLINE bool create_truncate_address_range_diagnostic(const std::vector<address>& packet_addresses, size_t from_index, size_t to_index, bool enable_diagnostics, std::vector<routing_diagnostic>& d);
 APRS_ROUTER_INLINE std::string create_display_name_diagnostic(const routing_diagnostic_display_line& line);
-APRS_ROUTER_INLINE routing_diagnostic_display_line create_diagnostic_print_line(const routing_diagnostic& diag, const packet& routed_packet);
+APRS_ROUTER_INLINE routing_diagnostic_display_line create_diagnostic_print_line(const routing_diagnostic& diag, const APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& routed_packet);
 APRS_ROUTER_INLINE void unset_all_used_addresses(std::vector<address>& packet_addresses, size_t offset, size_t count);
 APRS_ROUTER_INLINE void unset_all_used_addresses(std::vector<address>& packet_addresses, size_t offset, size_t count, std::optional<size_t> maybe_ignore_index);
 APRS_ROUTER_INLINE void set_address_as_used(std::vector<address>& packet_addresses, size_t index);
 APRS_ROUTER_INLINE void set_address_as_used(std::vector<address>& packet_addresses, address& address);
 APRS_ROUTER_INLINE void update_addresses_index(std::vector<address>& addresses);
-APRS_ROUTER_INLINE void set_addresses_offset(const struct packet& packet, std::vector<address>& addresses);
+APRS_ROUTER_INLINE void set_addresses_offset(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, std::vector<address>& addresses);
 APRS_ROUTER_INLINE void update_addresses_offset(std::vector<address>& addresses, size_t initial_offset);
 APRS_ROUTER_INLINE void update_addresses_offset(std::vector<address>& addresses);
 APRS_ROUTER_INLINE bool try_preempt_explicit_route(route_state& state);
@@ -531,7 +565,9 @@ APRS_ROUTER_NAMESPACE_END
 //                                                                  //
 // **************************************************************** //
 
-APRS_ROUTER_NAMESPACE_BEGIN
+APRS_ROUTER_PACKET_NAMESPACE_BEGIN
+
+#if APRS_ROUTER_ENABLE_PACKET_SUPPORT
 
 #ifndef APRS_ROUTER_PUBLIC_FORWARD_DECLARATIONS_ONLY
 
@@ -551,74 +587,6 @@ APRS_ROUTER_INLINE packet::packet(const std::string packet_string)
 APRS_ROUTER_INLINE packet::operator std::string() const
 {
     return to_string(*this);
-}
-
-APRS_ROUTER_INLINE routing_option operator|(routing_option lhs, routing_option rhs)
-{
-    return static_cast<routing_option>(static_cast<int>(lhs) | static_cast<int>(rhs));
-}
-
-APRS_ROUTER_INLINE bool try_parse_routing_option(std::string_view text, routing_option& result)
-{
-    if (text == "none")
-    {
-        result = routing_option::none;
-    }
-    else if (text == "route_self")
-    {
-        result = routing_option::route_self;
-    }
-    else if (text == "preempt_front")
-    {
-        result = routing_option::preempt_front;
-    }
-    else if (text == "preempt_truncate")
-    {
-        result = routing_option::preempt_truncate;
-    }
-    else if (text == "preempt_drop")
-    {
-        result = routing_option::preempt_drop;
-    }
-    else if (text == "preempt_mark")
-    {
-        result = routing_option::preempt_mark;
-    }
-    else if (text == "substitute_complete_n_N_address")
-    {
-        result = routing_option::substitute_complete_n_N_address;
-    }
-    else if (text == "substitute_explicit_address")
-    {
-        result = routing_option::substitute_explicit_address;
-    }
-    else if (text == "trap_limit_exceeding_n_N_address")
-    {
-        result = routing_option::trap_limit_exceeding_n_N_address;
-    }
-    else if (text == "reject_limit_exceeding_n_N_address")
-    {
-        result = routing_option::reject_limit_exceeding_n_N_address;
-    }
-    else if (text == "strict")
-    {
-        result = routing_option::strict;
-    }
-    else if (text == "recommended")
-    {
-        result = routing_option::recommended;
-    }
-    else
-    {
-        return false;
-    }
-
-    return true;
-}
-
-APRS_ROUTER_INLINE bool enum_has_flag(routing_option value, routing_option flag)
-{
-    return (static_cast<int>(value) & static_cast<int>(flag)) != 0;
 }
 
 APRS_ROUTER_INLINE size_t hash(const struct packet& packet)
@@ -653,67 +621,6 @@ APRS_ROUTER_INLINE std::string to_string(const struct packet& packet)
     result += ":" + packet.data;
 
     return result;
-}
-
-APRS_ROUTER_INLINE std::string to_string(const routing_result& result)
-{
-#ifdef APRS_ROUTER_APRS_DETAIL_NAMESPACE
-    using namespace APRS_ROUTER_APRS_DETAIL_NAMESPACE;
-#endif
-
-    routing_diagnostic_display_lines diag_lines = format(result);
-
-    std::string diag_string;
-
-    for (const auto& l : diag_lines.lines)
-    {
-        diag_string += create_display_name_diagnostic(l);
-    }
-
-    return diag_string;
-}
-
-APRS_ROUTER_INLINE routing_diagnostic_display_lines format(const routing_result& result)
-{
-#ifdef APRS_ROUTER_APRS_DETAIL_NAMESPACE
-    using namespace APRS_ROUTER_APRS_DETAIL_NAMESPACE;
-#endif
-
-    routing_diagnostic_display_lines diag_format;
-
-    packet routed_packet = result.original_packet;
-
-    for (const auto &a : result.actions)
-    {
-        if (a.type == routing_action::remove)
-        {
-            diag_format.lines.push_back(create_diagnostic_print_line(a, routed_packet));
-            routed_packet.path.erase(routed_packet.path.begin() + a.index);
-        }
-        else if (a.type == routing_action::insert)
-        {
-            routed_packet.path.insert(routed_packet.path.begin() + a.index, a.address);
-            diag_format.lines.push_back(create_diagnostic_print_line(a, routed_packet));
-        }
-        else if (a.type == routing_action::set)
-        {
-            routed_packet.path[a.index].append("*");
-            diag_format.lines.push_back(create_diagnostic_print_line(a, routed_packet));
-        }
-        else if (a.type == routing_action::unset)
-        {
-            diag_format.lines.push_back(create_diagnostic_print_line(a, routed_packet));
-            routed_packet.path[a.index] = a.address;
-        }
-        else if (a.type == routing_action::replace ||
-                 a.type == routing_action::decrement)
-        {
-            routed_packet.path[a.index] = a.address;
-            diag_format.lines.push_back(create_diagnostic_print_line(a, routed_packet));
-        }
-    }
-
-    return diag_format;
 }
 
 APRS_ROUTER_INLINE bool operator==(const packet& lhs, const packet& rhs)
@@ -812,7 +719,147 @@ APRS_ROUTER_INLINE bool try_decode_packet(std::string_view packet_string, packet
     return true;
 }
 
-APRS_ROUTER_INLINE bool try_route_packet(const struct packet& packet, const router_settings& settings, routing_result& result)
+#endif
+
+#endif
+
+APRS_ROUTER_PACKET_NAMESPACE_END
+
+APRS_ROUTER_NAMESPACE_BEGIN
+
+#ifndef APRS_ROUTER_PUBLIC_FORWARD_DECLARATIONS_ONLY
+
+APRS_ROUTER_INLINE routing_option operator|(routing_option lhs, routing_option rhs)
+{
+    return static_cast<routing_option>(static_cast<int>(lhs) | static_cast<int>(rhs));
+}
+
+APRS_ROUTER_INLINE bool try_parse_routing_option(std::string_view text, routing_option& result)
+{
+    if (text == "none")
+    {
+        result = routing_option::none;
+    }
+    else if (text == "route_self")
+    {
+        result = routing_option::route_self;
+    }
+    else if (text == "preempt_front")
+    {
+        result = routing_option::preempt_front;
+    }
+    else if (text == "preempt_truncate")
+    {
+        result = routing_option::preempt_truncate;
+    }
+    else if (text == "preempt_drop")
+    {
+        result = routing_option::preempt_drop;
+    }
+    else if (text == "preempt_mark")
+    {
+        result = routing_option::preempt_mark;
+    }
+    else if (text == "substitute_complete_n_N_address")
+    {
+        result = routing_option::substitute_complete_n_N_address;
+    }
+    else if (text == "substitute_explicit_address")
+    {
+        result = routing_option::substitute_explicit_address;
+    }
+    else if (text == "trap_limit_exceeding_n_N_address")
+    {
+        result = routing_option::trap_limit_exceeding_n_N_address;
+    }
+    else if (text == "reject_limit_exceeding_n_N_address")
+    {
+        result = routing_option::reject_limit_exceeding_n_N_address;
+    }
+    else if (text == "strict")
+    {
+        result = routing_option::strict;
+    }
+    else if (text == "recommended")
+    {
+        result = routing_option::recommended;
+    }
+    else
+    {
+        assert(false);
+        return false;
+    }
+
+    return true;
+}
+
+APRS_ROUTER_INLINE bool enum_has_flag(routing_option value, routing_option flag)
+{
+    return (static_cast<int>(value) & static_cast<int>(flag)) != 0;
+}
+
+APRS_ROUTER_INLINE std::string to_string(const routing_result& result)
+{
+#ifdef APRS_ROUTER_APRS_DETAIL_NAMESPACE
+    using namespace APRS_ROUTER_APRS_DETAIL_NAMESPACE;
+#endif
+
+    routing_diagnostic_display_lines diag_lines = format(result);
+
+    std::string diag_string;
+
+    for (const auto& l : diag_lines.lines)
+    {
+        diag_string += create_display_name_diagnostic(l);
+    }
+
+    return diag_string;
+}
+
+APRS_ROUTER_INLINE routing_diagnostic_display_lines format(const routing_result& result)
+{
+#ifdef APRS_ROUTER_APRS_DETAIL_NAMESPACE
+    using namespace APRS_ROUTER_APRS_DETAIL_NAMESPACE;
+#endif
+
+    routing_diagnostic_display_lines diag_format;
+
+    packet routed_packet = result.original_packet;
+
+    for (const auto &a : result.actions)
+    {
+        if (a.type == routing_action::remove)
+        {
+            diag_format.lines.push_back(create_diagnostic_print_line(a, routed_packet));
+            routed_packet.path.erase(routed_packet.path.begin() + a.index);
+        }
+        else if (a.type == routing_action::insert)
+        {
+            routed_packet.path.insert(routed_packet.path.begin() + a.index, a.address);
+            diag_format.lines.push_back(create_diagnostic_print_line(a, routed_packet));
+        }
+        else if (a.type == routing_action::set)
+        {
+            routed_packet.path[a.index].append("*");
+            diag_format.lines.push_back(create_diagnostic_print_line(a, routed_packet));
+        }
+        else if (a.type == routing_action::unset)
+        {
+            diag_format.lines.push_back(create_diagnostic_print_line(a, routed_packet));
+            routed_packet.path[a.index] = a.address;
+        }
+        else if (a.type == routing_action::replace ||
+                 a.type == routing_action::decrement)
+        {
+            routed_packet.path[a.index] = a.address;
+            diag_format.lines.push_back(create_diagnostic_print_line(a, routed_packet));
+        }
+    }
+
+    return diag_format;
+}
+
+APRS_ROUTER_INLINE bool try_route_packet(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, const router_settings& settings, routing_result& result)
 {
 #ifdef APRS_ROUTER_APRS_DETAIL_NAMESPACE
     using namespace APRS_ROUTER_APRS_DETAIL_NAMESPACE;
@@ -918,7 +965,7 @@ APRS_ROUTER_DETAIL_NAMESPACE_BEGIN
 
 #ifndef APRS_ROUTER_PUBLIC_FORWARD_DECLARATIONS_ONLY
 
-APRS_ROUTER_INLINE bool try_route_packet_by_index(const struct routing_result& routing_result, packet& result)
+APRS_ROUTER_INLINE bool try_route_packet_by_index(const struct routing_result& routing_result, APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& result)
 {
     if (routing_result.state != routing_state::routed)
     {
@@ -957,7 +1004,7 @@ APRS_ROUTER_INLINE bool try_route_packet_by_index(const struct routing_result& r
     return true;
 }
 
-APRS_ROUTER_INLINE bool try_route_packet_by_start_end(const struct routing_result& routing_result, packet& result)
+APRS_ROUTER_INLINE bool try_route_packet_by_start_end(const struct routing_result& routing_result, APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& result)
 {
     if (routing_result.state != routing_state::routed)
     {
@@ -1327,7 +1374,7 @@ APRS_ROUTER_INLINE std::vector<address> get_router_generic_addresses(const std::
     return result;
 }
 
-APRS_ROUTER_INLINE std::vector<address> parse_packet_addresses(const struct packet& packet)
+APRS_ROUTER_INLINE std::vector<address> parse_packet_addresses(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet)
 {
     std::vector<address> segments;
     try_parse_addresses(packet.path, segments);
@@ -1483,7 +1530,7 @@ APRS_ROUTER_INLINE void find_used_addresses(route_state& state)
     }
 }
 
-APRS_ROUTER_INLINE bool is_packet_valid(const struct packet& packet, routing_option options)
+APRS_ROUTER_INLINE bool is_packet_valid(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, routing_option options)
 {
     if (packet.from.empty() || packet.to.empty())
     {
@@ -1530,7 +1577,7 @@ APRS_ROUTER_INLINE bool is_packet_valid(const route_state& state)
     return is_packet_valid(state.packet, state.settings.options);
 }
 
-APRS_ROUTER_INLINE bool is_packet_from_us(const struct packet& packet, std::string_view router_address)
+APRS_ROUTER_INLINE bool is_packet_from_us(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, std::string_view router_address)
 {
     return packet.from == router_address;
 }
@@ -1540,7 +1587,7 @@ APRS_ROUTER_INLINE bool is_packet_from_us(const route_state& state)
     return is_packet_from_us(state.packet, state.settings.address);
 }
 
-APRS_ROUTER_INLINE bool is_packet_sent_to_us(const struct packet& packet, std::string_view router_address)
+APRS_ROUTER_INLINE bool is_packet_sent_to_us(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, std::string_view router_address)
 {
     return packet.to == router_address;
 }
@@ -1604,7 +1651,7 @@ APRS_ROUTER_INLINE bool has_packet_been_routed_by_us(route_state& state)
     return has_packet_been_routed_by_us(state.packet_addresses, state.maybe_last_used_address_index, state.settings.address);
 }
 
-APRS_ROUTER_INLINE void init_routing_result(const struct packet& packet, routing_result& result)
+APRS_ROUTER_INLINE void init_routing_result(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, routing_result& result)
 {
     result.routed = false;
     result.success = false;
@@ -1613,7 +1660,7 @@ APRS_ROUTER_INLINE void init_routing_result(const struct packet& packet, routing
     result.actions.clear();
 }
 
-APRS_ROUTER_INLINE bool create_routing_result(const struct packet& packet, const std::vector<address>& packet_addresses, routing_result& result)
+APRS_ROUTER_INLINE bool create_routing_result(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, const std::vector<address>& packet_addresses, routing_result& result)
 {
     struct packet routed_packet = { packet.from, packet.to, {}, packet.data };
 
@@ -1986,7 +2033,7 @@ APRS_ROUTER_INLINE std::string create_display_name_diagnostic(const routing_diag
     return diag_string;
 }
 
-APRS_ROUTER_INLINE routing_diagnostic_display_line create_diagnostic_print_line(const routing_diagnostic& diag, const packet& routed_packet)
+APRS_ROUTER_INLINE routing_diagnostic_display_line create_diagnostic_print_line(const routing_diagnostic& diag, const APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& routed_packet)
 {
     routing_diagnostic_display_line line;
 
@@ -2075,7 +2122,7 @@ APRS_ROUTER_INLINE void update_addresses_index(std::vector<address>& addresses)
     }
 }
 
-APRS_ROUTER_INLINE void set_addresses_offset(const struct packet& packet, std::vector<address>& addresses)
+APRS_ROUTER_INLINE void set_addresses_offset(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, std::vector<address>& addresses)
 {
     // +1 to account for the path separator ',', +1 to account for '>' separator
     //
