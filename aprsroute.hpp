@@ -52,7 +52,6 @@
 #include <cassert>
 #include <optional>
 
-
 #ifndef APRS_ROUTER_NAMESPACE
 #define APRS_ROUTER_NAMESPACE aprs::router
 #endif
@@ -445,7 +444,15 @@ struct address
     size_t index = 0;  // index inside the packet path
     size_t offset = 0; // string offset within the packet
     size_t length = 0; // the string length of the address
-};  
+};
+
+APRS_ROUTER_NAMESPACE_END
+
+APRS_ROUTER_NAMESPACE_END
+
+APRS_ROUTER_NAMESPACE_BEGIN
+
+APRS_ROUTER_DETAIL_NAMESPACE_BEGIN
 
 struct route_state
 {
@@ -477,12 +484,21 @@ APRS_ROUTER_NAMESPACE_BEGIN
 
 APRS_ROUTER_DETAIL_NAMESPACE_BEGIN
 
-APRS_ROUTER_INLINE bool try_route_packet_by_index(const struct routing_result& routing_result, APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& result);
-APRS_ROUTER_INLINE bool try_route_packet_by_start_end(const struct routing_result& routing_result, APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& result);
 APRS_ROUTER_INLINE std::string to_string(const struct address& address);
 APRS_ROUTER_INLINE q_construct parse_q_construct(const std::string& input);
 APRS_ROUTER_INLINE address_kind parse_address_kind(const std::string& text);
 APRS_ROUTER_INLINE bool try_parse_address(std::string_view address_string, address& result);
+
+APRS_ROUTER_NAMESPACE_END
+
+APRS_ROUTER_NAMESPACE_END
+
+APRS_ROUTER_NAMESPACE_BEGIN
+
+APRS_ROUTER_DETAIL_NAMESPACE_BEGIN
+
+APRS_ROUTER_INLINE bool try_route_packet_by_index(const struct routing_result& routing_result, APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& result);
+APRS_ROUTER_INLINE bool try_route_packet_by_start_end(const struct routing_result& routing_result, APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& result);
 APRS_ROUTER_INLINE bool try_parse_addresses(const std::vector<std::string>& addresses, std::vector<address>& result);
 APRS_ROUTER_INLINE bool try_parse_callsign(std::string_view address_string, std::string& callsign, int& ssid);
 APRS_ROUTER_INLINE bool try_parse_callsign_with_used_flag(std::string address_string, std::string& callsign, int& ssid);
@@ -965,107 +981,6 @@ APRS_ROUTER_DETAIL_NAMESPACE_BEGIN
 
 #ifndef APRS_ROUTER_PUBLIC_FORWARD_DECLARATIONS_ONLY
 
-APRS_ROUTER_INLINE bool try_route_packet_by_index(const struct routing_result& routing_result, APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& result)
-{
-    if (routing_result.state != routing_state::routed)
-    {
-        return false;
-    }
-
-    assert(routing_result.actions.size() > 0);
-
-    result = routing_result.original_packet;
-
-    for (const auto& a : routing_result.actions)
-    {
-        if (a.type == routing_action::remove)
-        {
-            result.path.erase(result.path.begin() + a.index);
-        }
-        else if (a.type == routing_action::insert)
-        {
-            result.path.insert(result.path.begin() + a.index, a.address);
-        }
-        else if (a.type == routing_action::set)
-        {
-            result.path[a.index].append("*");
-        }
-        else if (a.type == routing_action::unset || a.type == routing_action::replace ||
-            a.type == routing_action::decrement)
-        {
-            result.path[a.index] = a.address;
-        }
-        else
-        {
-            return false;
-        }
-    }
-
-    return true;
-}
-
-APRS_ROUTER_INLINE bool try_route_packet_by_start_end(const struct routing_result& routing_result, APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& result)
-{
-    if (routing_result.state != routing_state::routed)
-    {
-        return false;
-    }
-
-    assert(routing_result.actions.size() > 0);
-
-    std::string routed_packet = to_string(routing_result.original_packet);
-
-    for (const auto& a : routing_result.actions)
-    {
-        size_t start = a.start;
-        size_t end = a.end;
-        size_t count = a.end - a.start;
-
-        if (a.type == routing_action::remove)
-        {
-            if (routed_packet[end + 1] == ':' || a.index == 0)
-            {
-                count++;
-            }
-            else if (a.index != 0)
-            {
-                start--;
-                count++;
-            }
-            routed_packet.erase(start, count);
-        }
-        else if (a.type == routing_action::insert)
-        {
-            routed_packet.insert(start, a.address);
-            if (routed_packet[end + 1] != ',' || a.index == 0)
-            {
-                routed_packet.insert(end, ",");
-            }
-        }
-        else if (a.type == routing_action::set)
-        {
-            routed_packet.insert(end, "*");
-        }
-        else if (a.type == routing_action::unset || a.type == routing_action::replace ||
-            a.type == routing_action::decrement)
-        {
-            routed_packet.erase(start, count);
-            routed_packet.insert(start, a.address);
-        }
-        else
-        {
-            return false;
-        }
-    }
-
-    if (!try_decode_packet(routed_packet, result))
-    {
-        return false;
-    }
-
-    return true;
-}
-
 APRS_ROUTER_INLINE std::string to_string(const struct address& address)
 {
     if (address.text.empty())
@@ -1244,6 +1159,119 @@ APRS_ROUTER_INLINE bool try_parse_address(std::string_view address_string, struc
     }
 
     // Never fail. Failure to parse a address means that n-N will not be set.
+    return true;
+}
+
+#endif
+
+APRS_ROUTER_DETAIL_NAMESPACE_END
+
+APRS_ROUTER_NAMESPACE_END
+
+APRS_ROUTER_NAMESPACE_BEGIN
+
+APRS_ROUTER_DETAIL_NAMESPACE_BEGIN
+
+#ifndef APRS_ROUTER_PUBLIC_FORWARD_DECLARATIONS_ONLY
+
+APRS_ROUTER_INLINE bool try_route_packet_by_index(const struct routing_result& routing_result, APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& result)
+{
+    if (routing_result.state != routing_state::routed)
+    {
+        return false;
+    }
+
+    assert(routing_result.actions.size() > 0);
+
+    result = routing_result.original_packet;
+
+    for (const auto& a : routing_result.actions)
+    {
+        if (a.type == routing_action::remove)
+        {
+            result.path.erase(result.path.begin() + a.index);
+        }
+        else if (a.type == routing_action::insert)
+        {
+            result.path.insert(result.path.begin() + a.index, a.address);
+        }
+        else if (a.type == routing_action::set)
+        {
+            result.path[a.index].append("*");
+        }
+        else if (a.type == routing_action::unset || a.type == routing_action::replace ||
+            a.type == routing_action::decrement)
+        {
+            result.path[a.index] = a.address;
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+APRS_ROUTER_INLINE bool try_route_packet_by_start_end(const struct routing_result& routing_result, APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& result)
+{
+    if (routing_result.state != routing_state::routed)
+    {
+        return false;
+    }
+
+    assert(routing_result.actions.size() > 0);
+
+    std::string routed_packet = to_string(routing_result.original_packet);
+
+    for (const auto& a : routing_result.actions)
+    {
+        size_t start = a.start;
+        size_t end = a.end;
+        size_t count = a.end - a.start;
+
+        if (a.type == routing_action::remove)
+        {
+            if (routed_packet[end + 1] == ':' || a.index == 0)
+            {
+                count++;
+            }
+            else if (a.index != 0)
+            {
+                start--;
+                count++;
+            }
+            routed_packet.erase(start, count);
+        }
+        else if (a.type == routing_action::insert)
+        {
+            routed_packet.insert(start, a.address);
+            if (routed_packet[end + 1] != ',' || a.index == 0)
+            {
+                routed_packet.insert(end, ",");
+            }
+        }
+        else if (a.type == routing_action::set)
+        {
+            routed_packet.insert(end, "*");
+        }
+        else if (a.type == routing_action::unset || a.type == routing_action::replace ||
+            a.type == routing_action::decrement)
+        {
+            routed_packet.erase(start, count);
+            routed_packet.insert(start, a.address);
+        }
+        else
+        {
+            return false;
+        }
+    }
+
+    if (!try_decode_packet(routed_packet, result))
+    {
+        return false;
+    }
+
     return true;
 }
 
