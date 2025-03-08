@@ -2,6 +2,8 @@
 
 C++ header only standalone APRS routing library.
 
+This library can be used to implement a digipeater.
+
 Automatic Packet Reporting System (APRS) is a system for real-time digital data communication over ham radio.
 
 See more info at http://www.aprs.org/ and https://groups.io/g/APRS.
