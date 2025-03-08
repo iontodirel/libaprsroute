@@ -145,14 +145,16 @@ Other examples can be found in the tests directory.
 ## Features
 
 - Packet decoding.
-- Address parsing, enconding and decomposition.
+- Address parsing, encoding and decomposition.
 - Explicit routing
   - Support for preemtive routing: front, truncate and drop
 - n-N routing
-  - Support for any aliases
+  - Support for any arbitrary aliases, ex: FOOBAR2-2 can be used
   - Supports completed alias substitution
   - Trap excessive hops
 - Every routing action is surfaced as diagnostics
+  - Routed packets can be fully restored using the routing actions alone
+  - Intelligent decisions can be made using the routing actions
 
 ## Goals
 
