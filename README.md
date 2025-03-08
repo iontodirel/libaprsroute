@@ -142,6 +142,18 @@ for (auto& l : diag_lines.lines)
 
 Other examples can be found in the tests directory.
 
+## Features
+
+- Packet decoding.
+- Address parsing, enconding and decomposition.
+- Explicit routing
+  - Support for preemtive routing: front, truncate and drop
+- n-N routing
+  - Support for any aliases
+  - Supports completed alias substitution
+  - Trap excessive hops
+- Every routing action is surfaced as diagnostics
+
 ## Goals
 
 - **Modularity**. This library is reusable, composable and standalone. It is written *without any coupling* to command line parsing code, configuration parsing code, memory management infrastructure, logging, or thread management. This makes it easy to integrate in any project in an unintrusive way. This library has no dependencies, only relying on the C++ standard library.
