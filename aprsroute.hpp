@@ -43,6 +43,8 @@
 //   - APRS digipeaters: https://dvbr.net/cloud/direwolf/direwolf_git_v1.7/direwolf-doc_git/APRS-Digipeaters.pdf
 //   - APRS digipeaters v2: https://github.com/wb2osz/direwolf-doc/blob/main/APRS-Digipeaters.pdf
 //   - How APRS paths work: https://blog.aprs.fi/2020/02/how-aprs-paths-work.html
+//   - APRS Digipeating and Path Selection: http://wa8lmf.net/DigiPaths
+//   - Examining Ambiguities in the Automatic Packet Reporting System: https://digitalcommons.calpoly.edu/theses/1341
 
 #pragma once
 
