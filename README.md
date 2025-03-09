@@ -154,7 +154,7 @@ Other examples can be found in the tests directory.
   - Trap excessive hops
 - Diagnostics: every routing action is surfaced as a diagnostic
   - Routed packets can be fully restored using the routing actions alone
-  - Intelligent decisions can be made using the routing actions
+  - Intelligent post-routing decisions can be made using the routing actions
   - Routing actions can be printed as a ready string using `to_string` or customized using `format`
 
 ## Goals
