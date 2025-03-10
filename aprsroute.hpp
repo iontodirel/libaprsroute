@@ -1160,11 +1160,11 @@ APRS_ROUTER_INLINE bool try_parse_address(std::string_view address_string, struc
             {
                 ssid = std::atoi(ssid_str.c_str());
             }
-            catch (const std::invalid_argument& e)
+            catch (const std::invalid_argument&)
             {
                 return true;
             }
-            catch (const std::out_of_range& e)
+            catch (const std::out_of_range&)
             {
                 return true;
             }
@@ -1347,11 +1347,11 @@ APRS_ROUTER_INLINE bool try_parse_address(std::string_view address, std::string&
         {
             ssid = std::stoi(ssid_string);
         }
-        catch (const std::invalid_argument& e)
+        catch (const std::invalid_argument&)
         {
             return false;
         }
-        catch (const std::out_of_range& e)
+        catch (const std::out_of_range&)
         {
             return false;
         }
