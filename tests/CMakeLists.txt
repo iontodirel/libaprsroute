@@ -2,16 +2,34 @@
 # libaprsroute - APRS header only routing library                  # 
 # Version 0.1.0                                                    #
 # https://github.com/iontodirel/libaprsroute                       #
-# Copyright (c) 2024 Ion Todirel                                   #
+# Copyright (c) 2024 - 2025 Ion Todirel                            #
 # **************************************************************** #
 #
 # CMakeLists.txt
-#
+# 
 # MIT License
-#
-# Copyright (c) 2024 Ion Todirel
+# 
+# Copyright (c) 2024 - 2025 Ion Todirel
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files(the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and / or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
 
-cmake_minimum_required (VERSION 3.8)
+cmake_minimum_required (VERSION 3.25)
 
 project ("aprsroute_tests")
 
@@ -29,25 +47,14 @@ endif()
 
 include(FetchContent)
 
-FetchContent_Declare(
-	googletest
-	URL https://github.com/google/googletest/archive/refs/tags/v1.13.0.zip
-)
+FetchContent_Declare(googletest URL https://github.com/google/googletest/archive/refs/tags/v1.13.0.zip)
 FetchContent_MakeAvailable(googletest)
 
 FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.2/json.tar.xz)
-FetchContent_GetProperties(json)
-if(NOT json_POPULATED)
-  FetchContent_Populate(json)
-  add_subdirectory(${json_SOURCE_DIR} ${json_BINARY_DIR} EXCLUDE_FROM_ALL)
-endif()
+FetchContent_MakeAvailable(json)
 
 FetchContent_Declare(fmt GIT_REPOSITORY https://github.com/fmtlib/fmt.git GIT_TAG master)
-FetchContent_GetProperties(fmt)
-if(NOT fmt_POPULATED)
-  FetchContent_Populate(fmt)
-  add_subdirectory(${fmt_SOURCE_DIR} ${fmt_BINARY_DIR} EXCLUDE_FROM_ALL)
-endif()
+FetchContent_MakeAvailable(fmt)
 
 enable_testing()
 
