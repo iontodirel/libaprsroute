@@ -9,7 +9,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2024 Ion Todirel
+// Copyright (c) 2024 - 2025 Ion Todirel
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files(the "Software"), to deal
@@ -72,11 +72,11 @@
 #ifndef APRS_ROUTER_DETAIL_NAMESPACE_BEGIN
 #define APRS_ROUTER_DETAIL_NAMESPACE_BEGIN namespace APRS_ROUTER_APRS_DETAIL_NAMESPACE {
 #endif
+#ifndef APRS_ROUTER_DETAIL_NAMESPACE_USE
+#define APRS_ROUTER_DETAIL_NAMESPACE_USE using namespace APRS_ROUTER_APRS_DETAIL_NAMESPACE;
+#endif
 #ifndef APRS_ROUTER_DETAIL_NAMESPACE_END
 #define APRS_ROUTER_DETAIL_NAMESPACE_END }
-#endif
-#ifdef APRS_ROUTER_PUBLIC_FORWARD_DECLARATIONS_ONLY
-// Intentionally left empty
 #endif
 #ifndef APRS_ROUTER_ENABLE_PACKET_SUPPORT
 #define APRS_ROUTER_ENABLE_PACKET_SUPPORT true
@@ -92,6 +92,9 @@
 #endif
 #ifndef APRS_ROUTER_PACKET_NAMESPACE_REFERENCE
 #define APRS_ROUTER_PACKET_NAMESPACE_REFERENCE APRS_ROUTER_PACKET_NAMESPACE ::
+#endif
+#ifdef APRS_ROUTER_PUBLIC_FORWARD_DECLARATIONS_ONLY
+// Intentionally left empty
 #endif
 
 // **************************************************************** //
@@ -147,7 +150,7 @@ APRS_ROUTER_NAMESPACE_BEGIN
 // preempt_front
 // -------------
 //
-// Enables preemtive routing for explicitly routed packets.
+// Enables preemptive routing for explicitly routed packets.
 // With this option, our address is moved to the front of the route.
 //
 // This packet: N0CALL>APRS,CALLA,CALLB*,CALLC,DIGI,CALLD,CALLE,CALLF:data
@@ -158,7 +161,7 @@ APRS_ROUTER_NAMESPACE_BEGIN
 // preempt_truncate
 // ----------------
 //
-// Enables preemtive routing for explicitly routed packets.
+// Enables preemptive routing for explicitly routed packets.
 // With this option, our address is moved behind the last used address, and all other addresses are erased.
 // This is the same as Direwolf's "TRACE" routing option.
 //
@@ -170,7 +173,7 @@ APRS_ROUTER_NAMESPACE_BEGIN
 // preempt_drop
 // ------------
 //
-// Enables preemtive routing for explicitly routed packets.
+// Enables preemptive routing for explicitly routed packets.
 // With this option, all other addresses in front of us are erased.
 //
 // This packet: N0CALL>APRS,CALLA,CALLB*,CALLC,DIGI,CALLD,CALLE,CALLF:data
@@ -331,16 +334,16 @@ struct routing_diagnostic
     std::string message;
 };
 
-struct routing_diagnostic_display_line
+struct routing_diagnostic_display_entry
 {
     std::string message;
     std::string packet_string;
     std::string highlight_string;
 };
 
-struct routing_diagnostic_display_lines
+struct routing_diagnostic_display
 {
-    std::vector<routing_diagnostic_display_line> lines;
+    std::vector<routing_diagnostic_display_entry> entries;
 };
 
 struct routing_result
@@ -383,7 +386,7 @@ APRS_ROUTER_INLINE routing_option operator|(routing_option lhs, routing_option r
 APRS_ROUTER_INLINE bool try_parse_routing_option(std::string_view str, routing_option& result);
 APRS_ROUTER_INLINE bool enum_has_flag(routing_option value, routing_option flag);
 APRS_ROUTER_INLINE std::string to_string(const routing_result& result);
-APRS_ROUTER_INLINE routing_diagnostic_display_lines format(const routing_result& result);
+APRS_ROUTER_INLINE routing_diagnostic_display format(const routing_result& result);
 APRS_ROUTER_INLINE bool try_route_packet(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, const router_settings& settings, routing_result& result);
 
 APRS_ROUTER_NAMESPACE_END
@@ -541,8 +544,8 @@ APRS_ROUTER_INLINE bool push_address_inserted_diagnostic(const std::vector<addre
 APRS_ROUTER_INLINE bool push_address_removed_diagnostic(const std::vector<address>& packet_addresses, size_t remove_address_index, bool enable_diagnostics, std::vector<routing_diagnostic>& d);
 APRS_ROUTER_INLINE bool create_address_move_diagnostic(const std::vector<address>& packet_addresses, size_t from_index, size_t to_index, bool enable_diagnostics, std::vector<routing_diagnostic>& d);
 APRS_ROUTER_INLINE bool create_truncate_address_range_diagnostic(const std::vector<address>& packet_addresses, size_t from_index, size_t to_index, bool enable_diagnostics, std::vector<routing_diagnostic>& d);
-APRS_ROUTER_INLINE std::string create_display_name_diagnostic(const routing_diagnostic_display_line& line);
-APRS_ROUTER_INLINE routing_diagnostic_display_line create_diagnostic_print_line(const routing_diagnostic& diag, const APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& routed_packet);
+APRS_ROUTER_INLINE std::string create_display_name_diagnostic(const routing_diagnostic_display_entry& line);
+APRS_ROUTER_INLINE routing_diagnostic_display_entry create_diagnostic_print_line(const routing_diagnostic& diag, const APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& routed_packet);
 APRS_ROUTER_INLINE void unset_all_used_addresses(std::vector<address>& packet_addresses, size_t offset, size_t count);
 APRS_ROUTER_INLINE void unset_all_used_addresses(std::vector<address>& packet_addresses, size_t offset, size_t count, std::optional<size_t> maybe_ignore_index);
 APRS_ROUTER_INLINE void set_address_as_used(std::vector<address>& packet_addresses, size_t index);
@@ -818,15 +821,13 @@ APRS_ROUTER_INLINE bool enum_has_flag(routing_option value, routing_option flag)
 
 APRS_ROUTER_INLINE std::string to_string(const routing_result& result)
 {
-#ifdef APRS_ROUTER_APRS_DETAIL_NAMESPACE
-    using namespace APRS_ROUTER_APRS_DETAIL_NAMESPACE;
-#endif
+APRS_ROUTER_DETAIL_NAMESPACE_USE
 
-    routing_diagnostic_display_lines diag_lines = format(result);
+    routing_diagnostic_display diag_lines = format(result);
 
     std::string diag_string;
 
-    for (const auto& l : diag_lines.lines)
+    for (const auto& l : diag_lines.entries)
     {
         diag_string += create_display_name_diagnostic(l);
     }
@@ -834,13 +835,11 @@ APRS_ROUTER_INLINE std::string to_string(const routing_result& result)
     return diag_string;
 }
 
-APRS_ROUTER_INLINE routing_diagnostic_display_lines format(const routing_result& result)
+APRS_ROUTER_INLINE routing_diagnostic_display format(const routing_result& result)
 {
-#ifdef APRS_ROUTER_APRS_DETAIL_NAMESPACE
-    using namespace APRS_ROUTER_APRS_DETAIL_NAMESPACE;
-#endif
+APRS_ROUTER_DETAIL_NAMESPACE_USE
 
-    routing_diagnostic_display_lines diag_format;
+    routing_diagnostic_display diag_format;
 
     packet routed_packet = result.original_packet;
 
@@ -848,29 +847,29 @@ APRS_ROUTER_INLINE routing_diagnostic_display_lines format(const routing_result&
     {
         if (a.type == routing_action::remove)
         {
-            diag_format.lines.push_back(create_diagnostic_print_line(a, routed_packet));
+            diag_format.entries.push_back(create_diagnostic_print_line(a, routed_packet));
             routed_packet.path.erase(routed_packet.path.begin() + a.index);
         }
         else if (a.type == routing_action::insert)
         {
             routed_packet.path.insert(routed_packet.path.begin() + a.index, a.address);
-            diag_format.lines.push_back(create_diagnostic_print_line(a, routed_packet));
+            diag_format.entries.push_back(create_diagnostic_print_line(a, routed_packet));
         }
         else if (a.type == routing_action::set)
         {
             routed_packet.path[a.index].append("*");
-            diag_format.lines.push_back(create_diagnostic_print_line(a, routed_packet));
+            diag_format.entries.push_back(create_diagnostic_print_line(a, routed_packet));
         }
         else if (a.type == routing_action::unset)
         {
-            diag_format.lines.push_back(create_diagnostic_print_line(a, routed_packet));
+            diag_format.entries.push_back(create_diagnostic_print_line(a, routed_packet));
             routed_packet.path[a.index] = a.address;
         }
         else if (a.type == routing_action::replace ||
                  a.type == routing_action::decrement)
         {
             routed_packet.path[a.index] = a.address;
-            diag_format.lines.push_back(create_diagnostic_print_line(a, routed_packet));
+            diag_format.entries.push_back(create_diagnostic_print_line(a, routed_packet));
         }
     }
 
@@ -879,9 +878,7 @@ APRS_ROUTER_INLINE routing_diagnostic_display_lines format(const routing_result&
 
 APRS_ROUTER_INLINE bool try_route_packet(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, const router_settings& settings, routing_result& result)
 {
-#ifdef APRS_ROUTER_APRS_DETAIL_NAMESPACE
-    using namespace APRS_ROUTER_APRS_DETAIL_NAMESPACE;
-#endif
+APRS_ROUTER_DETAIL_NAMESPACE_USE
 
     init_routing_result(packet, result);
 
@@ -1005,6 +1002,11 @@ APRS_ROUTER_INLINE std::string to_string(const struct address& address)
     if (address.mark)
     {
         result += "*";
+    }
+
+    if (address.ssid > 0)
+    {
+        result += "-" + std::to_string(address.ssid);
     }
 
     return result;
@@ -2035,7 +2037,7 @@ APRS_ROUTER_INLINE bool create_truncate_address_range_diagnostic(const std::vect
     return true;
 }
 
-APRS_ROUTER_INLINE std::string create_display_name_diagnostic(const routing_diagnostic_display_line& line)
+APRS_ROUTER_INLINE std::string create_display_name_diagnostic(const routing_diagnostic_display_entry& line)
 {
     // Creates a diagnostic message.
     //
@@ -2063,9 +2065,9 @@ APRS_ROUTER_INLINE std::string create_display_name_diagnostic(const routing_diag
     return diag_string;
 }
 
-APRS_ROUTER_INLINE routing_diagnostic_display_line create_diagnostic_print_line(const routing_diagnostic& diag, const APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& routed_packet)
+APRS_ROUTER_INLINE routing_diagnostic_display_entry create_diagnostic_print_line(const routing_diagnostic& diag, const APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& routed_packet)
 {
-    routing_diagnostic_display_line line;
+    routing_diagnostic_display_entry line;
 
     line.message = diag.message;
     line.packet_string = to_string(routed_packet);
@@ -2312,9 +2314,9 @@ APRS_ROUTER_INLINE bool try_explicit_route(route_state& state)
     // find the router's address in the packet and mark it as used (*)
     // Also unmark all the previously used addresses.
     //
-    // Preemtive routing allows us to ignore other packets in front of
+    // preemptive routing allows us to ignore other packets in front of
     // us and proceed on the routing. There are two strategies that
-    // can be used with preemtive routing, one which prioritizes our address
+    // can be used with preemptive routing, one which prioritizes our address
     // and what that eliminates unused addresses from the packet.
 
     const std::optional<size_t> maybe_router_address_index = state.maybe_router_address_index;
@@ -2377,7 +2379,7 @@ APRS_ROUTER_INLINE bool try_explicit_route(route_state& state)
 
 APRS_ROUTER_INLINE bool try_explicit_basic_route(route_state& state, size_t set_address_index)
 {
-    // Route a packet using non-preemtive explicit routing.
+    // Route a packet using non-preemptive explicit routing.
     //
     // In the simplest case, find a matching address and set it as 'used':
     //

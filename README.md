@@ -129,9 +129,9 @@ std::cout << diag_string << std::endl;
 ``` cpp
 routing_result result;
 
-routing_diagnostic_display_lines diag_lines = format(result);
+routing_diagnostic_display diag = format(result);
 
-for (auto& l : diag_lines.lines)
+for (auto& l : diag.entries)
 {
     fmt::print(fg(fmt::color::blue_violet), "note: ");
     fmt::print("{}\n", l.message);

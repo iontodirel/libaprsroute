@@ -85,6 +85,11 @@ TEST(address, to_string)
     s.N = 0;
     s.n = 0;
     EXPECT_TRUE(to_string(s) == "WIDE*");
+
+    s = address {};
+    s.text = "N0CALL";
+    s.ssid = 10;
+    EXPECT_TRUE(to_string(s) == "N0CALL-10");
 #else
     EXPECT_TRUE(true);
 #endif
@@ -1588,9 +1593,9 @@ TEST(router, try_route_packet_color_diagnostics)
 
     std::cout << diag_string << std::endl;
 
-    routing_diagnostic_display_lines diag_lines = format(result);
+    routing_diagnostic_display diag_lines = format(result);
 
-    for (auto& l : diag_lines.lines)
+    for (auto& l : diag_lines.entries)
     {
         l.message[0] = static_cast<char>(std::tolower(l.message[0]));
 
