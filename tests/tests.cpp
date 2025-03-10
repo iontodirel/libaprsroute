@@ -54,6 +54,16 @@
 
 #include "../aprsroute.hpp"
 
+#ifdef APRS_ROUTE_DISABLE_PACKET_LOOP_TEST
+// Intentionally left empty
+#endif
+#ifdef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+// Intentionally left empty
+#endif // APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifdef APRS_ROUTE_DISABLE_AUTO_TESTING
+// Intentionally left empty
+#endif // APRS_ROUTE_DISABLE_AUTO_TESTING
+
 #if defined(IS_LINUX_MAC) && !defined(APRS_ROUTE_DISABLE_AUTO_TESTING)
 #include <signal.h>
 #endif
@@ -61,9 +71,54 @@
 using namespace aprs::router;
 using namespace aprs::router::detail;
 
-#define APRS_ROUTE_DISABLE_PACKET_LOOP_TEST
+// **************************************************************** //
+//                                                                  //
+//                                                                  //
+// utility functions                                                //
+//                                                                  //
+//                                                                  //
+// **************************************************************** //
 
 routing_result test_packet_routing_iteration(const packet& p, router_settings digi, std::vector<std::string> addresses,  std::vector<size_t> digipeated_indices, int count);
+
+routing_result test_packet_routing_iteration(const packet& p, router_settings digi, std::vector<std::string> addresses,  std::vector<size_t> digipeated_indices, int count)
+{
+    routing_result result;
+
+    result.routed_packet = p;
+
+    for (int i = 1; i <= count; i++)
+    {
+        digi.address = addresses[i - 1];
+
+        try_route_packet(result.routed_packet, digi, result);
+        EXPECT_TRUE(result.routed == true);
+        EXPECT_TRUE(result.success == true);
+        EXPECT_TRUE(result.state == routing_state::routed);
+
+        EXPECT_TRUE(result.routed_packet.path[digipeated_indices[i - 1]] == (digi.address + "*"));
+
+        printf("%s\n", to_string(result.routed_packet).c_str());
+
+        for (size_t j = 0; j < result.routed_packet.path.size(); j++)
+        {
+            if (digipeated_indices[i - 1] != j)
+            {
+                EXPECT_TRUE(result.routed_packet.path[j].back() != '*');
+            }
+        }
+    }
+
+    return result;
+}
+
+// **************************************************************** //
+//                                                                  //
+//                                                                  //
+// regular tests                                                    //
+//                                                                  //
+//                                                                  //
+// **************************************************************** //
 
 TEST(address, to_string)
 {
@@ -90,6 +145,17 @@ TEST(address, to_string)
     s.text = "N0CALL";
     s.ssid = 10;
     EXPECT_TRUE(to_string(s) == "N0CALL-10");
+
+    s = address {};
+    s.text = "N0CALL";
+    s.ssid = 10;
+    s.mark = true;
+    EXPECT_TRUE(to_string(s) == "N0CALL-10*");
+
+    s = address {};
+    s.text = "N0CALL-10";
+    s.ssid = 10;
+    EXPECT_TRUE(to_string(s) == "N0CALL-10-10"); // to_string preserves the text even if ssid is specified and results in an invalid address
 #else
     EXPECT_TRUE(true);
 #endif
@@ -197,7 +263,7 @@ TEST(address, try_parse_address)
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
     EXPECT_TRUE(s.ssid == 10);
-    EXPECT_TRUE(s.text == "W7ION-10");
+    EXPECT_TRUE(s.text == "W7ION");
     EXPECT_TRUE(s.kind == address_kind::other);
 
     // -------------------------------------------------------------
@@ -234,7 +300,8 @@ TEST(address, try_parse_address)
     EXPECT_TRUE(s.mark == false);
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
-    EXPECT_TRUE(s.text == "WIDE-1"); // Entire text should be preserved if parsing n-N fails
+    EXPECT_TRUE(s.ssid == 1);
+    EXPECT_TRUE(s.text == "WIDE"); // Entire text should be preserved if parsing n-N fails
     EXPECT_TRUE(s.kind == address_kind::other);
 
     path = "*WIDE"; // Leading mark with no valid segment
@@ -277,7 +344,17 @@ TEST(address, try_parse_address)
     EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
-    EXPECT_TRUE(s.text == "WIDE4-10");
+    EXPECT_TRUE(s.ssid== 10);
+    EXPECT_TRUE(s.text == "WIDE4");
+    EXPECT_TRUE(s.kind == address_kind::other);
+
+    path = "WID4-100*";
+    EXPECT_TRUE(try_parse_address(path, s));
+    EXPECT_TRUE(s.n == 0);
+    EXPECT_TRUE(s.N == 0);
+    EXPECT_TRUE(s.mark == true);
+    EXPECT_TRUE(s.ssid== 0);
+    EXPECT_TRUE(s.text == "WID4-100"); // partial parsing of mark
     EXPECT_TRUE(s.kind == address_kind::other);
 
     path = "WIDE14-1"; // Not really valid, but we don't care that it parses to 4-1
@@ -436,6 +513,7 @@ TEST(packet, try_decode_packet_ctor)
 
 TEST(packet, equality)
 {
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
     // Test: Equal packets
     packet p1{"N0CALL", "APRS", {"CALLA", "CALLB"}, "data"};
     packet p2{"N0CALL", "APRS", {"CALLA", "CALLB"}, "data"};
@@ -465,6 +543,9 @@ TEST(packet, equality)
     packet p8{"", "", {}, ""};
     packet p9{"", "", {}, ""};
     EXPECT_TRUE(p8 == p9);
+#else
+    EXPECT_TRUE(true);
+#endif
 }
 
 TEST(router, try_route_packet_explicit_loop)
@@ -561,8 +642,6 @@ TEST(routing_option, enum_has_flag)
 TEST(router, simple_demo)
 {
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
-    using namespace aprs::router;
-
     router_settings digi { "DIGI", { "WIDE1" } };
     routing_result result;
 
@@ -609,361 +688,6 @@ TEST(router, try_route_packet_loop)
 #endif
 }
 
-routing_result test_packet_routing_iteration(const packet& p, router_settings digi, std::vector<std::string> addresses,  std::vector<size_t> digipeated_indices, int count)
-{
-    routing_result result;
-
-    result.routed_packet = p;
-
-    for (int i = 1; i <= count; i++)
-    {
-        digi.address = addresses[i - 1];
-
-        try_route_packet(result.routed_packet, digi, result);
-        EXPECT_TRUE(result.routed == true);
-        EXPECT_TRUE(result.success == true);
-        EXPECT_TRUE(result.state == routing_state::routed);
-
-        EXPECT_TRUE(result.routed_packet.path[digipeated_indices[i - 1]] == (digi.address + "*"));
-
-        printf("%s\n", to_string(result.routed_packet).c_str());
-
-        for (size_t j = 0; j < result.routed_packet.path.size(); j++)
-        {
-            if (digipeated_indices[i - 1] != j)
-            {
-                EXPECT_TRUE(result.routed_packet.path[j].back() != '*');
-            }
-        }
-    }
-
-    return result;
-}
-
-#ifndef APRS_ROUTE_DISABLE_AUTO_TESTING
-
-struct route_test
-{
-    bool mark = false;
-    std::string id;
-    bool debug = false;
-    std::string comment;
-    std::string address;
-    std::string path;
-    std::string original_packet;
-    std::string routed_packet;
-    bool routed = false;
-    std::string options;
-};
-
-void test_diagnostics_reconstruct_packet_by_index(const routing_result& r);
-void test_diagnostics_reconstruct_packet_by_start_end(const routing_result& r);
-
-std::string to_lower(const std::string &str)
-{
-    std::locale loc;
-    std::string s;
-    s.resize(str.size());
-    for (size_t i = 0; i < str.size(); i++)
-        s[i] = std::tolower(str[i], loc);
-    return s;
-}
-
-bool try_parse_bool(const std::string &s, bool &b)
-{
-    std::string s_lower = to_lower(s);
-    if (s_lower == "true")
-        b = true;
-    else if (s_lower == "false")
-        b = false;
-    else
-        return false;
-    return true;
-}
-
-std::vector<route_test> load_routing_tests(const std::string& test_file)
-{
-    if (!std::filesystem::exists(test_file))
-    {
-        return {};
-    }
-
-    std::ifstream i;
-    try
-    {
-        i.open(test_file);
-    }
-    catch (std::ios_base::failure&)
-    {
-        return {};
-    }
-
-    if (!i.is_open())
-    {
-        return {};
-    }
-
-    nlohmann::json j;
-
-    try
-    {
-        j = nlohmann::json::parse(i, nullptr, true, /*ignore comments*/ true);
-    }
-    catch (nlohmann::json::parse_error&)
-    {
-        return {};
-    }
-    catch (nlohmann::json::type_error&)
-    {
-        return {};
-    }
-
-    std::vector<route_test> route_tests;
-
-    if (j.contains("routes"))
-    {
-        nlohmann::json routes = j["routes"];
-        for (const auto& route : routes)
-        {
-            if (route.contains("original_packet") &&
-                route.contains("routed_packet") && route.contains("routed"))
-            {
-                route_test test;
-
-                test.original_packet = route["original_packet"].get<std::string>();
-                test.routed_packet = route["routed_packet"].get<std::string>();
-
-                try_parse_bool(route["routed"].get<std::string>(), test.routed);
-
-                if (route.contains("address"))
-                {
-                    test.address = route["address"].get<std::string>();
-                }
-
-                if (route.contains("path"))
-                {
-                    test.path = route["path"].get<std::string>();
-                }
-
-                if (route.contains("options"))
-                {
-                    test.options = route["options"].get<std::string>();
-                }
-
-                if (route.contains("comment"))
-                {
-                    test.comment = route["comment"].get<std::string>();
-                }
-
-                if (route.contains("debug"))
-                {
-                    try_parse_bool(route["debug"].get<std::string>(), test.debug);
-                }
-
-                if (route.contains("mark"))
-                {
-                    try_parse_bool(route["mark"].get<std::string>(), test.mark);
-                }
-
-                if (route.contains("id"))
-                {
-                    test.id = route["id"].get<std::string>();
-                }
-
-                route_tests.push_back(test);
-            }
-        }
-    }
-
-    return route_tests;
-}
-
-std::vector<std::string> split_comma_separated_values(const std::string& str)
-{
-    std::vector<std::string> result;
-    std::stringstream ss(str);
-    std::string item;
-
-    while (std::getline(ss, item, ','))
-    {
-        result.push_back(item);
-    }
-
-    return result;
-}
-
-bool try_get_routing_test_set(route_test test, packet& p, router_settings& settings)
-{
-    try_decode_packet(test.original_packet, p);
-
-    settings.address = test.address;
-    settings.path = split_comma_separated_values(test.path);
-
-    settings.options = routing_option::none;
-
-    std::vector<std::string> options = split_comma_separated_values(test.options);
-    for (size_t i = 0; i < options.size(); i++)
-    {
-        routing_option option = routing_option::none;
-        if (try_parse_routing_option(options[i], option))
-        {
-            settings.options = settings.options | option;
-        }
-    }
-
-    return true;
-}
-
-void debugger_break()
-{
-#ifdef _MSC_VER
-        __debugbreak();
-#else
-        raise(SIGTRAP);
-#endif
-}
-
-void run_test(const route_test& test, const packet& p, const router_settings& settings)
-{
-    routing_result result;
-
-    bool result_bool = try_route_packet(p, settings, result);
-
-    EXPECT_TRUE(result_bool == test.routed);
-    EXPECT_TRUE(result.routed == test.routed);
-    EXPECT_TRUE(result.success == true);
-
-    if (test.routed)
-    {
-        EXPECT_TRUE(result.state == routing_state::routed);
-    }
-    else
-    {
-        EXPECT_TRUE(result.state != routing_state::routed);
-    }
-
-    if (!test.routed_packet.empty())
-    {
-        bool routed_packet_result = to_string(result.routed_packet) == test.routed_packet;
-        EXPECT_TRUE(routed_packet_result);
-        if (!routed_packet_result)
-        {
-            printf("test failed\n");
-            if (test.debug == true)
-            {
-                debugger_break();
-            }
-            // route again for debugging purposes
-            try_route_packet(p, settings, result);
-        }
-        EXPECT_TRUE(to_string(result.original_packet) == test.original_packet);
-    }
-
-    if (!test.routed)
-    {
-        EXPECT_TRUE(to_string(result.original_packet) == to_string(result.routed_packet));
-    }
-
-    std::string diag_string = aprs::router::to_string(result);
-
-    printf("%s", diag_string.c_str());
-
-    test_diagnostics_reconstruct_packet_by_index(result);
-    test_diagnostics_reconstruct_packet_by_start_end(result);
-}
-
-void test_diagnostics_reconstruct_packet_by_index(const routing_result& result)
-{
-    using namespace aprs::router;
-    using namespace aprs::router::detail;
-
-    if (result.state != routing_state::routed)
-    {
-        return;
-    }
-
-    packet routed_packet;
-
-    EXPECT_TRUE(try_route_packet_by_index(result, routed_packet));
-
-    bool result_bool = result.routed_packet == routed_packet;
-
-    EXPECT_TRUE(result_bool);
-
-    if (!result_bool)
-    {
-        // handy breakpoint location
-        printf("test failed\n");
-    }
-}
-
-void test_diagnostics_reconstruct_packet_by_start_end(const routing_result& result)
-{
-    using namespace aprs::router;
-    using namespace aprs::router::detail;
-
-    if (result.state != routing_state::routed)
-    {
-        return;
-    }
-
-    packet routed_packet;
-
-    EXPECT_TRUE(try_route_packet_by_start_end(result, routed_packet));
-
-    bool result_bool = result.routed_packet == routed_packet;
-
-    EXPECT_TRUE(result_bool);
-
-    if (!result_bool)
-    {
-        // handy breakpoint location
-        printf("test failed\n");
-    }
-}
-
-bool has_marked_tests(const std::vector<route_test>& tests)
-{
-    for (const auto& test : tests)
-    {
-        if (test.mark)
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-#endif
-
-TEST(router, try_route_packet_auto_tests)
-{
-#ifndef APRS_ROUTE_DISABLE_AUTO_TESTING
-    std::vector<route_test> tests = load_routing_tests(INPUT_TEST_FILE);
-    EXPECT_TRUE(tests.empty() == false);
-    bool has_marked_test = has_marked_tests(tests);
-    for (const auto& test : tests)
-    {
-        if (has_marked_test && !test.mark)
-        {
-            continue;
-        }
-
-        packet p;
-
-        router_settings settings;
-        settings.enable_diagnostics = true;
-
-        if (try_get_routing_test_set(test, p, settings))
-        {
-            run_test(test, p, settings);
-        }
-    }
-#else
-    EXPECT_TRUE(true);
-#endif
-}
-
 TEST(address, try_parse_callsign)
 {
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
@@ -972,43 +696,51 @@ TEST(address, try_parse_callsign)
     int ssid = 0;
 
     address = "A0BCDE-12";
-    EXPECT_TRUE(try_parse_callsign(address, callsign, ssid));
+    EXPECT_TRUE(try_parse_address(address, callsign, ssid));
     EXPECT_TRUE(callsign == "A0BCDE");
     EXPECT_TRUE(ssid == 12);
 
     address = "A0BCDE-12*";
-    EXPECT_FALSE(try_parse_callsign(address, callsign, ssid));
+    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
 
     address = "A0BCDE-12*";
-    EXPECT_TRUE(try_parse_callsign_with_used_flag(address, callsign, ssid));
+    EXPECT_TRUE(try_parse_address_with_used_flag(address, callsign, ssid));
     EXPECT_TRUE(callsign == "A0BCDE");
     EXPECT_TRUE(ssid == 12);
 
     address = "N0CALL";
-    EXPECT_TRUE(try_parse_callsign(address, callsign, ssid));
+    EXPECT_TRUE(try_parse_address(address, callsign, ssid));
     EXPECT_TRUE(callsign == "N0CALL");
     EXPECT_TRUE(ssid == 0);
 
     address = "N0CALL-01";
-    EXPECT_FALSE(try_parse_callsign(address, callsign, ssid));
+    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
 
     address = "N0CALL-";
-    EXPECT_FALSE(try_parse_callsign(address, callsign, ssid));
+    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
 
     address = "N0CALL-0";
-    EXPECT_FALSE(try_parse_callsign(address, callsign, ssid));
+    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
+
+    address = "N0CALL-1";
+    EXPECT_TRUE(try_parse_address(address, callsign, ssid));
+    EXPECT_TRUE(callsign == "N0CALL");
+    EXPECT_TRUE(ssid == 1);
 
     address = "N0CALL-100";
-    EXPECT_FALSE(try_parse_callsign(address, callsign, ssid));
+    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
+
+    address = "ABC-100";
+    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
 
     address = "N0CALL-dd";
-    EXPECT_FALSE(try_parse_callsign(address, callsign, ssid));
+    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
 
     address = "N0CALL-WX";
-    EXPECT_FALSE(try_parse_callsign(address, callsign, ssid));
+    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
 
     address = "N0CALL-20";
-    EXPECT_FALSE(try_parse_callsign(address, callsign, ssid));
+    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
 #else
     EXPECT_TRUE(true);
 #endif
@@ -1017,8 +749,6 @@ TEST(address, try_parse_callsign)
 TEST(router, try_route_packet_enable_diagnostics)
 {
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
-    using namespace aprs::router;
-
     router_settings digi { "DIGI", { "WIDE1" }, routing_option::none, true };
     routing_result result;
 
@@ -1580,8 +1310,6 @@ TEST(router, try_route_packet_enable_diagnostics)
 TEST(router, try_route_packet_color_diagnostics)
 {
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
-    using namespace aprs::router;
-
     router_settings digi { "DIGI", { "WIDE1", "WIDE2" }, routing_option::none, true };
     routing_result result;
 
@@ -1647,10 +1375,7 @@ TEST(routing_result, to_string)
 
 TEST(addresses, set_address_as_used)
 {
-    using namespace aprs::router;
-    using namespace aprs::router::detail;
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
-
     packet p = { "N0CALL", "APRS", { "CALLA", "CALLB*", "CALLC", "CALLD", "CALLE", "CALLF" }, "data"};
 
     std::vector<address> segments;
@@ -1712,10 +1437,7 @@ TEST(addresses, set_address_as_used)
 
 TEST(diagnostic, push_address_unset_diagnostic)
 {
-    using namespace aprs::router;
-    using namespace aprs::router::detail;
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
-
     packet p = { "N0CALL", "APRS", { "CALLA*", "CALLB*", "CALLC", "WIDE2-2*", "CALLD*", "CALLE", "CALLF" }, "data"};
 
     // Initialize offsets
@@ -1771,10 +1493,7 @@ TEST(diagnostic, push_address_unset_diagnostic)
 
 TEST(diagnostic, push_address_set_diagnostic)
 {
-    using namespace aprs::router;
-    using namespace aprs::router::detail;
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
-
     packet p = { "N0CALL", "APRS", { "CALLA*", "CALLB*", "CALLC", "WIDE2-2*", "CALLD*", "CALLE", "CALLF" }, "data"};
 
     std::vector<address> segments;
@@ -1804,6 +1523,343 @@ TEST(diagnostic, push_address_set_diagnostic)
     EXPECT_TRUE(diag[0].index == 5);
     EXPECT_TRUE(diag[0].address == "CALLE");
 
+#else
+    EXPECT_TRUE(true);
+#endif
+}
+
+// **************************************************************** //
+//                                                                  //
+//                                                                  //
+// auto tests utility types and functions                           //
+//                                                                  //
+//                                                                  //
+// **************************************************************** //
+
+#ifndef APRS_ROUTE_DISABLE_AUTO_TESTING
+
+struct route_test
+{
+    bool mark = false;
+    std::string id;
+    bool debug = false;
+    std::string comment;
+    std::string address;
+    std::string path;
+    std::string original_packet;
+    std::string routed_packet;
+    bool routed = false;
+    std::string options;
+};
+
+void test_diagnostics_reconstruct_packet_by_index(const routing_result& r);
+void test_diagnostics_reconstruct_packet_by_start_end(const routing_result& r);
+
+std::string to_lower(const std::string &str)
+{
+    std::locale loc;
+    std::string s;
+    s.resize(str.size());
+    for (size_t i = 0; i < str.size(); i++)
+        s[i] = std::tolower(str[i], loc);
+    return s;
+}
+
+bool try_parse_bool(const std::string &s, bool &b)
+{
+    std::string s_lower = to_lower(s);
+    if (s_lower == "true")
+        b = true;
+    else if (s_lower == "false")
+        b = false;
+    else
+        return false;
+    return true;
+}
+
+std::vector<route_test> load_routing_tests(const std::string& test_file)
+{
+    if (!std::filesystem::exists(test_file))
+    {
+        return {};
+    }
+
+    std::ifstream i;
+    try
+    {
+        i.open(test_file);
+    }
+    catch (std::ios_base::failure&)
+    {
+        return {};
+    }
+
+    if (!i.is_open())
+    {
+        return {};
+    }
+
+    nlohmann::json j;
+
+    try
+    {
+        j = nlohmann::json::parse(i, nullptr, true, /*ignore comments*/ true);
+    }
+    catch (nlohmann::json::parse_error&)
+    {
+        return {};
+    }
+    catch (nlohmann::json::type_error&)
+    {
+        return {};
+    }
+
+    std::vector<route_test> route_tests;
+
+    if (j.contains("routes"))
+    {
+        nlohmann::json routes = j["routes"];
+        for (const auto& route : routes)
+        {
+            if (route.contains("original_packet") &&
+                route.contains("routed_packet") && route.contains("routed"))
+            {
+                route_test test;
+
+                test.original_packet = route["original_packet"].get<std::string>();
+                test.routed_packet = route["routed_packet"].get<std::string>();
+
+                try_parse_bool(route["routed"].get<std::string>(), test.routed);
+
+                if (route.contains("address"))
+                {
+                    test.address = route["address"].get<std::string>();
+                }
+
+                if (route.contains("path"))
+                {
+                    test.path = route["path"].get<std::string>();
+                }
+
+                if (route.contains("options"))
+                {
+                    test.options = route["options"].get<std::string>();
+                }
+
+                if (route.contains("comment"))
+                {
+                    test.comment = route["comment"].get<std::string>();
+                }
+
+                if (route.contains("debug"))
+                {
+                    try_parse_bool(route["debug"].get<std::string>(), test.debug);
+                }
+
+                if (route.contains("mark"))
+                {
+                    try_parse_bool(route["mark"].get<std::string>(), test.mark);
+                }
+
+                if (route.contains("id"))
+                {
+                    test.id = route["id"].get<std::string>();
+                }
+
+                route_tests.push_back(test);
+            }
+        }
+    }
+
+    return route_tests;
+}
+
+std::vector<std::string> split_comma_separated_values(const std::string& str)
+{
+    std::vector<std::string> result;
+    std::stringstream ss(str);
+    std::string item;
+
+    while (std::getline(ss, item, ','))
+    {
+        result.push_back(item);
+    }
+
+    return result;
+}
+
+bool try_get_routing_test_set(route_test test, packet& p, router_settings& settings)
+{
+    try_decode_packet(test.original_packet, p);
+
+    settings.address = test.address;
+    settings.path = split_comma_separated_values(test.path);
+
+    settings.options = routing_option::none;
+
+    std::vector<std::string> options = split_comma_separated_values(test.options);
+    for (size_t i = 0; i < options.size(); i++)
+    {
+        routing_option option = routing_option::none;
+        if (try_parse_routing_option(options[i], option))
+        {
+            settings.options = settings.options | option;
+        }
+    }
+
+    return true;
+}
+
+void debugger_break()
+{
+#ifdef _MSC_VER
+        __debugbreak();
+#else
+        raise(SIGTRAP);
+#endif
+}
+
+void run_test(const route_test& test, const packet& p, const router_settings& settings)
+{
+    routing_result result;
+
+    bool result_bool = try_route_packet(p, settings, result);
+
+    EXPECT_TRUE(result_bool == test.routed);
+    EXPECT_TRUE(result.routed == test.routed);
+    EXPECT_TRUE(result.success == true);
+
+    if (test.routed)
+    {
+        EXPECT_TRUE(result.state == routing_state::routed);
+    }
+    else
+    {
+        EXPECT_TRUE(result.state != routing_state::routed);
+    }
+
+    if (!test.routed_packet.empty())
+    {
+        bool routed_packet_result = to_string(result.routed_packet) == test.routed_packet;
+        EXPECT_TRUE(routed_packet_result);
+        if (!routed_packet_result)
+        {
+            printf("test %s failed\n", test.id.c_str());
+            printf("original packet: %s\n", test.original_packet.c_str());
+            printf("expected packet: %s\n", test.routed_packet.c_str());
+            printf("  actual packet: %s\n", to_string(result.routed_packet).c_str());
+            if (test.debug == true)
+            {
+                debugger_break();
+            }
+            // route again for debugging purposes
+            try_route_packet(p, settings, result);
+        }
+        EXPECT_TRUE(to_string(result.original_packet) == test.original_packet);
+    }
+
+    if (!test.routed)
+    {
+        EXPECT_TRUE(to_string(result.original_packet) == to_string(result.routed_packet));
+    }
+
+    std::string diag_string = aprs::router::to_string(result);
+
+    printf("%s", diag_string.c_str());
+
+    test_diagnostics_reconstruct_packet_by_index(result);
+    test_diagnostics_reconstruct_packet_by_start_end(result);
+}
+
+void test_diagnostics_reconstruct_packet_by_index(const routing_result& result)
+{
+    if (result.state != routing_state::routed)
+    {
+        return;
+    }
+
+    packet routed_packet;
+
+    EXPECT_TRUE(try_route_packet_by_index(result, routed_packet));
+
+    bool result_bool = result.routed_packet == routed_packet;
+
+    EXPECT_TRUE(result_bool);
+
+    if (!result_bool)
+    {
+        // handy breakpoint location
+        printf("test failed\n");
+    }
+}
+
+void test_diagnostics_reconstruct_packet_by_start_end(const routing_result& result)
+{
+    if (result.state != routing_state::routed)
+    {
+        return;
+    }
+
+    packet routed_packet;
+
+    EXPECT_TRUE(try_route_packet_by_start_end(result, routed_packet));
+
+    bool result_bool = result.routed_packet == routed_packet;
+
+    EXPECT_TRUE(result_bool);
+
+    if (!result_bool)
+    {
+        // handy breakpoint location
+        printf("test failed\n");
+    }
+}
+
+bool has_marked_tests(const std::vector<route_test>& tests)
+{
+    for (const auto& test : tests)
+    {
+        if (test.mark)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+#endif // APRS_ROUTE_DISABLE_AUTO_TESTING
+
+// **************************************************************** //
+//                                                                  //
+//                                                                  //
+// auto tests                                                       //
+//                                                                  //
+//                                                                  //
+// **************************************************************** //
+
+TEST(router, try_route_packet_auto_tests)
+{
+#ifndef APRS_ROUTE_DISABLE_AUTO_TESTING
+    std::vector<route_test> tests = load_routing_tests(INPUT_TEST_FILE);
+    EXPECT_TRUE(tests.empty() == false);
+    bool has_marked_test = has_marked_tests(tests);
+    for (const auto& test : tests)
+    {
+        if (has_marked_test && !test.mark)
+        {
+            continue;
+        }
+
+        packet p;
+
+        router_settings settings;
+        settings.enable_diagnostics = true;
+
+        if (try_get_routing_test_set(test, p, settings))
+        {
+            run_test(test, p, settings);
+        }
+    }
 #else
     EXPECT_TRUE(true);
 #endif

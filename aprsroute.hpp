@@ -466,6 +466,7 @@ struct route_state
     router_settings settings;
     std::optional<size_t> maybe_last_used_address_index;
     std::optional<size_t> maybe_router_address_index;
+    address router_address;
     std::vector<address> router_n_N_addresses;
     std::vector<address> router_generic_addresses;
     std::vector<routing_diagnostic> actions;
@@ -505,16 +506,16 @@ APRS_ROUTER_DETAIL_NAMESPACE_BEGIN
 APRS_ROUTER_INLINE bool try_route_packet_by_index(const struct routing_result& routing_result, APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& result);
 APRS_ROUTER_INLINE bool try_route_packet_by_start_end(const struct routing_result& routing_result, APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& result);
 APRS_ROUTER_INLINE bool try_parse_addresses(const std::vector<std::string>& addresses, std::vector<address>& result);
-APRS_ROUTER_INLINE bool try_parse_callsign(std::string_view address_string, std::string& callsign, int& ssid);
-APRS_ROUTER_INLINE bool try_parse_callsign_with_used_flag(std::string address_string, std::string& callsign, int& ssid);
+APRS_ROUTER_INLINE bool try_parse_address(std::string_view address_string, std::string& callsign, int& ssid);
+APRS_ROUTER_INLINE bool try_parse_address_with_used_flag(std::string_view address_string, std::string& callsign, int& ssid);
 APRS_ROUTER_INLINE std::vector<address> get_router_n_N_addresses(const std::vector<address>& router_addresses);
 APRS_ROUTER_INLINE std::vector<address> get_router_generic_addresses(const std::vector<address>& router_addresses);
 APRS_ROUTER_INLINE std::vector<address> parse_packet_addresses(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet);
 APRS_ROUTER_INLINE void init_addresses(route_state& state);
 APRS_ROUTER_INLINE std::optional<std::pair<size_t, size_t>> find_first_unused_n_N_address_index(const std::vector<address>& packet_addresses, const std::vector<address>& router_addresses, routing_option options);
 APRS_ROUTER_INLINE std::optional<size_t> find_last_used_address_index(const std::vector<address>& packet_addresses);
-APRS_ROUTER_INLINE std::optional<size_t> find_address_index(const std::vector<address>& packet_addresses, size_t offset, std::string_view router_address, const std::vector<address>& router_addresses);
-APRS_ROUTER_INLINE std::optional<size_t> find_unused_address_index(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, std::string_view router_address, const std::vector<address>& router_generic_addresses);
+APRS_ROUTER_INLINE std::optional<size_t> find_address_index(const std::vector<address>& packet_addresses, size_t offset, const address& router_address, const std::vector<address>& router_addresses);
+APRS_ROUTER_INLINE std::optional<size_t> find_unused_address_index(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, const address& router_address, const std::vector<address>& router_generic_addresses);
 APRS_ROUTER_INLINE void find_used_addresses(route_state& state);
 APRS_ROUTER_INLINE bool is_packet_valid(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, routing_option options);
 APRS_ROUTER_INLINE bool is_packet_valid(const route_state& state);
@@ -524,7 +525,7 @@ APRS_ROUTER_INLINE bool is_packet_sent_to_us(const struct APRS_ROUTER_PACKET_NAM
 APRS_ROUTER_INLINE bool is_packet_sent_to_us(const route_state& state);
 APRS_ROUTER_INLINE bool has_packet_routing_ended(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index);
 APRS_ROUTER_INLINE bool has_packet_routing_ended(const route_state& state);
-APRS_ROUTER_INLINE bool has_packet_been_routed_by_us(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, std::string_view router_address);
+APRS_ROUTER_INLINE bool has_packet_been_routed_by_us(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, const address& router_address);
 APRS_ROUTER_INLINE bool has_packet_been_routed_by_us(route_state& state);
 APRS_ROUTER_INLINE void init_routing_result(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, routing_result& result);
 APRS_ROUTER_INLINE bool create_routing_result(const APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& p, const std::vector<address>& packet_addresses, routing_result& result);
@@ -999,14 +1000,14 @@ APRS_ROUTER_INLINE std::string to_string(const struct address& address)
         result += "-" + std::to_string(address.N);
     }
 
-    if (address.mark)
-    {
-        result += "*";
-    }
-
     if (address.ssid > 0)
     {
         result += "-" + std::to_string(address.ssid);
+    }
+
+    if (address.mark)
+    {
+        result += "*";
     }
 
     return result;
@@ -1065,104 +1066,117 @@ APRS_ROUTER_INLINE address_kind parse_address_kind(const std::string& text)
 
 APRS_ROUTER_INLINE bool try_parse_address(std::string_view address_string, struct address& address)
 {
-    address.text = address_string;
+    std::string_view address_text = address_string;
+
+    address.text = address_text;
     address.mark = false;
     address.ssid = 0;
-    address.length = address_string.size();
+    address.length = address_text.size();
+    address.n = 0;
+    address.N = 0;
+    address.q = parse_q_construct(address.text);
+    address.kind = address_kind::other;
 
-    q_construct q = parse_q_construct(address.text);
-
-    address.q = q;
-
-    if (q != q_construct::none)
+    // Parse Q construct first
+    if (address.q != q_construct::none)
     {
-        address.n = 0;
-        address.N = 0;
         address.kind = address_kind::q;
+        return true; // Early return for Q constructs as there is nothing else to parse
     }
-    else
+
+    // Check to see if the address is used (ending with *)
+    if (!address_text.empty() && address_text.back() == '*')
     {
-        if (!address_string.empty() && address_string.back() == '*')
+        address.mark = true;
+        address_text.remove_suffix(1); // remove the *
+        address.text = address_text; // set the text to the address without the *
+    }
+
+    auto sep_position = address_text.find("-");
+
+    // No separator found
+    if (sep_position == std::string::npos)
+    {
+        if (!address_text.empty() && isdigit(address_text.back()))
         {
-            address.mark = true;
-            address_string.remove_suffix(1);
-            address.text = address_string;
+            address.n = address_text.back() - '0'; // get the last character as a number
+            address_text.remove_suffix(1); // remove the digit from the address text
+            address.text = address_text;
+
+            // Validate the n is in the range 1-7
+            if (address.n > 0 && address.n <= 7)
+            {
+                address.kind = parse_address_kind(address.text);
+            }
+            else
+            {
+                address.n = 0;
+                address.text = address_text; // reset the text to the original address text
+            }
+        }
+        else
+        {
+            address.kind = parse_address_kind(address.text);
+        }
+        
+        return true;
+    }
+
+    // Separator found, check if we have exactly one digit on both sides of the separator, ex WIDE1-1
+    // If the address does not match the n-N format, we will treat it as a regular address ex address with SSID
+    if (sep_position != std::string::npos &&
+        std::isdigit(static_cast<int>(address_text[sep_position - 1])) &&
+        (sep_position + 1) < address_text.size() && std::isdigit(static_cast<int>(address_text[sep_position + 1])) &&
+        (sep_position + 2 == address_text.size()))
+    {        
+        address.n = address_text[sep_position - 1] - '0';
+        address.N = address_text[sep_position + 1] - '0';
+
+        if (address.N > 0 && address.N <= 7 && address.n > 0 && address.n <= 7)
+        {
+            address.text = address_text.substr(0, sep_position - 1); // remove the separator and both digits from the address text
+            address.kind = parse_address_kind(address.text);
+        }
+        else
+        {
             address.N = 0;
             address.n = 0;
         }
 
-        auto sep_position = address_string.find("-");
+        return true;
+    }
+    
+    // Handle SSID parsing
+    // Expecting the separator to be followed by a digit, ex: CALL-1
+    if ((sep_position + 1) < address_text.size() && std::isdigit(static_cast<int>(address_text[sep_position + 1])))
+    {
+        std::string ssid_str = std::string(address_text.substr(sep_position + 1));
 
-        if (sep_position != std::string::npos)
+        // Check for a single digit or two digits, ex: CALL-1 or CALL-12
+        if (ssid_str.size() == 1 || (ssid_str.size() == 2 && std::isdigit(static_cast<int>(ssid_str[1]))))
         {
-            // Check if there are digits before and after the dash
-            if (sep_position > 0 && isdigit(address_string[sep_position - 1]) && (sep_position + 1) < address_string.size() && isdigit(address_string[sep_position + 1]))
+            int ssid;
+            try
             {
-                // Ensure only one digit after the dash
-                if (sep_position + 2 == address_string.size())
-                {
-                    // Left of the dash + digit
-                    address.text = address_string.substr(0, sep_position - 1);
-
-                    // Parse the n value (digit before the dash)
-                    address.n = address_string[sep_position - 1] - '0'; // Convert char to int
-
-                    // Parse the N value (digit after the dash)
-                    address.N = address_string[sep_position + 1] - '0'; // Convert char to int
-
-                    // Ensure valid range 1 - 7
-                    if (address.N <= 0 || address.N > 7 || address.n <= 0 || address.n > 7)
-                    {
-                        address.N = 0;
-                        address.n = 0;
-                        address.text = address_string;
-                    }
-                }
+                ssid = std::atoi(ssid_str.c_str());
             }
-            // Handle parsing of a callsign SSID
-            else if ((sep_position + 1) < address_string.size() && isdigit(address_string[sep_position + 1]))
+            catch (const std::invalid_argument& e)
             {
-                address.text = address_string;
-                address.N = 0;
-                address.n = 0;
+                return true;
+            }
+            catch (const std::out_of_range& e)
+            {
+                return true;
+            }
 
-                std::string ssid_str = std::string(address_string.substr(sep_position + 1));
-
-                if (ssid_str.size() == 1 || (ssid_str.size() == 2 && std::isdigit(ssid_str[1])))
-                {
-                    address.ssid = atoi(ssid_str.c_str());
-                }
+            if (ssid >= 0 && ssid <= 15)
+            {
+                address.ssid = ssid;
+                address.text = address_text.substr(0, sep_position);
             }
         }
-        else // If there's no '-', assume only text or text followed by a single digit
-        {
-            address.text = address_string;
-
-            // Check for trailing digit without '-'
-            if (!address_string.empty() && isdigit(address_string.back()))
-            {
-                address.n = address_string.back() - '0'; // Last digit is n
-                address_string.remove_suffix(1);   // Remove the digit from the text
-                address.text = address_string;
-
-                if (address.n <= 0 || address.n > 7)
-                {
-                    address.n = 0;
-                    address.text = address_string;
-                }
-            }
-            else
-            {
-                address.n = 0; // No digit found, default n to 0
-            }
-
-            address.N = 0; // No N specified, default to 0
-        }
-
-        address.kind = parse_address_kind(address.text);
     }
 
-    // Never fail. Failure to parse a address means that n-N will not be set.
     return true;
 }
 
@@ -1294,43 +1308,53 @@ APRS_ROUTER_INLINE bool try_parse_addresses(const std::vector<std::string>& addr
     return true;
 }
 
-APRS_ROUTER_INLINE bool try_parse_callsign(std::string_view address_string, std::string& callsign, int& ssid)
+APRS_ROUTER_INLINE bool try_parse_address(std::string_view address, std::string& address_no_ssid, int& ssid)
 {
-    if (address_string.empty())
+    if (address.empty() || address.size() > 9)
     {
         return false;
     }
 
-    if (address_string.size() > 9)
-    {
-        return false;
-    }
-
-    auto sep_position = address_string.find("-");
+    auto sep_position = address.find("-");
 
     if (sep_position != std::string::npos)
     {
-        if (sep_position == address_string.size() - 1 || ((sep_position + 3) < address_string.size()))
+        // Check few error conditions
+        // If packet ends with a separator but no ssid, ex: "CALL-"
+        // If there are more than 2 character after the separator, ex: CALL-123
+        if ((sep_position == (address.size() - 1)) || ((sep_position + 3) < address.size()))
         {
             return false;
         }
 
-        callsign = address_string.substr(0, sep_position);
+        address_no_ssid = address.substr(0, sep_position);
 
-        std::string ssid_string = std::string(address_string.substr(sep_position + 1));
+        std::string ssid_string = std::string(address.substr(sep_position + 1));
 
         if (ssid_string[0] == '0')
         {
             return false;
         }
 
+        // Ensure the ssid is a number
         if (!std::isdigit(static_cast<unsigned char>(ssid_string[0])) ||
             (ssid_string.size() > 1 && !std::isdigit(static_cast<unsigned char>(ssid_string[1]))))
         {
             return false;
         }
 
-        ssid = atoi(ssid_string.c_str());
+        try
+        {
+            ssid = std::stoi(ssid_string);
+        }
+        catch (const std::invalid_argument& e)
+        {
+            return false;
+        }
+        catch (const std::out_of_range& e)
+        {
+            return false;
+        }
 
         if (ssid < 0 || ssid > 15)
         {
@@ -1340,18 +1364,18 @@ APRS_ROUTER_INLINE bool try_parse_callsign(std::string_view address_string, std:
     }
     else
     {
-        callsign = address_string;
+        address_no_ssid = address;
         ssid = 0;
     }
 
-    if (callsign.size() > 6)
+    if (address_no_ssid.size() > 6)
     {
         return false;
     }
 
-    for (char c : callsign)
+    for (char c : address_no_ssid)
     {
-        // Has to be alphanumeric and uppercase, or a digit
+        // The address has to be alphanumeric and uppercase, or a digit
         if ((!std::isalnum(static_cast<unsigned char>(c)) || !std::isdigit(static_cast<unsigned char>(c))) &&
             !std::isupper(static_cast<unsigned char>(c)))
         {
@@ -1362,19 +1386,19 @@ APRS_ROUTER_INLINE bool try_parse_callsign(std::string_view address_string, std:
     return true;
 }
 
-APRS_ROUTER_INLINE bool try_parse_callsign_with_used_flag(std::string address_string, std::string& callsign, int& ssid)
+APRS_ROUTER_INLINE bool try_parse_address_with_used_flag(std::string_view address, std::string& address_no_ssid, int& ssid)
 {
-    if (address_string.empty())
+    if (address.empty())
     {
         return false;
     }
 
-    if (address_string.back() == '*')
+    if (address.back() == '*')
     {
-        address_string = address_string.substr(0, address_string.size() - 1);
+        address.remove_suffix(1);
     }
 
-    return try_parse_callsign(address_string, callsign, ssid);
+    return try_parse_address(address, address_no_ssid, ssid);
 }
 
 APRS_ROUTER_INLINE std::vector<address> get_router_n_N_addresses(const std::vector<address>& router_addresses)
@@ -1416,6 +1440,17 @@ APRS_ROUTER_INLINE std::vector<address> parse_packet_addresses(const struct APRS
 
 APRS_ROUTER_INLINE void init_addresses(route_state& state)
 {
+    // Parse the router's address and path
+    //
+    // Router address:           DIGI                               state.settings.address   state.router_address
+    // Router path:              WIDE1-1,WIDE2-2,CALLA,CALLB        state.settings.path      router_addresses
+    // Router n-N addresses:     WIDE1-1,WIDE2-2                                             state.router_n_N_addresses
+    // Router generic addresses: CALLA,CALLB                                                 state.router_generic_addresses
+    // Packet:                   N0CALL>APRS,WIDE1,WIDE2-2:data                              state.packet
+    // Packet addresses:         WIDE1,WIDE2-2                                               state.packet_addresses
+
+    try_parse_address(state.settings.address, state.router_address.text, state.router_address.ssid);
+
     std::vector<address> router_addresses;
     try_parse_addresses(state.settings.path, router_addresses);
 
@@ -1486,20 +1521,22 @@ APRS_ROUTER_INLINE std::optional<size_t> find_last_used_address_index(const std:
     return {};
 }
 
-APRS_ROUTER_INLINE std::optional<size_t> find_address_index(const std::vector<address>& packet_addresses, size_t offset, std::string_view router_address, const std::vector<address>& router_addresses)
+APRS_ROUTER_INLINE std::optional<size_t> find_address_index(const std::vector<address>& packet_addresses, size_t offset, const address& router_address, const std::vector<address>& router_addresses)
 {
     assert(offset < packet_addresses.size());
 
     for (size_t i = offset; i < packet_addresses.size(); i++)
     {
-        if (packet_addresses[i].text == router_address)
+        if ((packet_addresses[i].text == router_address.text) &&
+            (packet_addresses[i].ssid == router_address.ssid))
         {
             return i;
         }
 
         for (size_t j = 0; j < router_addresses.size(); j++)
         {
-            if (packet_addresses[i].text == router_addresses[j].text)
+            if ((packet_addresses[i].text == router_addresses[j].text) &&
+                (packet_addresses[i].ssid == router_addresses[j].ssid))
             {
                 return i;
             }
@@ -1509,7 +1546,7 @@ APRS_ROUTER_INLINE std::optional<size_t> find_address_index(const std::vector<ad
     return {};
 }
 
-APRS_ROUTER_INLINE std::optional<size_t> find_unused_address_index(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, std::string_view router_address, const std::vector<address>& router_generic_addresses)
+APRS_ROUTER_INLINE std::optional<size_t> find_unused_address_index(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, const address& router_address, const std::vector<address>& router_generic_addresses)
 {
     // Find unused address mathing router's address or an address in the router's path.
     // Start the search from the last used address.
@@ -1553,12 +1590,14 @@ APRS_ROUTER_INLINE std::optional<size_t> find_unused_address_index(const std::ve
 APRS_ROUTER_INLINE void find_used_addresses(route_state& state)
 {
     state.maybe_last_used_address_index = find_last_used_address_index(state.packet_addresses);
-    state.maybe_router_address_index = find_unused_address_index(state.packet_addresses, state.maybe_last_used_address_index, state.settings.address, state.router_generic_addresses);
+    state.maybe_router_address_index = find_unused_address_index(state.packet_addresses, state.maybe_last_used_address_index, state.router_address, state.router_generic_addresses);
     state.unused_address_index = state.maybe_last_used_address_index.value_or(-1) + 1;
 
     if (state.maybe_router_address_index)
     {
-        state.is_path_based_routing = state.packet_addresses[state.maybe_router_address_index.value()].text != state.settings.address;
+        const address& packet_router_address = state.packet_addresses[state.maybe_router_address_index.value()];
+        state.is_path_based_routing = ((packet_router_address.text != state.router_address.text) ||
+                                       (packet_router_address.ssid != state.router_address.ssid));
     }
 }
 
@@ -1587,15 +1626,15 @@ APRS_ROUTER_INLINE bool is_packet_valid(const struct APRS_ROUTER_PACKET_NAMESPAC
     std::string callsign;
     int ssid;
 
-    if (!try_parse_callsign_with_used_flag(packet.from, callsign, ssid) ||
-        !try_parse_callsign_with_used_flag(packet.to, callsign, ssid))
+    if (!try_parse_address_with_used_flag(packet.from, callsign, ssid) ||
+        !try_parse_address_with_used_flag(packet.to, callsign, ssid))
     {
         return false;
     }
 
     for (const auto& p : packet.path)
     {
-        if (!try_parse_callsign_with_used_flag(p, callsign, ssid))
+        if (!try_parse_address_with_used_flag(p, callsign, ssid))
         {
             return false;
         }
@@ -1653,7 +1692,7 @@ APRS_ROUTER_INLINE bool has_packet_routing_ended(const route_state& state)
     return has_packet_routing_ended(state.packet_addresses, state.maybe_last_used_address_index);
 }
 
-APRS_ROUTER_INLINE bool has_packet_been_routed_by_us(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, std::string_view router_address)
+APRS_ROUTER_INLINE bool has_packet_been_routed_by_us(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, const address& router_address)
 {
     // Packet was routed by us: N0CALL>APRS,A,B,C,D,DIGI*,F,G,CALL:data
     //                                              ~~~~~
@@ -1675,12 +1714,13 @@ APRS_ROUTER_INLINE bool has_packet_been_routed_by_us(const std::vector<address>&
 
     const address& last_used_address = packet_addresses[last_used_address_index];
 
-    return (last_used_address.text == router_address && last_used_address.mark);
+    return ((last_used_address.text == router_address.text && last_used_address.ssid == router_address.ssid) &&
+            last_used_address.mark);
 }
 
 APRS_ROUTER_INLINE bool has_packet_been_routed_by_us(route_state& state)
 {
-    return has_packet_been_routed_by_us(state.packet_addresses, state.maybe_last_used_address_index, state.settings.address);
+    return has_packet_been_routed_by_us(state.packet_addresses, state.maybe_last_used_address_index, state.router_address);
 }
 
 APRS_ROUTER_INLINE void init_routing_result(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, routing_result& result)
