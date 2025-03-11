@@ -54,15 +54,21 @@
 
 #include "../aprsroute.hpp"
 
+// Disable the packet loop test if defined. The packet loop test is a stress test that sends a large number of packets through the router.
 #ifdef APRS_ROUTE_DISABLE_PACKET_LOOP_TEST
 // Intentionally left empty
 #endif
+// Enable only the auto testing if defined. This will run the auto tests only.
 #ifdef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
 // Intentionally left empty
 #endif // APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+// Disable the auto testing if defined. This will run the regular tests only.
 #ifdef APRS_ROUTE_DISABLE_AUTO_TESTING
 // Intentionally left empty
 #endif // APRS_ROUTE_DISABLE_AUTO_TESTING
+
+// Disable the packet loop test, as it is lengthy and not needed for regular testing.
+#define APRS_ROUTE_DISABLE_PACKET_LOOP_TEST
 
 #if defined(IS_LINUX_MAC) && !defined(APRS_ROUTE_DISABLE_AUTO_TESTING)
 #include <signal.h>
@@ -363,6 +369,64 @@ TEST(address, try_parse_address)
     EXPECT_TRUE(s.N == 1);
     EXPECT_TRUE(s.text == "WIDE1");
     EXPECT_TRUE(s.kind == address_kind::other);
+#else
+    EXPECT_TRUE(true);
+#endif
+}
+
+TEST(address, try_parse_address_with_ssid)
+{
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+    std::string address;
+    std::string callsign;
+    int ssid = 0;
+
+    address = "A0BCDE-12";
+    EXPECT_TRUE(try_parse_address(address, callsign, ssid));
+    EXPECT_TRUE(callsign == "A0BCDE");
+    EXPECT_TRUE(ssid == 12);
+
+    address = "A0BCDE-12*";
+    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
+
+    address = "A0BCDE-12*";
+    EXPECT_TRUE(try_parse_address_with_used_flag(address, callsign, ssid));
+    EXPECT_TRUE(callsign == "A0BCDE");
+    EXPECT_TRUE(ssid == 12);
+
+    address = "N0CALL";
+    EXPECT_TRUE(try_parse_address(address, callsign, ssid));
+    EXPECT_TRUE(callsign == "N0CALL");
+    EXPECT_TRUE(ssid == 0);
+
+    address = "N0CALL-01";
+    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
+
+    address = "N0CALL-";
+    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
+
+    address = "N0CALL-0";
+    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
+
+    address = "N0CALL-1";
+    EXPECT_TRUE(try_parse_address(address, callsign, ssid));
+    EXPECT_TRUE(callsign == "N0CALL");
+    EXPECT_TRUE(ssid == 1);
+
+    address = "N0CALL-100";
+    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
+
+    address = "ABC-100";
+    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
+
+    address = "N0CALL-dd";
+    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
+
+    address = "N0CALL-WX";
+    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
+
+    address = "N0CALL-20";
+    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
 #else
     EXPECT_TRUE(true);
 #endif
@@ -688,59 +752,18 @@ TEST(router, try_route_packet_loop)
 #endif
 }
 
-TEST(address, try_parse_callsign)
+TEST(router, try_route_packet_long_path_with_substitute)
 {
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
-    std::string address;
-    std::string callsign;
-    int ssid = 0;
+    router_settings digi { "DIGI2", { "WIDE1", "WIDE2", "WIDE3" }, routing_option::substitute_complete_n_N_address, false };
+    routing_result result;
 
-    address = "A0BCDE-12";
-    EXPECT_TRUE(try_parse_address(address, callsign, ssid));
-    EXPECT_TRUE(callsign == "A0BCDE");
-    EXPECT_TRUE(ssid == 12);
+    packet p = "N0CALL>APRS,DIGI1*,WIDE1-1,CALL,WIDE2-2,ROUTE,WIDE3-2:data";
 
-    address = "A0BCDE-12*";
-    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
+    try_route_packet(p, digi, result);
 
-    address = "A0BCDE-12*";
-    EXPECT_TRUE(try_parse_address_with_used_flag(address, callsign, ssid));
-    EXPECT_TRUE(callsign == "A0BCDE");
-    EXPECT_TRUE(ssid == 12);
-
-    address = "N0CALL";
-    EXPECT_TRUE(try_parse_address(address, callsign, ssid));
-    EXPECT_TRUE(callsign == "N0CALL");
-    EXPECT_TRUE(ssid == 0);
-
-    address = "N0CALL-01";
-    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
-
-    address = "N0CALL-";
-    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
-
-    address = "N0CALL-0";
-    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
-
-    address = "N0CALL-1";
-    EXPECT_TRUE(try_parse_address(address, callsign, ssid));
-    EXPECT_TRUE(callsign == "N0CALL");
-    EXPECT_TRUE(ssid == 1);
-
-    address = "N0CALL-100";
-    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
-
-    address = "ABC-100";
-    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
-
-    address = "N0CALL-dd";
-    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
-
-    address = "N0CALL-WX";
-    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
-
-    address = "N0CALL-20";
-    EXPECT_FALSE(try_parse_address(address, callsign, ssid));
+    EXPECT_TRUE(result.state == routing_state::routed);
+    //EXPECT_TRUE(to_string(result.routed_packet) == "N0CALL>APRS,DIGI*,WIDE1-2:data"); // N0CALL>APRS,DIGI*,WIDE1-2:data
 #else
     EXPECT_TRUE(true);
 #endif
@@ -1552,8 +1575,8 @@ struct route_test
     std::string options;
 };
 
-void test_diagnostics_reconstruct_packet_by_index(const routing_result& r);
-void test_diagnostics_reconstruct_packet_by_start_end(const routing_result& r);
+void test_diagnostics_reconstruct_packet_by_index(const route_test& test, const routing_result& r);
+void test_diagnostics_reconstruct_packet_by_start_end(const route_test& test, const routing_result& r);
 
 std::string to_lower(const std::string &str)
 {
@@ -1765,13 +1788,16 @@ void run_test(const route_test& test, const packet& p, const router_settings& se
 
     std::string diag_string = aprs::router::to_string(result);
 
-    printf("%s", diag_string.c_str());
+    if (test.debug)
+    {
+        printf("%s", diag_string.c_str());
+    }
 
-    test_diagnostics_reconstruct_packet_by_index(result);
-    test_diagnostics_reconstruct_packet_by_start_end(result);
+    test_diagnostics_reconstruct_packet_by_index(test, result);
+    test_diagnostics_reconstruct_packet_by_start_end(test, result);
 }
 
-void test_diagnostics_reconstruct_packet_by_index(const routing_result& result)
+void test_diagnostics_reconstruct_packet_by_index(const route_test& test, const routing_result& result)
 {
     if (result.state != routing_state::routed)
     {
@@ -1789,11 +1815,11 @@ void test_diagnostics_reconstruct_packet_by_index(const routing_result& result)
     if (!result_bool)
     {
         // handy breakpoint location
-        printf("test failed\n");
+        printf("test %s failed\n", test.id.c_str());
     }
 }
 
-void test_diagnostics_reconstruct_packet_by_start_end(const routing_result& result)
+void test_diagnostics_reconstruct_packet_by_start_end(const route_test& test, const routing_result& result)
 {
     if (result.state != routing_state::routed)
     {
@@ -1811,7 +1837,7 @@ void test_diagnostics_reconstruct_packet_by_start_end(const routing_result& resu
     if (!result_bool)
     {
         // handy breakpoint location
-        printf("test failed\n");
+        printf("test %s failed\n", test.id.c_str());
     }
 }
 

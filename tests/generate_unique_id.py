@@ -6,6 +6,7 @@
 # **************************************************************** #
 
 import json
+import shutil
 
 def assign_numeric_ids(routes_data):
     """Assign incremental numeric IDs to each route, starting from 1."""
@@ -21,14 +22,17 @@ def main():
     with open('routes.json', 'r') as file:
         routes_data = json.load(file)
     
+    # Save the old file as routes.old.json
+    shutil.copyfile('routes.json', 'routes.old.json')
+    
     # Assign incremental numeric IDs to each route
     assign_numeric_ids(routes_data)
     
     # Save the updated JSON data back to the file
-    with open('routes_updated.json', 'w') as file:
+    with open('routes.json', 'w') as file:
         json.dump(routes_data, file, indent=4)
     
-    print("Incremental numeric IDs have been assigned and saved to 'routes_updated.json'.")
+    print("Incremental numeric IDs have been assigned and saved to 'routes.json'.")
 
 if __name__ == "__main__":
     main()
