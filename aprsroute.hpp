@@ -51,6 +51,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <iterator>
 #include <cassert>
 #include <optional>
 #include <unordered_map>
