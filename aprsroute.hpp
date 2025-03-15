@@ -245,11 +245,12 @@ enum class routing_option : int
     preempt_drop = 8,                         // Preemptively erase all addresses in front of our address.
     preempt_mark = 16,                        // Preemptively mark our address as used, while leaving the rest of the path as is.
     substitute_complete_n_N_address = 32,     // Replace an PATHn-N address with our address when N is decremented to 0.
-    trap_limit_exceeding_n_N_address = 64,    // Replace a harmful path with our callsign to prevent network issues (e.g., WIDE7-7).
-    reject_limit_exceeding_n_N_address = 128, // Reject the packet if the paths has excessive hops (e.g., PATH7-7).
-    strict = 256,                             // Don't route if the packet is malformed
-    preempt_n_N = 512,                        // Enables preemptive routing in packets using n-N routing
-    substitute_explicit_address = 1024,       // Replace an address with the router's callsign when explicit routing
+    skip_complete_n_N_address = 64,
+    trap_limit_exceeding_n_N_address = 128,   // Replace a harmful path with our callsign to prevent network issues (e.g., WIDE7-7).
+    reject_limit_exceeding_n_N_address = 256, // Reject the packet if the paths has excessive hops (e.g., PATH7-7).
+    strict = 512,                             // Don't route if the packet is malformed
+    preempt_n_N = 1024,                       // Enables preemptive routing in packets using n-N routing
+    substitute_explicit_address = 2048,       // Replace an address with the router's callsign when explicit routing
     recommended = route_self | preempt_front |
                   substitute_complete_n_N_address | trap_limit_exceeding_n_N_address |
                   strict | preempt_n_N |
@@ -559,7 +560,7 @@ bool try_decrement_n_N_address(address& s);
 bool try_decrement_n_N_address(route_state& state, address& s);
 
 std::optional<std::pair<size_t, size_t>> find_first_unused_n_N_address_index(const std::vector<address>& packet_addresses, const std::vector<address>& router_addresses, routing_option options);
-std::optional<size_t> find_last_used_address_index(const std::vector<address>& packet_addresses);
+std::optional<size_t> find_last_used_address_index(const std::vector<address>& packet_addresses, const std::vector<address>& router_n_N_addresses, routing_option options);
 std::optional<size_t> find_router_address_index(const std::vector<address>& packet_addresses, size_t offset, const address& router_address, const std::vector<address>& router_addresses);
 std::optional<size_t> find_unused_router_address_index(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index, const address& router_address, const std::vector<address>& router_explicit_addresses);
 void find_used_addresses(route_state& state);
@@ -786,6 +787,14 @@ APRS_ROUTER_INLINE bool try_parse_routing_option(std::string_view text, routing_
     else if (text == "reject_limit_exceeding_n_N_address")
     {
         result = routing_option::reject_limit_exceeding_n_N_address;
+    }
+    else if (text == "skip_complete_n_N_address")
+    {
+        result = routing_option::skip_complete_n_N_address;
+    }
+    else if (text == "preempt_n_N")
+    {
+        result = routing_option::preempt_n_N;
     }
     else if (text == "strict")
     {
@@ -1263,6 +1272,80 @@ APRS_ROUTER_INLINE bool try_preempt_transform_explicit_route(route_state& state)
 
 APRS_ROUTER_INLINE bool try_n_N_route(route_state& state)
 {
+    // n-N routing function. Routes a packet using the n-N routing algorithm.
+    //
+    // If the first unused address in the packet is an n-N address, apply the n-N routing algorithm:
+    //
+    // Example:
+    //
+    //   Router address: DIGI
+    //
+    //   Router path: WIDE2-2,WIDE1-2
+    //
+    //   Packet: N0CALL>APRS,CALL*,WIDE1-2,WIDE2-2:data
+    //                           ~ ~~~~~~~
+    //
+    //   Routed Packet: N0CALL>APRS,CALL,DIGI*,WIDE1-1,WIDE2-2:data
+    //                                 ~ ~~~~~~~~~~~~~
+    //
+    // If an n-N packet address exceeds the maximum number of hops, trap it if "trap_limit_exceeding_n_N_address" is set:
+    //
+    // Example:
+    // 
+    //   Router path: WIDE2-2
+    //
+    //   Packet: N0CALL>APRS,CALL*,WIDE2-3:data
+    //                             ~~~~~~~
+    //
+    //   Routed Packet: N0CALL>APRS,CALL,DIGI*:data
+    //                                   ~~~~~
+
+    std::vector<address>& packet_addresses = state.packet_addresses;
+    const std::vector<address>& router_n_N_addresses = state.router_n_N_addresses;
+    const routing_option options = state.settings.options;
+    const size_t unused_address_index = state.unused_address_index;
+
+    auto unused_address_index_pair = find_first_unused_n_N_address_index(packet_addresses, router_n_N_addresses, options);
+
+    if (!unused_address_index_pair)
+    {
+        return false;
+    }
+
+    auto [address_n_N_index, router_n_N_index] = unused_address_index_pair.value();
+
+    // We should not route the packet if we have other unused addresses in front of us.
+    // If we have unused addresses, then we should stop the routing process:
+    //
+    // N0CALL>APRS,CALL,WIDE1-1,WIDE2-1:data
+    //             ~~~~
+    //             unused address
+    //
+    //  But we should still allow empty addresses to be routed so they can be removed
+
+    if (address_n_N_index > unused_address_index)
+    {
+        if (!state.packet_addresses[unused_address_index].text.empty())
+        {
+            return false;
+        }
+    }
+
+    assert(address_n_N_index < packet_addresses.size());
+    assert(router_n_N_index < router_n_N_addresses.size());
+
+    if (try_trap_n_N_route(state, packet_addresses[address_n_N_index], router_n_N_addresses[router_n_N_index]))
+    {
+        return true;
+    }
+
+    try_n_N_route_no_trap(state, address_n_N_index);
+
+    return true;
+}
+
+APRS_ROUTER_INLINE bool try_n_N_route_no_trap(route_state& state, size_t packet_n_N_address_index)
+{
     // Route an ADDRESSn-N address.
     //
     // Route a packet through a routing "path" that matches an address with the n-N format (e.g., WIDE2-1).
@@ -1300,63 +1383,6 @@ APRS_ROUTER_INLINE bool try_n_N_route(route_state& state)
     //   After step 2.a:  N0CALL>APRS,CALL*,DIGI,WIDE1,WIDE2-1:data
     //   After step 3.a:  N0CALL>APRS,CALL,DIGI*,WIDE2-1:data
     //   After step 3.b:  N0CALL>APRS,CALL,DIGI,WIDE1*,WIDE2-1:data
-
-    std::vector<address>& packet_addresses = state.packet_addresses;
-    const std::vector<address>& router_n_N_addresses = state.router_n_N_addresses;
-    const routing_option options = state.settings.options;
-
-    auto unused_address_index_pair = find_first_unused_n_N_address_index(packet_addresses, router_n_N_addresses, options);
-
-    if (!unused_address_index_pair)
-    {
-        return false;
-    }
-
-    auto [address_n_N_index, router_n_N_index] = unused_address_index_pair.value();
-
-    assert(address_n_N_index < packet_addresses.size());
-    assert(router_n_N_index < router_n_N_addresses.size());
-
-    if (try_trap_n_N_route(state, packet_addresses[address_n_N_index], router_n_N_addresses[router_n_N_index]))
-    {
-        return true;
-    }
-
-    try_n_N_route_no_trap(state, address_n_N_index);
-
-    return true;
-}
-
-APRS_ROUTER_INLINE bool try_n_N_route_no_trap(route_state& state, size_t packet_n_N_address_index)
-{
-    // Core n-N routing function. Routes a packet using the n-N routing algorithm.
-    //
-    // If the first unused address in the packet is an n-N address, apply the n-N routing algorithm.
-    // 
-    // Router address: DIGI
-    //
-    // Router path: WIDE2-2,WIDE1-1,
-    // 
-    // Packet: N0CALL>APRS,CALL*,WIDE1-1,WIDE2-2:data
-    //
-    //   1. If the first unused address in the packet is an n-N address that matches an n-N address in the router's path, continue.
-    // 
-    //      The match is based on the "n" component of the n-N address. Ex, the packet address WIDE1-2 matches the router's address WIDE1-3.
-    //      A WIDE2-2 packet address matches the router's address WIDE2-1.
-    //      A WIDE3-2 packet address matches the router's address WIDE3-0.
-    //
-    //      Ex: N0CALL>APRS,CALL*,WIDE1-1,WIDE2-2:data
-    //                            ~~~~~~~
-    //
-    //   2. If the n-N address is exhausted, N = 0, then skip to the next address.
-    // 
-    //      Ex: N0CALL>APRS,CALL*,WIDE1,WIDE2-2:data
-    // 
-    //   3. Decrement the n-N address to indicate one less hop remaining.
-    //
-    //      3.a) Decrement N by 1
-    // 
-    //           After the address was decremented. If no more hops are remaining, N = 0, then update ADDRESSn-N to ADDRESSn
 
     std::vector<address>& packet_addresses = state.packet_addresses;
     const routing_option options = state.settings.options;
@@ -1518,6 +1544,7 @@ APRS_ROUTER_INLINE bool try_trap_n_N_route(route_state& state, address& packet_n
     // Router path: WIDE2-2,WIDE7-2
     //                      ~~~~~~~
     //                      router_n_N_address
+    //                             7 2
     //
     // Input:  FROM>TO,WIDE7-7:data
     //                 ~~~~~~~
@@ -3076,22 +3103,63 @@ APRS_ROUTER_INLINE std::optional<std::pair<size_t, size_t>> find_first_unused_n_
     return {};
 }
 
-APRS_ROUTER_INLINE std::optional<size_t> find_last_used_address_index(const std::vector<address>& packet_addresses)
+APRS_ROUTER_INLINE std::optional<size_t> find_last_used_address_index(const std::vector<address>& packet_addresses, const std::vector<address>& router_n_N_addresses, routing_option options)
 {
     // Find the last address that has been marked as "used" in the packet path.
     // For example, if the packet is: FROM>TO,CALL*,TEST,ADDRESS*,WIDE1-2:data
     //                                                   ~~~~~~~~
     // the last used address will be "ADDRESS".
 
+    std::optional<size_t> last_used_address_index;
+
     for (int i = static_cast<int>(packet_addresses.size()) - 1; i >= 0; i--)
     {
         if (packet_addresses[i].mark)
         {
-            return i;
+            last_used_address_index = static_cast<size_t>(i);
+            break;
         }
     }
 
-    return {};
+    // Special handling for skip_complete_n_N_address
+    //
+    // There might be packets with unset but completed n-N addresses in the path.
+    // We'd like to be able to route them if the skip_complete_n_N_address condition is set.
+    // To do so, we consider them as "used" and progress in finding the last used address.
+    //
+    // Example:
+    // 
+    // Router address: DIGI
+    // 
+    // Router n-N addresses: WIDE1,WIDE2
+    //
+    // Packet: N0CALL>APRS,WIDE1,WIDE2-2:data
+    //
+    // Routed packet: N0CALL>APRS,WIDE1,DIGI*,WIDE2-1:data
+
+    bool skip_complete_n_N_address = enum_has_flag(options, routing_option::skip_complete_n_N_address);
+
+    if (skip_complete_n_N_address)
+    {
+        size_t offset = last_used_address_index.value_or(0);
+
+        for (size_t i = offset; i < packet_addresses.size(); i++)
+        {
+            const auto& address = packet_addresses[i];
+
+            for (size_t j = 0; const auto & p : router_n_N_addresses)
+            {
+                if (address.n == p.n && address.N == 0 && address.text == p.text)
+                {
+                    last_used_address_index = i;
+                    break;
+                }
+                j++;
+            }
+        }
+    }
+
+    return last_used_address_index;
 }
 
 APRS_ROUTER_INLINE std::optional<size_t> find_router_address_index(const std::vector<address>& packet_addresses, size_t offset, const address& router_address, const std::vector<address>& router_explicit_addresses)
@@ -3192,7 +3260,7 @@ APRS_ROUTER_INLINE void find_used_addresses(route_state& state)
     // Unused address: N0CALL>APRS,CALL*,DIGI,WIDE1,ROUTE,WIDE2-2:data
     //                                   ~~~~
 
-    state.maybe_last_used_address_index = find_last_used_address_index(state.packet_addresses);
+    state.maybe_last_used_address_index = find_last_used_address_index(state.packet_addresses, state.router_n_N_addresses, state.settings.options);
     state.maybe_router_address_index = find_unused_router_address_index(state.packet_addresses, state.maybe_last_used_address_index, state.router_address, state.router_explicit_addresses);
     state.unused_address_index = state.maybe_last_used_address_index.value_or(-1) + 1;
 

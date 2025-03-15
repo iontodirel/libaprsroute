@@ -70,9 +70,6 @@
 // Disable the packet loop test, as it is lengthy and not needed for regular testing.
 #define APRS_ROUTE_DISABLE_PACKET_LOOP_TEST
 
-//#define APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
-//#define APRS_ROUTE_DISABLE_AUTO_TESTING
-
 #if defined(IS_LINUX_MAC) && !defined(APRS_ROUTE_DISABLE_AUTO_TESTING)
 #include <signal.h>
 #endif
@@ -676,15 +673,15 @@ TEST(router, try_route_packet_n_N_loop)
     digi.n_N_addresses = {"WIDE1", "WIDE2", "WIDE3"};
     digi.options = routing_option::substitute_complete_n_N_address;
 
-    packet p = {"N0CALL", "APRS", {"WIDE1-2", "CALL", "WIDE2-2", "ROUTE", "WIDE3-2"}, "data"};
+    packet p = {"N0CALL", "APRS", {"WIDE1-2", "WIDE2-2", "WIDE3-2"}, "data"};
     result.routed_packet = p;
 
-    std::vector<size_t> digipeated_indices = { 0, 1, 3, 4, 6, 7 };
+    std::vector<size_t> digipeated_indices = { 0, 1, 2, 3, 4, 5 };
     std::vector<std::string> digipeater_addresses = {"DIGI1","DIGI2","DIGI3","DIGI4","DIGI5","DIGI6"};
 
     result = test_packet_routing_iteration(p, digi, digipeater_addresses, digipeated_indices, 6);
 
-    EXPECT_TRUE(to_string(result.routed_packet) == "N0CALL>APRS,DIGI1,DIGI2,CALL,DIGI3,DIGI4,ROUTE,DIGI5,DIGI6*:data");
+    EXPECT_TRUE(to_string(result.routed_packet) == "N0CALL>APRS,DIGI1,DIGI2,DIGI3,DIGI4,DIGI5,DIGI6*:data");
 
     // -------------------------------------------------------------
     // Routing a packet through multiple N-hops and multiple routers
@@ -791,16 +788,48 @@ TEST(router, preempt_front_with_explicit_ssid_diag)
 #endif
 }
 
-TEST(router, placeholder_test)
+TEST(router, routing_n_N_with_addresses_in_front)
 {
-    router_settings digi { "ROUTER", { "DIGI" }, {}, routing_option::none, true };
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+    router_settings digi{ "DIGI", {}, { "WIDE2-2" }, routing_option::none, true };
     routing_result result;
 
-    packet p = "DIGI>APRS,DIGI,ROUTER:data";
+    packet p = "N0CALL>APRS,CALL,WIDE2-1:data";
 
     try_route_packet(p, digi, result);
 
-    EXPECT_TRUE(to_string(result.routed_packet) == "DIGI>APRS,ROUTER,DIGI*,ROUTER:data");
+    EXPECT_TRUE(result.state == routing_state::not_routed);
+#else
+    EXPECT_TRUE(true);
+#endif
+}
+
+TEST(router, placeholder_test)
+{
+    router_settings digi{ "DIGI", {}, { "WIDE1", "WIDE2" }, routing_option::skip_complete_n_N_address, true };
+    routing_result result;
+
+    packet p = "N0CALL>APRS,WIDE1,WIDE2-2:data";
+
+    try_route_packet(p, digi, result);
+
+    EXPECT_TRUE(result.state == routing_state::routed);
+}
+
+TEST(router, router_address_and_path_dual_matching)
+{
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+    router_settings digi{ "ROUTER", { "DIGI" }, {}, routing_option::none, true };
+    routing_result result;
+
+    packet p = "N0CALL>APRS,DIGI,ROUTER:data";
+
+    try_route_packet(p, digi, result);
+
+    EXPECT_TRUE(to_string(result.routed_packet) == "N0CALL>APRS,ROUTER,DIGI*,ROUTER:data");
+#else
+    EXPECT_TRUE(true);
+#endif
 }
 
 TEST(router, substitute_explicit_address_with_ssid_diagnostic)
@@ -851,26 +880,36 @@ TEST(router, try_route_packet_loop)
 
     // Typically about 500K packets / second (Intel Celeron N5095, 8GB RAM)
 
-    for (int i = 0; i < 1000000; i++)
+    const size_t packet_count = 1000000;
+
+    for (int i = 0; i < packet_count; i++)
     {
         routing_result result;
         router_settings digi;
 
         digi.address = "DIGI";
-        digi.path = {"WIDE4"};
+        digi.n_N_addresses = { "WIDE4" };
 
-        packet p = {"N0CALL", "APRS", {"CALL", "WIDE1-3", "TEMP", "WIDE2-3", "ROUTE", "WIDE3-3", "ROUTER", "WIDE4-3"}, "The quick brown fox jumps over the lazy dog."};
+        packet p = { "N0CALL", "APRS", {"CALL", "WIDE1-3", "TEMP", "WIDE2-3", "ROUTE", "WIDE3-3", "ROUTER", "WIDE4-3"}, "The quick brown fox jumps over the lazy dog."};
 
         try_route_packet(p, digi, result);
 
-        EXPECT_TRUE(result.routed == true);
+        EXPECT_TRUE(result.routed == false);
     }
 
     auto end = std::chrono::high_resolution_clock::now();
 
     std::chrono::duration<double, std::milli> elapsed = end - start;
 
-    std::cout << "Benchmark: " << elapsed.count() << " ms" << std::endl;
+    double elapsed_ms = elapsed.count();
+    double elapsed_seconds = elapsed_ms / 1000;
+    double elapsed_minutes = elapsed_seconds / 60;
+    double packets_per_ms = packet_count / elapsed_ms;
+
+    std::cout << "Benchmark: " << elapsed_ms << " ms" << std::endl;
+    std::cout << "Benchmark: " << std::fixed << std::setprecision(2) << elapsed_seconds << " seconds" << std::endl;
+    std::cout << "Benchmark: " << std::fixed << std::setprecision(2) << elapsed_minutes << " minutes" << std::endl;
+    std::cout << "Benchmark: " << packets_per_ms << " packets / ms" << std::endl;
 #else
     EXPECT_TRUE(true);
 #endif
