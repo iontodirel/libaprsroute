@@ -617,7 +617,9 @@ APRS_ROUTER_INLINE packet::packet(const char* packet_string) : packet(std::strin
 
 APRS_ROUTER_INLINE packet::packet(const std::string packet_string)
 {
-    assert(try_decode_packet(packet_string, *this));
+    bool result = try_decode_packet(packet_string, *this);
+    (void)result;
+    assert(result);
 }
 
 APRS_ROUTER_INLINE packet::operator std::string() const
