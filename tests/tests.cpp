@@ -70,6 +70,9 @@
 // Disable the packet loop test, as it is lengthy and not needed for regular testing.
 #define APRS_ROUTE_DISABLE_PACKET_LOOP_TEST
 
+//#define APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+//#define APRS_ROUTE_DISABLE_AUTO_TESTING
+
 #if defined(IS_LINUX_MAC) && !defined(APRS_ROUTE_DISABLE_AUTO_TESTING)
 #include <signal.h>
 #endif
@@ -86,6 +89,7 @@ using namespace aprs::router::detail;
 // **************************************************************** //
 
 routing_result test_packet_routing_iteration(const packet& p, router_settings digi, std::vector<std::string> addresses,  std::vector<size_t> digipeated_indices, int count);
+bool try_parse_addresses(const std::vector<std::string>& addresses, std::vector<address>& result);
 
 routing_result test_packet_routing_iteration(const packet& p, router_settings digi, std::vector<std::string> addresses,  std::vector<size_t> digipeated_indices, int count)
 {
@@ -116,6 +120,21 @@ routing_result test_packet_routing_iteration(const packet& p, router_settings di
     }
 
     return result;
+}
+
+bool try_parse_addresses(const std::vector<std::string>& addresses, std::vector<address>& result)
+{
+    result.clear();
+    size_t index = 0;
+    for (const auto& a : addresses)
+    {
+        address s;
+        try_parse_address(a, s);
+        s.index = index;
+        index++;
+        result.push_back(s);
+    }
+    return true;
 }
 
 // **************************************************************** //
@@ -334,10 +353,10 @@ TEST(address, try_parse_address)
 
     path = "WIDE2-0";
     EXPECT_TRUE(try_parse_address(path, s));
-    EXPECT_TRUE(s.n == 0);
+    EXPECT_TRUE(s.n == 2);
     EXPECT_TRUE(s.N == 0);
-    EXPECT_TRUE(s.text == "WIDE2-0");
-    EXPECT_TRUE(s.kind == address_kind::other);
+    EXPECT_TRUE(s.text == "WIDE");
+    EXPECT_TRUE(s.kind == address_kind::wide);
 
     path = "WIDE4-2-0";
     EXPECT_TRUE(try_parse_address(path, s));
@@ -625,7 +644,8 @@ TEST(router, try_route_packet_explicit_loop)
     // Output: N0CALL>APRS,DIGIA,DIGIB,DIGIC,DIGID,DIGIE,DIGIF,DIGIG,DIGIH*:data
     // -------------------------------------------------------------
 
-    digi.path = {};
+    digi.explicit_addresses = {};
+    digi.n_N_addresses = {};
 
     packet p = {"N0CALL", "APRS", {"DIGIA","DIGIB","DIGIC","DIGID","DIGIE","DIGIF","DIGIG","DIGIH"}, "data"};
     result.routed_packet = p;
@@ -653,7 +673,7 @@ TEST(router, try_route_packet_n_N_loop)
     // Output: N0CALL>APRS,DIGI1,DIGI2,CALL,DIGI3,DIGI4,ROUTE,DIGI5,DIGI6*:data
     // -------------------------------------------------------------
 
-    digi.path = {"WIDE1", "WIDE2", "WIDE3"};
+    digi.n_N_addresses = {"WIDE1", "WIDE2", "WIDE3"};
     digi.options = routing_option::substitute_complete_n_N_address;
 
     packet p = {"N0CALL", "APRS", {"WIDE1-2", "CALL", "WIDE2-2", "ROUTE", "WIDE3-2"}, "data"};
@@ -673,7 +693,7 @@ TEST(router, try_route_packet_n_N_loop)
     // Output: N0CALL>APRS,DIGI1,DIGI2,CALL,DIGI3,DIGI4,ROUTE,DIGI5,DIGI6*:data
     // -------------------------------------------------------------
 
-    digi.path = {"WIDE1","WIDE2"};
+    digi.n_N_addresses = {"WIDE1","WIDE2"};
     digi.options = routing_option::substitute_complete_n_N_address;
 
     p = {"N0CALL", "APRS", {"WIDE1-1", "WIDE2-7"}, "data"};
@@ -706,7 +726,7 @@ TEST(routing_option, enum_has_flag)
 TEST(router, simple_demo)
 {
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
-    router_settings digi { "DIGI", { "WIDE1" } };
+    router_settings digi { "DIGI", {}, { "WIDE1" }, routing_option::none, false };
     routing_result result;
 
     packet p = { "N0CALL", "APRS", { "WIDE1-3" }, "data" }; // N0CALL>APRS,WIDE1-3:data
@@ -715,6 +735,110 @@ TEST(router, simple_demo)
 
     EXPECT_TRUE(result.state == routing_state::routed);
     EXPECT_TRUE(to_string(result.routed_packet) == "N0CALL>APRS,DIGI*,WIDE1-2:data"); // N0CALL>APRS,DIGI*,WIDE1-2:data
+#else
+    EXPECT_TRUE(true);
+#endif
+}
+
+TEST(router, preempt_front_with_explicit_ssid_diag)
+{
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+    router_settings digi{ "DIGI2-3", {}, {}, routing_option::preempt_front, true };
+    routing_result result;
+
+    packet p = "N0CALL>APRS,DIGI1-1,DIGI1-2,DIGI1-3,DIGI2-1,DIGI2-2,DIGI2-3:data";
+
+    try_route_packet(p, digi, result);
+
+    EXPECT_TRUE(to_string(result.routed_packet) == "N0CALL>APRS,DIGI2-3*,DIGI1-1,DIGI1-2,DIGI1-3,DIGI2-1,DIGI2-2:data");
+
+    // N0CALL>APRS,DIGI1-1,DIGI1-2,DIGI1-3,DIGI2-1,DIGI2-2,DIGI2-3:data
+    //                                                     ~~~~~~~
+    //                                                     52   59 - Packet address removed.
+    //
+    // N0CALL>APRS,DIGI1-1,DIGI1-2,DIGI1-3,DIGI2-1,DIGI2-2,DIGI2-3:data
+    //             ~~~~~~~
+    //             12   29 - Packet address inserted.
+    //
+    // N0CALL>APRS,DIGI1-1*,DIGI1-2,DIGI1-3,DIGI2-1,DIGI2-2,DIGI2-3:data
+    //             ~~~~~~~
+    //             12   29 - Packet address 'set'.
+
+    EXPECT_TRUE(result.actions.size() == 3);
+
+    EXPECT_TRUE(result.actions[0].address == "DIGI2-3");
+    EXPECT_TRUE(result.actions[0].target == applies_to::path);
+    EXPECT_TRUE(result.actions[0].type == routing_action::remove);
+    EXPECT_TRUE(result.actions[0].start == 52);
+    EXPECT_TRUE(result.actions[0].end == 59);
+    EXPECT_TRUE(result.actions[0].index == 5);
+
+    EXPECT_TRUE(result.actions[1].address == "DIGI2-3");
+    EXPECT_TRUE(result.actions[1].target == applies_to::path);
+    EXPECT_TRUE(result.actions[1].type == routing_action::insert);
+    EXPECT_TRUE(result.actions[1].start == 12);
+    EXPECT_TRUE(result.actions[1].end == 19);
+    EXPECT_TRUE(result.actions[1].index == 0);
+
+    EXPECT_TRUE(result.actions[2].address == "DIGI2-3");
+    EXPECT_TRUE(result.actions[2].target == applies_to::path);
+    EXPECT_TRUE(result.actions[2].type == routing_action::set);
+    EXPECT_TRUE(result.actions[2].start == 12);
+    EXPECT_TRUE(result.actions[2].end == 19);
+    EXPECT_TRUE(result.actions[2].index == 0);
+#else
+    EXPECT_TRUE(true);
+#endif
+}
+
+TEST(router, placeholder_test)
+{
+    router_settings digi { "ROUTER", { "DIGI" }, {}, routing_option::none, true };
+    routing_result result;
+
+    packet p = "DIGI>APRS,DIGI,ROUTER:data";
+
+    try_route_packet(p, digi, result);
+
+    EXPECT_TRUE(to_string(result.routed_packet) == "DIGI>APRS,ROUTER,DIGI*,ROUTER:data");
+}
+
+TEST(router, substitute_explicit_address_with_ssid_diagnostic)
+{
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+    router_settings digi{ "DIGI-7", { "DIGI" }, {}, routing_option::substitute_explicit_address, true };
+    routing_result result;
+
+    packet p = "N0CALL>APRS,DIGI-7:data";
+
+    try_route_packet(p, digi, result);
+
+    // N0CALL>APRS,DIGI-7:data
+    //             ~~~~~~
+    //             12  18 - Packet has already been routed.
+    //
+    // N0CALL>APRS,DIGI-7*:data
+    //             ~~~~~~
+    //             12  18 - Packet address marked as 'set'
+
+    EXPECT_TRUE(result.actions.size() == 2);
+
+    EXPECT_TRUE(result.actions[0].address == "DIGI-7");
+    EXPECT_TRUE(result.actions[0].target == applies_to::path);
+    EXPECT_TRUE(result.actions[0].type == routing_action::replace);
+    EXPECT_TRUE(result.actions[0].start == 12);
+    EXPECT_TRUE(result.actions[0].end == 18);
+    EXPECT_TRUE(result.actions[0].index == 0);
+
+    EXPECT_TRUE(result.actions[1].address == "DIGI-7");
+    EXPECT_TRUE(result.actions[1].target == applies_to::path);
+    EXPECT_TRUE(result.actions[1].type == routing_action::set);
+    EXPECT_TRUE(result.actions[1].start == 12);
+    EXPECT_TRUE(result.actions[1].end == 18);
+    EXPECT_TRUE(result.actions[1].index == 0);
+
+    EXPECT_TRUE(result.state == routing_state::routed);
+    EXPECT_TRUE(to_string(result.routed_packet) == "N0CALL>APRS,DIGI-7*:data");
 #else
     EXPECT_TRUE(true);
 #endif
@@ -755,7 +879,7 @@ TEST(router, try_route_packet_loop)
 TEST(router, try_route_packet_long_path_with_substitute)
 {
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
-    router_settings digi { "DIGI2", { "WIDE1", "WIDE2", "WIDE3" }, routing_option::substitute_complete_n_N_address, false };
+    router_settings digi{ "DIGI2", {},  { "WIDE1", "WIDE2", "WIDE3" }, routing_option::substitute_complete_n_N_address, false };
     routing_result result;
 
     packet p = "N0CALL>APRS,DIGI1*,WIDE1-1,CALL,WIDE2-2,ROUTE,WIDE3-2:data";
@@ -772,7 +896,7 @@ TEST(router, try_route_packet_long_path_with_substitute)
 TEST(router, try_route_packet_enable_diagnostics)
 {
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
-    router_settings digi { "DIGI", { "WIDE1" }, routing_option::none, true };
+    router_settings digi{ "DIGI", {},  { "WIDE1" }, routing_option::none, true };
     routing_result result;
 
     // N0CALL>APRS,CALL,WIDE1,DIGI*:data
@@ -830,7 +954,7 @@ TEST(router, try_route_packet_enable_diagnostics)
     //             ~~~~
     //             12 16 - Packet address marked as 'set'
 
-    digi.path = { "A" };
+    digi.explicit_addresses = { "A" };
     digi.options = routing_option::substitute_explicit_address;
     p = { "N0CALL", "APRS", { "A", "B", "C", "D", "E", "F", "G" }, "data"};
     packet_string = to_string(p);
@@ -865,7 +989,7 @@ TEST(router, try_route_packet_enable_diagnostics)
     //                   ~~~~
     //                   18 22 - Packet address marked as 'set'
 
-    digi.path = { "D" };
+    digi.explicit_addresses = { "D" };
     digi.options = routing_option::substitute_explicit_address;
     p = { "N0CALL", "APRS", { "A", "B", "C*", "D", "E", "F", "G" }, "data"};
     packet_string = to_string(p);
@@ -900,7 +1024,7 @@ TEST(router, try_route_packet_enable_diagnostics)
     //            12 13 - Packet address marked as 'set'
 
     digi.address = "A";
-    digi.path = {};
+    digi.explicit_addresses = {};
     digi.options = routing_option::none;
     p = { "N0CALL", "APRS", { "A", "B", "C", "D", "E", "F", "G" }, "data"};
     packet_string = to_string(p);
@@ -929,7 +1053,7 @@ TEST(router, try_route_packet_enable_diagnostics)
     //             12 17 - Packet address marked as 'set'
 
     digi.address = "ABCDE";
-    digi.path = {};
+    digi.explicit_addresses = {};
     digi.options = routing_option::preempt_front;
     p = { "N0CALL", "APRS", { "AB", "ABC", "ABCD", "ABCDE" }, "data"};
     packet_string = to_string(p);
@@ -976,7 +1100,7 @@ TEST(router, try_route_packet_enable_diagnostics)
     //                  17 22 - Packet address marked as 'set'
 
     digi.address = "DIGI";
-    digi.path = { "CALLB" };
+    digi.explicit_addresses = { "CALLB" };
     digi.options = routing_option::preempt_front; // todo + substitute_explicit_address
     p = { "N0CALL", "APRS", { "CALLA", "CALLB" }, "data"};
     packet_string = to_string(p);
@@ -1030,7 +1154,7 @@ TEST(router, try_route_packet_enable_diagnostics)
     //             12 17 - Packet address marked as 'set'
 
     digi.address = "CITYD";
-    digi.path = {};
+    digi.explicit_addresses = {};
     digi.options = routing_option::preempt_drop;
     p = { "N0CALL", "APRS", { "CITYA*", "CITYB", "CITYC", "CITYD", "CITYE" }, "data"};
     packet_string = to_string(p);
@@ -1084,7 +1208,7 @@ TEST(router, try_route_packet_enable_diagnostics)
     //                         24 28 - Packet address marked as 'set'
 
     digi.address = "DIGI";
-    digi.path = { "WIDE2-2" };
+    digi.n_N_addresses = { "WIDE2-2" };
     digi.options = routing_option::trap_limit_exceeding_n_N_address;
     p = { "N0CALL", "APRS", { "CALLA*", "CALLB*", "WIDE2-3" }, "data"};
     packet_string = to_string(p);
@@ -1134,7 +1258,7 @@ TEST(router, try_route_packet_enable_diagnostics)
     //             12 16 - Packet address marked as 'set'
 
     digi.address = "DIGI";
-    digi.path = { "WIDE1", "WIDE2" };
+    digi.n_N_addresses = { "WIDE1", "WIDE2" };
     digi.options = routing_option::none;
     p = { "N0CALL", "APRS", { "WIDE1-2" }, "data"};
     packet_string = to_string(p);
@@ -1181,7 +1305,7 @@ TEST(router, try_route_packet_enable_diagnostics)
     //                        23 27 - Packet address marked as 'set'
 
     digi.address = "DIGI";
-    digi.path = { "WIDE2", "WIDE1" };
+    digi.n_N_addresses = { "WIDE2", "WIDE1" };
     digi.options = routing_option::none;
     p = { "N0CALL", "APRS", { "CALL", "WIDE1*", "WIDE2-2" }, "data"};
     packet_string = to_string(p);
@@ -1235,7 +1359,7 @@ TEST(router, try_route_packet_enable_diagnostics)
     //                                                 48 52 - Packet address marked as 'set'
 
     digi.address = "DIGI";
-    digi.path = { "WIDE3" };
+    digi.n_N_addresses = { "WIDE3" };
     digi.options = routing_option::none;
     p = { "N0CALL", "APRS", { "CALL1", "CALL2", "CALL3", "CALL4", "CALL5", "CALL6*", "WIDE3-3" }, "data"};
     packet_string = to_string(p);
@@ -1289,7 +1413,7 @@ TEST(router, try_route_packet_enable_diagnostics)
     //             12 12 - Packet address removed
 
     digi.address = "DIGI";
-    digi.path = { "WIDE1" };
+    digi.n_N_addresses = { "WIDE1" };
     digi.options = routing_option::substitute_complete_n_N_address;
     p = { "N0CALL", "APRS", { "", "WIDE1-1" }, "data"};
     packet_string = to_string(p);
@@ -1333,7 +1457,7 @@ TEST(router, try_route_packet_enable_diagnostics)
 TEST(router, try_route_packet_color_diagnostics)
 {
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
-    router_settings digi { "DIGI", { "WIDE1", "WIDE2" }, routing_option::none, true };
+    router_settings digi{ "DIGI", {},  { "WIDE1", "WIDE2" }, routing_option::none, true };
     routing_result result;
 
     packet p = { "N0CALL", "APRS", { "WIDE1-2" }, "data"};
@@ -1379,7 +1503,7 @@ TEST(routing_result, to_string)
     //                         ~~~~~
     //                         24 29 - Packet address set as 'set' 
 
-    router_settings digi { "CALLE", { "" }, routing_option::preempt_front, true };
+    router_settings digi{ "CALLE", {}, {}, routing_option::preempt_front, true };
     routing_result result;
 
     packet p = { "N0CALL", "APRS", { "CALLA", "CALLB*", "CALLC", "CALLD", "CALLE", "CALLF" }, "data"};
@@ -1575,8 +1699,21 @@ struct route_test
     std::string options;
 };
 
+std::string to_lower(const std::string& str);
+bool try_parse_bool(const std::string& s, bool& b);
+std::vector<route_test> load_routing_tests(const std::string& test_file);
+std::vector<std::string> split_comma_separated_values(const std::string& str);
+std::string to_string(routing_option o);
+std::vector<address> get_router_n_N_addresses(const std::vector<address>& router_addresses);
+std::vector<address> get_router_explicit_addresses(const std::vector<address>& router_addresses);
+std::vector<std::string> to_vector_of_string(const std::vector<address>& addresses);
+void init_router_addresses(const packet& p, const std::vector<std::string>& path, router_settings& settings);
+bool try_get_routing_test_set(route_test test, packet& p, router_settings& settings);
+void debugger_break();
+bool run_test(const route_test& test, const packet& p, const router_settings& settings);
 void test_diagnostics_reconstruct_packet_by_index(const route_test& test, const routing_result& r);
 void test_diagnostics_reconstruct_packet_by_start_end(const route_test& test, const routing_result& r);
+bool has_marked_tests(const std::vector<route_test>& tests);
 
 std::string to_lower(const std::string &str)
 {
@@ -1711,12 +1848,94 @@ std::vector<std::string> split_comma_separated_values(const std::string& str)
     return result;
 }
 
+std::string to_string(routing_option o)
+{
+    std::string result;
+    if (enum_has_flag(o, routing_option::none))
+        result += "none,";
+    if (enum_has_flag(o, routing_option::preempt_drop))
+        result += "preempt_drop,";
+    if (enum_has_flag(o, routing_option::preempt_front))
+        result += "preempt_front,";
+    if (enum_has_flag(o, routing_option::trap_limit_exceeding_n_N_address))
+        result += "trap_limit_exceeding_n_N_address,";
+    if (enum_has_flag(o, routing_option::substitute_complete_n_N_address))
+        result += "substitute_complete_n_N_address,";
+
+    if (!result.empty())
+        result.pop_back(); // Remove the trailing ','
+
+    return result.empty() ? "unknown" : result;
+}
+
+std::vector<address> get_router_n_N_addresses(const std::vector<address>& router_addresses)
+{
+    std::vector<address> result;
+    for (const auto& p : router_addresses)
+    {
+        if (p.n > 0)
+        {
+            result.push_back(p);
+        }
+    }
+    return result;
+}
+
+std::vector<address> get_router_explicit_addresses(const std::vector<address>& router_addresses)
+{
+    std::vector<address> result;
+    for (const auto& p : router_addresses)
+    {
+        if (p.n == 0)
+        {
+            result.push_back(p);
+        }
+    }
+    return result;
+}
+
+std::vector<std::string> to_vector_of_string(const std::vector<address>& addresses)
+{
+    std::vector<std::string> result;
+    for (const auto& p : addresses)
+    {
+        result.push_back(to_string(p));
+    }
+    return result;
+}
+
+void init_router_addresses(const packet& p, const std::vector<std::string>& path, router_settings& settings)
+{
+    if (path.empty())
+    {
+        return;
+    }
+
+    std::vector<address> router_addresses;
+    try_parse_addresses(path, router_addresses);
+
+    route_state state;
+    state.router_n_N_addresses = get_router_n_N_addresses(router_addresses);
+    state.router_explicit_addresses = get_router_explicit_addresses(router_addresses);
+    state.packet = p;
+    state.settings = settings;
+    init_addresses(state);
+
+    settings.explicit_addresses = to_vector_of_string(state.router_explicit_addresses);
+    settings.n_N_addresses = to_vector_of_string(state.router_n_N_addresses);
+}
+
 bool try_get_routing_test_set(route_test test, packet& p, router_settings& settings)
 {
     try_decode_packet(test.original_packet, p);
 
     settings.address = test.address;
-    settings.path = split_comma_separated_values(test.path);
+    settings.explicit_addresses = {};
+    settings.n_N_addresses = {};
+
+    std::vector<std::string> path = split_comma_separated_values(test.path);
+
+    init_router_addresses(p, path, settings);
 
     settings.options = routing_option::none;
 
@@ -1742,8 +1961,10 @@ void debugger_break()
 #endif
 }
 
-void run_test(const route_test& test, const packet& p, const router_settings& settings)
+bool run_test(const route_test& test, const packet& p, const router_settings& settings)
 {
+    bool routed_packet_result = false;
+
     routing_result result;
 
     bool result_bool = try_route_packet(p, settings, result);
@@ -1763,18 +1984,35 @@ void run_test(const route_test& test, const packet& p, const router_settings& se
 
     if (!test.routed_packet.empty())
     {
-        bool routed_packet_result = to_string(result.routed_packet) == test.routed_packet;
+        routed_packet_result = to_string(result.routed_packet) == test.routed_packet;
         EXPECT_TRUE(routed_packet_result);
-        if (!routed_packet_result)
+        if (!routed_packet_result || test.debug)
         {
-            printf("test %s failed\n", test.id.c_str());
+            if (!routed_packet_result)
+            {
+                printf("test %s failed\n", test.id.c_str());
+            }
+
+            printf("settings address: %s\n", settings.address.c_str());
+            printf("settings path: ");
+            for (const auto& path : settings.explicit_addresses)
+            {
+                printf("%s ", path.c_str());
+            }
+            for (const auto& path : settings.n_N_addresses)
+            {
+                printf("%s ", path.c_str());
+            }
+            printf("\nsettings options: %s\n", to_string(settings.options).c_str());
             printf("original packet: %s\n", test.original_packet.c_str());
             printf("expected packet: %s\n", test.routed_packet.c_str());
             printf("  actual packet: %s\n", to_string(result.routed_packet).c_str());
-            if (test.debug == true)
+
+            if (test.debug)
             {
                 debugger_break();
             }
+        
             // route again for debugging purposes
             try_route_packet(p, settings, result);
         }
@@ -1795,6 +2033,8 @@ void run_test(const route_test& test, const packet& p, const router_settings& se
 
     test_diagnostics_reconstruct_packet_by_index(test, result);
     test_diagnostics_reconstruct_packet_by_start_end(test, result);
+
+    return routed_packet_result;
 }
 
 void test_diagnostics_reconstruct_packet_by_index(const route_test& test, const routing_result& result)
@@ -1868,7 +2108,9 @@ TEST(router, try_route_packet_auto_tests)
 #ifndef APRS_ROUTE_DISABLE_AUTO_TESTING
     std::vector<route_test> tests = load_routing_tests(INPUT_TEST_FILE);
     EXPECT_TRUE(tests.empty() == false);
+    printf("loaded %zu tests\n", tests.size());
     bool has_marked_test = has_marked_tests(tests);
+    int success_count = 0;
     for (const auto& test : tests)
     {
         if (has_marked_test && !test.mark)
@@ -1883,9 +2125,14 @@ TEST(router, try_route_packet_auto_tests)
 
         if (try_get_routing_test_set(test, p, settings))
         {
-            run_test(test, p, settings);
+            bool result = run_test(test, p, settings);
+            if (result)
+            {
+                success_count++;
+            }
         }
     }
+    printf("success count: %d/%zu\n", success_count, tests.size());
 #else
     EXPECT_TRUE(true);
 #endif

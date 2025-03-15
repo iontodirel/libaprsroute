@@ -33,21 +33,21 @@ assert(p == "N0CALL>APRS,WIDE2-2:data");
 ### Routing a packet:
 
 ``` cpp
-router_settings digi { "DIGI", { "WIDE1" } };
+router_settings digi { "DIGI", {}, { "WIDE1" } };
 routing_result result;
 
-packet p = { "N0CALL", "APRS", { "WIDE1-3" }, "data"}; // N0CALL>APRS,WIDE1-3:data
+packet p = "N0CALL>APRS,WIDE1-3:data";
 
 try_route_packet(p, digi, result);
 
 assert(result.state == routing_state::routed);
-assert(to_string(result.routed_packet) == "N0CALL>APRS,DIGI*,WIDE1-2:data"); // N0CALL>APRS,DIGI*,WIDE1-2:data
+assert(to_string(result.routed_packet) == "N0CALL>APRS,DIGI*,WIDE1-2:data");
 ```
 
 ### Routing diagnostics:
 
 ``` cpp
-router_settings digi { "DIGI", { "WIDE1", "WIDE2" }, routing_option::none, true };
+router_settings digi { "DIGI", {}, { "WIDE1", "WIDE2" }, routing_option::none, true };
 routing_result result;
 
 packet p = { "N0CALL", "APRS", { "WIDE1-2" }, "data"};
@@ -93,7 +93,7 @@ assert(result.actions[2].index == 0);
 ### Print routing diagnostics using to_string:
 
 ``` cpp
-router_settings digi { "DIGI", { "WIDE1", "WIDE2" }, routing_option::none, /*enable_diagnostics*/ true };
+router_settings digi { "DIGI", {}, { "WIDE1", "WIDE2" }, routing_option::none, /*enable_diagnostics*/ true };
 routing_result result;
 
 packet p = { "N0CALL", "APRS", { "WIDE1-2" }, "data"};
@@ -131,12 +131,12 @@ routing_result result;
 
 routing_diagnostic_display diag = format(result);
 
-for (auto& l : diag.entries)
+for (auto& e : diag.entries)
 {
     fmt::print(fg(fmt::color::blue_violet), "note: ");
-    fmt::print("{}\n", l.message);
-    fmt::print(fg(fmt::color::gray), "{:4}{}\n", "", l.packet_string);
-    fmt::print(fg(fmt::color::lime_green), "{:4}{}\n", "", l.highlight_string);
+    fmt::print("{}\n", e.message);
+    fmt::print(fg(fmt::color::gray), "{:4}{}\n", "", e.packet_string);
+    fmt::print(fg(fmt::color::lime_green), "{:4}{}\n", "", e.highlight_string);
 }
 ```
 
@@ -147,15 +147,17 @@ Other examples can be found in the tests directory.
 - Packet decoding
 - Address parsing, encoding and decomposition
 - Explicit routing
-  - Support for preemptive routing: front, truncate and drop
+  - Support for preemptive routing: `front`, `truncate` and `drop`
+  - Supports any arbitrary aliases, ex: WIDE2-2 can be used for explicit routing as an address "WIDE2" with callsign "2"
+  - Supports no router address substitution
 - n-N routing
-  - Supports any arbitrary alias, ex: FOOBAR2-2 can be used
+  - Supports any arbitrary aliases, ex: FOOBAR2-2 can be used
   - Supports completed alias substitution
   - Trap excessive hops
 - Diagnostics: every routing action is surfaced as a diagnostic
   - Routed packets can be fully restored using the routing actions alone
   - Intelligent post-routing decisions can be made using the routing actions
-  - Routing actions can be printed as a ready string using `to_string` or customized using `format`
+  - Routing actions can be printed as a ready string using `to_string` or customized with `format`
 
 ## Goals
 
