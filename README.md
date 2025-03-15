@@ -147,17 +147,17 @@ Other examples can be found in the tests directory.
 - Packet decoding
 - Address parsing, encoding and decomposition
 - Explicit routing
-  - Support for preemptive routing: `front`, `truncate` and `drop`
+  - Supports preemptive routing: `front`, `truncate` and `drop`
   - Supports any arbitrary aliases, ex: WIDE2-2 can be used for explicit routing as an address "WIDE2" with callsign "2"
-  - Supports no router address substitution
+  - Supports optional router address substitution
 - n-N routing
   - Supports any arbitrary aliases, ex: FOOBAR2-2 can be used
-  - Supports completed alias substitution
+  - Supports optional completed alias substitution
   - Trap excessive hops
 - Diagnostics: every routing action is surfaced as a diagnostic
   - Routed packets can be fully restored using the routing actions alone
   - Intelligent post-routing decisions can be made using the routing actions
-  - Routing actions can be printed as a ready string using `to_string` or customized with `format`
+  - Routing actions can be printed as a ready string using `to_string`, or customized with `format`
 
 ## Goals
 

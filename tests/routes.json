@@ -1374,6 +1374,72 @@
         {
             "id": "138",
             "comment": "Edge cases: Routing with matching SSID",
+            "address": "DIGI",
+            "explicit_addresses": "DIGI-7",
+            "original_packet": "N0CALL>APRS,DIGI-7:data",
+            "routed_packet": "N0CALL>APRS,DIGI*:data",
+            "routed": "true",
+            "options": "substitute_explicit_address"
+        },
+        {
+            "id": "139",
+            "comment": "Edge cases: Routing with matching SSID",
+            "address": "DIGI",
+            "explicit_addresses": "DIGI-7",
+            "original_packet": "N0CALL>APRS,DIGI-7:data",
+            "routed_packet": "N0CALL>APRS,DIGI,DIGI-7*:data",
+            "routed": "true"
+        },
+        {
+            "id": "140",
+            "comment": "Edge cases: Routing with matching SSID",
+            "address": "DIGI1-1",
+            "explicit_addresses": "DIGI1",
+            "original_packet": "N0CALL>APRS,DIGI1,DIGI1-2,DIGI1-3,DIGI2-1,DIGI2-2,DIGI2-3:data",
+            "routed_packet": "N0CALL>APRS,DIGI1-1*,DIGI1-2,DIGI1-3,DIGI2-1,DIGI2-2,DIGI2-3:data",
+            "routed": "true",
+            "options": "substitute_explicit_address"
+        },
+        {
+            "id": "141",
+            "comment": "Edge cases: Routing with matching SSID",
+            "address": "DIGI1-1",
+            "explicit_addresses": "DIGI1",
+            "original_packet": "N0CALL>APRS,DIGI1,DIGI1-2,DIGI1-3,DIGI2-1,DIGI2-2,DIGI2-3:data",
+            "routed_packet": "N0CALL>APRS,DIGI1-1,DIGI1*,DIGI1-2,DIGI1-3,DIGI2-1,DIGI2-2,DIGI2-3:data",
+            "routed": "true"
+        },
+        {
+            "id": "142",
+            "comment": "Edge cases: Routing at the edge",
+            "address": "DIGI",
+            "explicit_addresses": "A",
+            "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G,I:data",
+            "routed_packet": "N0CALL>APRS,DIGI*,B,C,D,E,F,G,I:data",
+            "routed": "true",
+            "options": "substitute_explicit_address"
+        },
+        {
+            "id": "143",
+            "comment": "Edge cases: Routing at the edge",
+            "address": "DIGI",
+            "explicit_addresses": "A",
+            "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G,I:data",
+            "routed_packet": "N0CALL>APRS,DIGI*,B,C,D,E,F,G,I:data",
+            "routed": "true"
+        },
+        {
+            "id": "144",
+            "comment": "Edge cases: Routing at the edge",
+            "address": "DIGI",
+            "explicit_addresses": "A",
+            "original_packet": "N0CALL>APRS,A,B,C,D,E,F,G:data",
+            "routed_packet": "N0CALL>APRS,DIGI,A*,B,C,D,E,F,G:data",
+            "routed": "true"
+        },
+        {
+            "id": "145",
+            "comment": "Edge cases: Routing with matching SSID",
             "address": "DIGI1-1",
             "path": "DIGI",
             "original_packet": "N0CALL>APRS,DIGI,DIGI1-2,DIGI1-3,DIGI2-1,DIGI2-2,DIGI2-3:data",
@@ -1381,7 +1447,7 @@
             "routed": "true"
         },
         {
-            "id": "139",
+            "id": "146",
             "comment": "Edge cases: Routing with matching SSID",
             "address": "DIGI1-1",
             "path": "DIGI",
@@ -1391,7 +1457,7 @@
             "options": "substitute_explicit_address"
         },
         {
-            "id": "140",
+            "id": "147",
             "comment": "Edge cases: Routing with matching SSID",
             "address": "DIGI1-1",
             "path": "",
@@ -1400,7 +1466,7 @@
             "routed": "true"
         },
         {
-            "id": "141",
+            "id": "148",
             "comment": "Edge cases: Routing with matching SSID",
             "address": "",
             "path": "DIGI",
@@ -1409,7 +1475,7 @@
             "routed": "false"
         },
         {
-            "id": "142",
+            "id": "149",
             "comment": "Edge cases: Router address is same as the alias",
             "address": "DIGI",
             "path": "DIGI",
@@ -1418,7 +1484,7 @@
             "routed": "true"
         },
         {
-            "id": "143",
+            "id": "150",
             "comment": "Edge cases: Routing with matching SSID",
             "address": "DIGI2-3",
             "path": "",
@@ -1428,7 +1494,7 @@
             "options": "preempt_front"
         },
         {
-            "id": "144",
+            "id": "151",
             "comment": "Edge cases: Routing with matching SSID",
             "address": "DIGI-7",
             "path": "DIGI",
@@ -1437,7 +1503,7 @@
             "routed": "true"
         },
         {
-            "id": "145",
+            "id": "152",
             "comment": "Edge cases: Routing with matching SSID",
             "address": "DIGI-7",
             "path": "DIGI",
@@ -1447,7 +1513,7 @@
             "options": "substitute_explicit_address"
         },
         {
-            "id": "146",
+            "id": "153",
             "comment": "Edge cases: Routing with an address that looks like a n-N address",
             "address": "DIGI1-1",
             "path": "DIGI",
@@ -1456,7 +1522,7 @@
             "routed": "true"
         },
         {
-            "id": "147",
+            "id": "154",
             "comment": "Edge cases: Routing with non-matching SSID",
             "address": "DIGI-8",
             "path": "DIGI",
@@ -1466,7 +1532,7 @@
             "options": "substitute_explicit_address"
         },
         {
-            "id": "148",
+            "id": "155",
             "comment": "Edge cases: Routing with non-matching SSID",
             "address": "DIGI1-1",
             "path": "DIGI",
@@ -1476,7 +1542,7 @@
             "options": "substitute_explicit_address"
         },
         {
-            "id": "149",
+            "id": "156",
             "comment": "Edge cases: Routing with non-matching SSID",
             "address": "DIGI1-1",
             "path": "DIGI",
@@ -1485,7 +1551,7 @@
             "routed": "false"
         },
         {
-            "id": "150",
+            "id": "157",
             "comment": "Edge cases: Routing with non-matching SSID",
             "address": "DIGI1-1",
             "path": "DIGI",
@@ -1494,7 +1560,7 @@
             "routed": "false"
         },
         {
-            "id": "151",
+            "id": "158",
             "comment": "Edge cases: Routing with non-matching SSID",
             "address": "DIGI1-1",
             "path": "DIGI",
@@ -1503,7 +1569,7 @@
             "routed": "false"
         },
         {
-            "id": "152",
+            "id": "159",
             "comment": "Edge cases: Empty callsign in path",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1513,7 +1579,7 @@
             "options": "substitute_complete_n_N_address"
         },
         {
-            "id": "153",
+            "id": "160",
             "comment": "Edge cases: Packet with no data",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1523,7 +1589,7 @@
             "options": "substitute_complete_n_N_address"
         },
         {
-            "id": "154",
+            "id": "161",
             "comment": "Edge cases: Invalid packet",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1532,7 +1598,7 @@
             "routed": "false"
         },
         {
-            "id": "155",
+            "id": "162",
             "comment": "Edge cases: Invalid packet",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1541,7 +1607,7 @@
             "routed": "false"
         },
         {
-            "id": "156",
+            "id": "163",
             "comment": "Edge cases: Invalid packet",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1550,7 +1616,7 @@
             "routed": "false"
         },
         {
-            "id": "157",
+            "id": "164",
             "comment": "Edge cases: Invalid packet",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1559,7 +1625,7 @@
             "routed": "false"
         },
         {
-            "id": "158",
+            "id": "165",
             "comment": "Edge cases: Invalid packet",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1568,7 +1634,7 @@
             "routed": "false"
         },
         {
-            "id": "159",
+            "id": "166",
             "comment": "Edge cases: Invalid packet",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1577,7 +1643,7 @@
             "routed": "false"
         },
         {
-            "id": "160",
+            "id": "167",
             "comment": "Edge case: Invalid path length",
             "address": "A",
             "path": "WIDE1",
@@ -1587,7 +1653,7 @@
             "options": "strict"
         },
         {
-            "id": "161",
+            "id": "168",
             "comment": "Edge case: Negative SSID (invalid)",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1597,7 +1663,7 @@
             "routed": "true"
         },
         {
-            "id": "162",
+            "id": "169",
             "comment": "Edge case: Negative SSID (invalid)",
             "address": "DIGI",
             "path": "WIDE1",
@@ -1607,7 +1673,7 @@
             "routed": "false"
         },
         {
-            "id": "163",
+            "id": "170",
             "comment": "Edge case: Inplace n-N address update in a max path, no digipeated marker",
             "address": "DIGI",
             "path": "WIDE2",
@@ -1616,7 +1682,7 @@
             "routed": "true"
         },
         {
-            "id": "164",
+            "id": "171",
             "comment": "Edge case: Inplace n-N address update in a max path, previous address digipeated",
             "address": "DIGI",
             "path": "WIDE2",
@@ -1625,7 +1691,7 @@
             "routed": "true"
         },
         {
-            "id": "165",
+            "id": "172",
             "comment": "Edge case: Inplace n-N address update in a max path, previous address digipeated, with hop substitution enabled",
             "address": "DIGI",
             "path": "WIDE2",
@@ -1635,7 +1701,7 @@
             "options": "substitute_complete_n_N_address"
         },
         {
-            "id": "166",
+            "id": "173",
             "comment": "Edge case: Inplace n-N address update in a max path, exhaused address replaced",
             "address": "DIGI",
             "path": "WIDE2",
@@ -1645,7 +1711,7 @@
             "routed": "true"
         },
         {
-            "id": "167",
+            "id": "174",
             "comment": "Edge case: Inplace n-N address update in a max path, exhaused address replaced",
             "address": "DIGI",
             "path": "WIDE2",
@@ -1654,7 +1720,7 @@
             "routed": "true"
         },
         {
-            "id": "168",
+            "id": "175",
             "comment": "Edge case: Subsitute n-N address at the edge of the max addresses",
             "address": "DIGI",
             "path": "WIDE2",
@@ -1663,7 +1729,7 @@
             "routed": "true"
         },
         {
-            "id": "169",
+            "id": "176",
             "comment": "Edge case: Substitute n-N address at the edge of the max addresses, with hop substitution enabled",
             "address": "DIGI",
             "path": "WIDE2",
@@ -1673,7 +1739,7 @@
             "options": "substitute_complete_n_N_address"
         },
         {
-            "id": "170",
+            "id": "177",
             "comment": "Edge cases: Invalid path",
             "address": "DIGI",
             "path": "WIDE-",
@@ -1681,7 +1747,7 @@
             "routed": "false"
         },
         {
-            "id": "171",
+            "id": "178",
             "comment": "Edge cases: Invalid path",
             "address": "DIGI",
             "path": "WIDE-2",
@@ -1689,7 +1755,7 @@
             "routed": "false"
         },
         {
-            "id": "172",
+            "id": "179",
             "comment": "Edge cases: Invalid path",
             "address": "DIGI",
             "path": "WIDE2-",
@@ -1697,7 +1763,7 @@
             "routed": "false"
         },
         {
-            "id": "173",
+            "id": "180",
             "comment": "Edge cases: Invalid path",
             "address": "DIGI",
             "path": "WIDE0-2",
@@ -1705,7 +1771,7 @@
             "routed": "false"
         },
         {
-            "id": "174",
+            "id": "181",
             "comment": "Edge cases: Invalid path",
             "address": "DIGI",
             "path": "WIDE",
@@ -1713,7 +1779,7 @@
             "routed": "false"
         },
         {
-            "id": "175",
+            "id": "182",
             "comment": "Edge cases: Invalid path",
             "address": "DIGI",
             "path": "WIDE2-0",

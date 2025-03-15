@@ -1693,6 +1693,8 @@ struct route_test
     std::string comment;
     std::string address;
     std::string path;
+    std::string explicit_addresses;
+    std::string n_N_addresses;
     std::string original_packet;
     std::string routed_packet;
     bool routed = false;
@@ -1799,6 +1801,16 @@ std::vector<route_test> load_routing_tests(const std::string& test_file)
                 if (route.contains("path"))
                 {
                     test.path = route["path"].get<std::string>();
+                }
+
+                if (route.contains("explicit_addresses"))
+                {
+                    test.explicit_addresses = route["explicit_addresses"].get<std::string>();
+                }
+
+                if (route.contains("n_N_addresses"))
+                {
+                    test.n_N_addresses = route["n_N_addresses"].get<std::string>();
                 }
 
                 if (route.contains("options"))
@@ -1934,8 +1946,13 @@ bool try_get_routing_test_set(route_test test, packet& p, router_settings& setti
     settings.n_N_addresses = {};
 
     std::vector<std::string> path = split_comma_separated_values(test.path);
+    std::vector<std::string> explicit_addresses = split_comma_separated_values(test.explicit_addresses);
+    std::vector<std::string> n_N_addresses = split_comma_separated_values(test.n_N_addresses);
 
     init_router_addresses(p, path, settings);
+
+    settings.explicit_addresses.insert(settings.explicit_addresses.end(), explicit_addresses.begin(), explicit_addresses.end());
+    settings.n_N_addresses.insert(settings.n_N_addresses.end(), n_N_addresses.begin(), n_N_addresses.end());
 
     settings.options = routing_option::none;
 
