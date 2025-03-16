@@ -140,12 +140,44 @@ for (auto& e : diag.entries)
 }
 ```
 
+### Address parsing:
+
+#### Parsing a WIDE alias
+
+``` cpp
+address s;
+std::string path = "WIDE2-1*";
+
+try_parse_address(path, s);
+
+assert(s.mark == true); // *
+assert(s.n == 2); // 2-1
+assert(s.N == 1); // 2-1
+assert(s.text == "WIDE");
+assert(s.kind == address_kind::wide);
+```
+
+#### Parsing a callsign
+
+``` cpp
+address s;
+std::string path = "N0CALL-10*";
+
+try_parse_address(path, s);
+
+assert(s.mark == true); // *
+assert(s.ssid == 10); // 10
+assert(s.text == "N0CALL");
+```
+
 Other examples can be found in the tests directory.
 
 ## Features
 
 - Packet decoding
 - Address parsing, encoding and decomposition
+  - Can parse WIDE aliases, and decode n, N, or the used flag
+  - Can parse callsigns, and decode ssid, or the used flag
 - Explicit routing
   - Supports preemptive routing: `front`, `truncate` and `drop`
   - Supports any arbitrary aliases, ex: WIDE2-2 can be used for explicit routing as an address "WIDE2" with callsign "2"

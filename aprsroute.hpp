@@ -154,7 +154,7 @@ APRS_ROUTER_NAMESPACE_BEGIN
 // -------------
 //
 // Enables preemptive routing for explicitly routed packets.
-// With this option, our address is moved to the front of the route.
+// With this option, our matched address is moved to the front of the route.
 //
 // This packet: N0CALL>APRS,CALLA,CALLB*,CALLC,DIGI,CALLD,CALLE,CALLF:data
 //                                             ~~~~
@@ -187,12 +187,22 @@ APRS_ROUTER_NAMESPACE_BEGIN
 // substitute_complete_n_N_address
 // ------------------------
 //
-// Replace exaused hops.
+// Replace exaused hops. Similar to substitute_explicit_address but for n-N routing.
 //
 // This packet: N0CALL>APRS,CALLA,WIDE1-1,WIDE2-2:data
 //                                ~~~~~~~
 // Will be routed as: N0CALL>APRS,CALLA,DIGI*,WIDE2-2:data
 //                                      ~~~~~
+// ------------------------
+// skip_complete_n_N_address
+// ------------------------
+//
+// Skip complete n-N addresses even if unset.
+//
+// This packet: N0CALL>APRS,CALLA*,WIDE1,WIDE2-2:data
+//
+// Will be routed as: N0CALL>APRS,CALLA,WIDE1,DIGI*,WIDE2-1:data
+//
 // ------------------------
 // trap_limit_exceeding_n_N_address
 // ------------------------
@@ -224,7 +234,8 @@ APRS_ROUTER_NAMESPACE_BEGIN
 // substitute_explicit_address
 // ---------------------------
 //
-// Replace an address with the router's callsign when explicit routing
+// Replace an address with the router's address when explicit routing.
+// Similar to substitute_complete_n_N_address but for explicit routing.
 //
 // This packet: N0CALL>APRS,CALLA:data
 //                          ~~~~~
@@ -234,7 +245,7 @@ APRS_ROUTER_NAMESPACE_BEGIN
 //                                                                 ~~~~~~~~~~~
 // If the address matches the router's address or one of the explicit addresses,
 // I do believe it's a good idea to mirror the n-N routing behavior and add 
-// the router's address in front of the explicit address, so we have traceability
+// the router's address in front of the explicit address, so we have traceability.
 
 enum class routing_option : int
 {
@@ -245,7 +256,7 @@ enum class routing_option : int
     preempt_drop = 8,                         // Preemptively erase all addresses in front of our address.
     preempt_mark = 16,                        // Preemptively mark our address as used, while leaving the rest of the path as is.
     substitute_complete_n_N_address = 32,     // Replace an PATHn-N address with our address when N is decremented to 0.
-    skip_complete_n_N_address = 64,
+    skip_complete_n_N_address = 64,           // Skip complete n-N addresses even if unset (e.g. CALL*,WIDE1,WIDE2-2).
     trap_limit_exceeding_n_N_address = 128,   // Replace a harmful path with our callsign to prevent network issues (e.g., WIDE7-7).
     reject_limit_exceeding_n_N_address = 256, // Reject the packet if the paths has excessive hops (e.g., PATH7-7).
     strict = 512,                             // Don't route if the packet is malformed
