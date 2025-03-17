@@ -47,7 +47,7 @@ int main()
     // Commit: b0ea46f3deb4f5e07b6a7b35125ed40fcc22af34
     // 
     // Typically about 160K packets / second (Intel Celeron N5095, 8GB RAM) - Linux GCC
-    // Typically about 1680K packets / second (Intel Celeron N5095, 8GB RAM) - Linux Clang
+    // Typically about 168K packets / second (Intel Celeron N5095, 8GB RAM) - Linux Clang
     // Typically about 300K packets / second (Intel i9-14900HX, 97GB RAM) - Windows MSVC
     // Typically about 500K packets / second (Intel i9-14900HX, 97GB RAM) - Windows WSL GCC
     // Typically about 500K packets / second (Intel i9-14900HX, 97GB RAM) - Windows WSL Clang
