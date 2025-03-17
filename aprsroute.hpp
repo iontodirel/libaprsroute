@@ -3159,14 +3159,13 @@ APRS_ROUTER_INLINE std::optional<size_t> find_last_used_address_index(const std:
         {
             const auto& address = packet_addresses[i];
 
-            for (size_t j = 0; const auto & p : router_n_N_addresses)
+            for (const auto & p : router_n_N_addresses)
             {
                 if (address.n == p.n && address.N == 0 && address.text == p.text)
                 {
                     last_used_address_index = i;
                     break;
                 }
-                j++;
             }
         }
     }

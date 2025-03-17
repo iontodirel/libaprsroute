@@ -65,7 +65,7 @@ target_link_libraries(aprsroute_tests GTest::gtest_main gtest gtest_main nlohman
 set_property(TARGET aprsroute_tests PROPERTY CXX_STANDARD 20)
 
 add_executable(aprsroute_stress_test "stress_test.cpp" "../aprsroute.hpp")
-target_link_libraries(aprsroute_stress_test GTest::gtest_main gtest gtest_main)
+target_link_libraries(aprsroute_stress_test)
 set_property(TARGET aprsroute_stress_test PROPERTY CXX_STANDARD 20)
 
 add_executable(aprsroute_external_packet_test "external_packet_test.cpp" "../aprsroute.hpp")
@@ -86,5 +86,4 @@ endif()
 include(GoogleTest)
 
 gtest_discover_tests(aprsroute_tests)
-gtest_discover_tests(aprsroute_stress_test)
 gtest_discover_tests(aprsroute_external_packet_test)
