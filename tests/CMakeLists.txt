@@ -64,6 +64,10 @@ add_executable(aprsroute_tests "tests.cpp" "../aprsroute.hpp")
 target_link_libraries(aprsroute_tests GTest::gtest_main gtest gtest_main nlohmann_json::nlohmann_json fmt::fmt)
 set_property(TARGET aprsroute_tests PROPERTY CXX_STANDARD 20)
 
+add_executable(aprsroute_stress_test "stress_test.cpp" "../aprsroute.hpp")
+target_link_libraries(aprsroute_stress_test GTest::gtest_main gtest gtest_main)
+set_property(TARGET aprsroute_stress_test PROPERTY CXX_STANDARD 20)
+
 add_executable (aprsroute_use_in_tu "use_in_tu.h" "use_in_tu.cpp" "use_in_other_tu.cpp" "compile_in_tu.cpp")
 set_property(TARGET aprsroute_use_in_tu PROPERTY CXX_STANDARD 20)
 
@@ -78,3 +82,4 @@ endif()
 include(GoogleTest)
 
 gtest_discover_tests(aprsroute_tests)
+gtest_discover_tests(aprsroute_stress_test)

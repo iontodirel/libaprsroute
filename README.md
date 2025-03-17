@@ -196,12 +196,12 @@ Other examples can be found in the tests directory.
 - **Modularity**. This library is reusable, composable and standalone. It is written *without any coupling* to command line parsing code, configuration parsing code, memory management infrastructure, logging, or thread management. This makes it easy to integrate in any project in an unintrusive way. This library has no dependencies, only relying on the C++ standard library.
 - **Diagnostics**. This library generates extensive diagnostics as part of its core routing API, which allow for clean detailed diagnostics and logging, without an actual dependency on stdout or a dependency on a logging library.
 - **Testability**. This library has a comprehensive set of tests to ensure quality and correctness. The library has been written with testability in mind.
-- **Documentation**. The documentation in the code, combined with a comprehensive set of tests, can be used for learning and understanding of how the APRS network routing works.
+- **Documentation**. Democratize APRS. The documentation in the code, combined with a comprehensive set of tests, can be used for learning and understanding of how the APRS network routing works.
 - **Cross Platform**. The library works on Linux, Windows or OSX systems. And has been tested with an MSVC, Clang and GCC compiler.
 
 ## Testing
 
-The ***tests*** directory contain a comprehensive sets of tests. `tests/tests.cpp` contains a comprehensive sets of tests, written using the Google Test framework.
+The ***tests*** directory contain a comprehensive sets of tests. `tests/tests.cpp` contains tests written using the Google Test framework.
 
 A test asset file `routes.json` contains various routing scenarios. This test asset is stored in a structured format, which can be read by humans or programs, and can be used to study APRS routing, or used for standalone digipeater testing.
 
