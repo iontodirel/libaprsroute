@@ -2,7 +2,7 @@
 // libaprsroute - APRS header only routing library                  // 
 // Version 0.1.0                                                    //
 // https://github.com/iontodirel/libaprsroute                       //
-// Copyright (c) 2024 Ion Todirel                                   //
+// Copyright (c) 2024 - 2025 Ion Todirel                            //
 // **************************************************************** //
 //
 // aprsroute.hpp
