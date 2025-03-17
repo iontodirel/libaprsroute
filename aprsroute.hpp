@@ -2,7 +2,7 @@
 // libaprsroute - APRS header only routing library                  // 
 // Version 0.1.0                                                    //
 // https://github.com/iontodirel/libaprsroute                       //
-// Copyright (c) 2024 - 2025 Ion Todirel                            //
+// Copyright (c) 2024 Ion Todirel                                   //
 // **************************************************************** //
 //
 // aprsroute.hpp
@@ -197,9 +197,10 @@ APRS_ROUTER_NAMESPACE_BEGIN
 // skip_complete_n_N_address
 // ------------------------
 //
-// Skip complete n-N addresses even if unset.
+// Skip complete n-N addresses even if unset. The completed/unset address has to be in the n_N_addresses list.
 //
 // This packet: N0CALL>APRS,CALLA*,WIDE1,WIDE2-2:data
+//                                 ~~~~~
 //
 // Will be routed as: N0CALL>APRS,CALLA,WIDE1,DIGI*,WIDE2-1:data
 //
