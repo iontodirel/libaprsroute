@@ -8,6 +8,8 @@ Automatic Packet Reporting System (APRS) is a system for real-time digital data 
 
 See more info at http://www.aprs.org/ and https://groups.io/g/APRS.
 
+![Build Status](https://github.com/iontodirel/libaprsroute/actions/workflows/cmake.yml/badge.svg)
+
 ## Examples
 
 ### Decoding a packet:
