@@ -130,6 +130,8 @@ struct packet
 
 #endif
 
+typedef APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet packet_type;
+
 APRS_ROUTER_PACKET_NAMESPACE_END
 
 APRS_ROUTER_NAMESPACE_BEGIN
@@ -1316,6 +1318,7 @@ APRS_ROUTER_INLINE bool try_n_N_route(route_state& state)
     const std::vector<address>& router_n_N_addresses = state.router_n_N_addresses;
     const routing_option options = state.settings.options;
     const size_t unused_address_index = state.unused_address_index;
+    const address& unused_address = state.packet_addresses[unused_address_index];
 
     auto unused_address_index_pair = find_first_unused_n_N_address_index(packet_addresses, router_n_N_addresses, options);
 
@@ -1337,7 +1340,7 @@ APRS_ROUTER_INLINE bool try_n_N_route(route_state& state)
 
     if (address_n_N_index > unused_address_index)
     {
-        if (!state.packet_addresses[unused_address_index].text.empty())
+        if (!unused_address.text.empty())
         {
             return false;
         }
