@@ -228,3 +228,9 @@ As this is a header only library, you can simple download the header and use it:
 Include the header in your source file:
 
 `#include "external/aprsroute.hpp"`
+
+## Samples
+
+There are a few samples provided in the `examples` directory.
+
+The `android_kotlin` sample is an example on how to integrated the library in an Android application. The sample was generated using Google Android Studio.
