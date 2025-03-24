@@ -690,49 +690,101 @@ APRS_ROUTER_INLINE bool try_decode_packet(std::string_view packet_string, packet
     //                 ~~~~~~ ~~~~ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ ~~~~
     //                 from   to   path                                       data
     //
+    // This function does the minimum required to parse a packet string.
     // If packet string is invalid, filling of the the packet fields is not guaranteed,
     // e.g. missing data separator ":", or missig "path"
 
     result.path.clear();
 
-    size_t from_position = packet_string.find('>');
-    size_t colon_position = packet_string.find(':', from_position);
+    // Find the from address, and the end of the packet header
+    //
+    // N0CALL>APRS,CALLA,CALLB*,CALLC,CALLD,CALLE,CALLF,CALLG:data
+    //       ~                                               ~
+    //       from_end_pos                                    colon_pos
+    //
+    // If we cannot find the from position, or the end of the header, we fail the parsing
 
-    if (from_position == std::string::npos || colon_position == std::string::npos)
+    size_t from_end_pos = packet_string.find('>');
+
+    if (from_end_pos == std::string_view::npos)
     {
         return false;
     }
 
-    result.from = packet_string.substr(0, from_position);
+    size_t colon_pos = packet_string.find(':', from_end_pos);
 
-    std::string_view to_and_path = packet_string.substr(from_position + 1, colon_position - from_position - 1);
-
-    size_t comma_position = to_and_path.find(',');
-
-    result.to = to_and_path.substr(0, comma_position);
-
-    if (comma_position != std::string::npos)
+    if (colon_pos == std::string_view::npos)
     {
-        std::string_view path = to_and_path.substr(comma_position + 1);
+        return false;
+    }
+
+    result.from = packet_string.substr(0, from_end_pos);
+
+    // Find the 'to' address, and the 'path'
+    //
+    // N0CALL>APRS,CALLA,CALLB*,CALLC,CALLD,CALLE,CALLF,CALLG:data
+    //        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    //        to_and_path
+
+    std::string_view to_and_path = packet_string.substr(from_end_pos + 1, colon_pos - from_end_pos - 1);
+
+    size_t comma_pos = to_and_path.find(',');
+
+    // If we cannot find the comma, comma_pos will be set to the largest positive unsigned integer
+    // with 'to' containing the remaining string, and with path being empty
+    //
+    // comma_pos = 18446744073709551615
+    // 
+    // N0CALL>APRS:data
+    //        ~~~~
+    //        to
+
+    result.to = to_and_path.substr(0, comma_pos);
+
+    if (comma_pos != std::string_view::npos)
+    {
+        std::string_view path = to_and_path.substr(comma_pos + 1);
+
+        // Keep consuming the path until we reach the end of the header (colon_pos)
+        // We use remove_prefix, which just changes the beginning of the string_view
+        // It does not modify the string, nor copy it
+        //
+        // 1st iteration: CALLA,CALLB*,CALLC,CALLD,CALLE,CALLF,CALLG
+        //                ~~~~~
+        // 2nd iteration: CALLB*,CALLC,CALLD,CALLE,CALLF,CALLG
+        //                ~~~~~~
+        // 3rd iteration: CALLC,CALLD,CALLE,CALLF,CALLG
+        //                ~~~~~
+        // 4th iteration: CALLD,CALLE,CALLF,CALLG
+        //                ~~~~~
+        // 5th iteration: CALLE,CALLF,CALLG
+        //                ~~~~~
+        // 6th iteration: CALLF,CALLG
+        //                ~~~~~
+        // 7th iteration: CALLG
+        //                ~~~~~
 
         while (!path.empty())
         {
-            size_t next_comma = path.find(',');
+            comma_pos = path.find(',');
 
-            std::string_view address = path.substr(0, next_comma);
+            std::string_view address = path.substr(0, comma_pos);
 
-            result.path.push_back(std::string(address));
+            result.path.emplace_back(address);
 
-            if (next_comma == std::string_view::npos)
+            if (comma_pos == std::string_view::npos)
             {
                 break;
             }
 
-            path.remove_prefix(next_comma + 1);
+            // No copy or string modification, just update the string_view beginning
+            path.remove_prefix(comma_pos + 1);
         }
     }
 
-    result.data = packet_string.substr(colon_position + 1);
+    // The remaining string after the colon_pos is the data
+
+    result.data = packet_string.substr(colon_pos + 1);
 
     return true;
 }

@@ -72,6 +72,10 @@ add_executable(aprsroute_external_packet_test "external_packet_test.cpp" "../apr
 target_link_libraries(aprsroute_external_packet_test GTest::gtest_main gtest gtest_main)
 set_property(TARGET aprsroute_external_packet_test PROPERTY CXX_STANDARD 20)
 
+add_executable(aprsroute_external_custom_packet_test "external_custom_packet_test.cpp" "../aprsroute.hpp")
+target_link_libraries(aprsroute_external_custom_packet_test GTest::gtest_main gtest gtest_main)
+set_property(TARGET aprsroute_external_custom_packet_test PROPERTY CXX_STANDARD 20)
+
 add_executable (aprsroute_use_in_tu "use_in_tu.h" "use_in_tu.cpp" "use_in_other_tu.cpp" "compile_in_tu.cpp")
 set_property(TARGET aprsroute_use_in_tu PROPERTY CXX_STANDARD 20)
 
