@@ -110,6 +110,27 @@
 
 APRS_ROUTER_PACKET_NAMESPACE_BEGIN
 
+// Built-in packet type support can be disable by using the APRS_ROUTER_ENABLE_PACKET_SUPPORT preprocessor directive.
+// If packet support is disabled, an external packet implementation must be provided.
+// This extensbility is useful for sharing the same packet type among various different libraries.
+//
+// Example:
+//
+// #define APRS_ROUTER_ENABLE_PACKET_SUPPORT false
+// #define APRS_ROUTER_PACKET_NAMESPACE aprs
+// #include "../aprsroute.hpp"
+//
+// If the packet type is not in a namespace, also define the APRS_ROUTER_PACKET_NAMESPACE_REFERENCE
+//
+// Example:
+//
+// #define APRS_ROUTER_ENABLE_PACKET_SUPPORT false
+// #define APRS_ROUTER_PACKET_NAMESPACE
+// #define APRS_ROUTER_PACKET_NAMESPACE_REFERENCE
+// #include "../aprsroute.hpp"
+//
+// The test external_packet_test provides an example of how to use the external packet type.
+
 #if APRS_ROUTER_ENABLE_PACKET_SUPPORT
 
 struct packet
