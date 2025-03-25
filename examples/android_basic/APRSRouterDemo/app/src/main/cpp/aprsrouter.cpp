@@ -22,7 +22,7 @@
 #include <vector>
 #include <sstream>
 
-#include "aprsroute.hpp"
+#include "external/aprsroute.hpp"
 
 using namespace aprs::router;
 using namespace aprs::router::detail;
