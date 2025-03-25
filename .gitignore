@@ -2,3 +2,5 @@ build/*
 tests/out/*
 example/out/*
 examples/basic/out/*
+examples/basic/external/*
+tests/routes.old.json

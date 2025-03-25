@@ -499,7 +499,9 @@ APRS_ROUTER_DETAIL_NAMESPACE_BEGIN
 
 struct route_state
 {
-    struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet packet;
+    std::string packet_from_address;
+    std::string packet_to_address;
+    std::vector<std::string> packet_path;
     std::vector<address> packet_addresses;
     router_settings settings;
     std::optional<size_t> maybe_last_used_address_index;
@@ -545,7 +547,7 @@ bool try_route_packet_by_start_end(const struct routing_result& routing_result, 
 
 void init_routing_result(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, routing_result& result);
 bool create_routing_result(const APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& p, const std::vector<address>& packet_addresses, routing_result& result);
-bool create_routing_result(route_state& state, routing_result& result);
+bool create_routing_result(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, route_state& state, routing_result& result);
 bool create_routing_result(const routing_state state, routing_result& result);
 bool create_routing_ended_result(const std::vector<address>& packet_addresses, bool enable_diagnostics, routing_result& result);
 bool create_routing_ended_result(const route_state& state, routing_result& result);
@@ -582,7 +584,7 @@ void unset_all_used_addresses(std::vector<address>& packet_addresses, size_t off
 void set_address_as_used(std::vector<address>& packet_addresses, size_t index);
 void set_address_as_used(std::vector<address>& packet_addresses, address& address);
 void update_addresses_index(std::vector<address>& addresses);
-void set_addresses_offset(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, std::vector<address>& addresses);
+void set_addresses_offset(std::string_view packet_from_address, std::string_view packet_to_address, std::vector<address>& addresses);
 void update_addresses_offset(std::vector<address>& addresses, size_t initial_offset);
 void update_addresses_offset(std::vector<address>& addresses);
 bool try_insert_address(std::vector<address>& packet_addresses, size_t index, std::string_view inserted_address_string);
@@ -601,12 +603,12 @@ std::optional<size_t> find_unused_router_address_index(const std::vector<address
 void find_used_addresses(route_state& state);
 bool has_address(const std::vector<address>& addresses, size_t offset, struct address address);
 
-bool is_packet_valid(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, routing_option options);
+bool is_packet_valid(std::string_view packet_from_address, std::string_view packet_to_address, const std::vector<std::string>& packet_path, routing_option options);
 bool is_packet_valid(const route_state& state);
 bool is_valid_router_address_and_packet(const route_state& state);
-bool is_packet_from_us(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, std::string_view router_address);
+bool is_packet_from_us(std::string_view packet_from_address, std::string_view router_address);
 bool is_packet_from_us(const route_state& state);
-bool is_packet_sent_to_us(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, std::string_view router_address);
+bool is_packet_sent_to_us(std::string_view packet_to_address, std::string_view router_address);
 bool is_packet_sent_to_us(const route_state& state);
 bool has_packet_routing_ended(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index);
 bool has_packet_routing_ended(const route_state& state);
@@ -978,7 +980,9 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
 
     route_state state;
 
-    state.packet = packet;
+    state.packet_from_address = packet.from;
+    state.packet_to_address = packet.to;
+    state.packet_path = packet.path;
     state.settings = settings;
 
     init_addresses(state);
@@ -1019,7 +1023,7 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
     {
         if (try_explicit_route(state))
         {
-            return create_routing_result(state, result);
+            return create_routing_result(packet, state, result);
         }
         else
         {
@@ -1035,7 +1039,7 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
 
     if (try_n_N_route(state))
     {
-        return create_routing_result(state, result);
+        return create_routing_result(packet, state, result);
     }
 
     return create_routing_result(routing_state::not_routed, result);
@@ -1802,7 +1806,12 @@ APRS_ROUTER_INLINE void init_routing_result(const struct APRS_ROUTER_PACKET_NAME
 
 APRS_ROUTER_INLINE bool create_routing_result(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, const std::vector<address>& packet_addresses, routing_result& result)
 {
-    struct packet routed_packet = { packet.from, packet.to, {}, packet.data };
+    struct packet routed_packet = packet;
+
+    routed_packet.path.clear();
+
+    // Construct the routed packet path without any empty addresses
+    // But should not really have empty addresses here as we call try_truncate_empty_addresses prior
 
     for (const auto& address : packet_addresses)
     {
@@ -1820,11 +1829,11 @@ APRS_ROUTER_INLINE bool create_routing_result(const struct APRS_ROUTER_PACKET_NA
     return true;
 }
 
-APRS_ROUTER_INLINE bool create_routing_result(route_state& state, routing_result& result)
+APRS_ROUTER_INLINE bool create_routing_result(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, route_state& state, routing_result& result)
 {
     try_truncate_empty_addresses(state);
     result.actions = state.actions;
-    return create_routing_result(state.packet, state.packet_addresses, result);
+    return create_routing_result(packet, state.packet_addresses, result);
 }
 
 APRS_ROUTER_INLINE bool create_routing_result(const routing_state state, routing_result& result)
@@ -2253,6 +2262,8 @@ APRS_ROUTER_INLINE std::string to_string(const struct address& address)
 
 APRS_ROUTER_INLINE q_construct parse_q_construct(const std::string& text)
 {
+    // NOTE: input parameter is a std::string as map::find does not support std::string_view
+
     static const std::unordered_map<std::string, q_construct> lookup_table =
     {
         { "qAC", q_construct::qAC },
@@ -2277,6 +2288,8 @@ APRS_ROUTER_INLINE q_construct parse_q_construct(const std::string& text)
 
 APRS_ROUTER_INLINE address_kind parse_address_kind(const std::string& text)
 {
+    // NOTE: input parameter is a std::string as map::find does not support std::string_view
+
     static const std::unordered_map<std::string, address_kind> lookup_table =
     {
         { "WIDE", address_kind::wide },
@@ -2643,7 +2656,7 @@ APRS_ROUTER_INLINE void init_addresses(route_state& state)
     // Router path:               WIDE1-1,WIDE2-2,CALLA,CALLB        state.settings.path      router_addresses
     // Router n-N addresses:      WIDE1-1,WIDE2-2                                             state.router_n_N_addresses
     // Router explicit addresses: CALLA,CALLB                                                 state.router_explicit_addresses
-    // Packet:                    N0CALL>APRS,WIDE1,WIDE2-2:data                              state.packet
+    // Packet:                    N0CALL>APRS,WIDE1,WIDE2-2:data                              state.packet_from_address, state.packet_to_address, state.packet_path
     // Packet addresses:          WIDE1,WIDE2-2                                               state.packet_addresses
 
     try_parse_address_with_ssid(state.settings.address, state.router_address);
@@ -2699,7 +2712,7 @@ APRS_ROUTER_INLINE void init_addresses(route_state& state)
 
     index = 0;
 
-    for (const auto& packet_address_string : state.packet.path)
+    for (const auto& packet_address_string : state.packet_path)
     {
         bool found = false;
 
@@ -2759,7 +2772,7 @@ APRS_ROUTER_INLINE void init_addresses(route_state& state)
         index++;
     }
 
-    set_addresses_offset(state.packet, state.packet_addresses);
+    set_addresses_offset(state.packet_from_address, state.packet_to_address, state.packet_addresses);
 }
 
 APRS_ROUTER_INLINE void unset_all_used_addresses(std::vector<address>& packet_addresses, size_t offset, size_t count)
@@ -2835,7 +2848,7 @@ APRS_ROUTER_INLINE void update_addresses_index(std::vector<address>& addresses)
     }
 }
 
-APRS_ROUTER_INLINE void set_addresses_offset(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, std::vector<address>& addresses)
+APRS_ROUTER_INLINE void set_addresses_offset(std::string_view packet_from_address, std::string_view packet_to_address, std::vector<address>& addresses)
 {
     // +1 to account for the path separator ',', +1 to account for '>' separator
     //
@@ -2846,7 +2859,7 @@ APRS_ROUTER_INLINE void set_addresses_offset(const struct APRS_ROUTER_PACKET_NAM
     //      +1   +1
     // ~~~~~~~~~~~~ - offset
 
-    size_t offset = packet.from.size() + packet.to.size() + 2;
+    size_t offset = packet_from_address.size() + packet_to_address.size() + 2;
     update_addresses_offset(addresses, offset);
 }
 
@@ -3384,14 +3397,32 @@ APRS_ROUTER_INLINE bool has_address(const std::vector<address>& addresses, size_
 //                                                                  //
 // **************************************************************** //
 
-APRS_ROUTER_INLINE bool is_packet_valid(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, routing_option options)
+APRS_ROUTER_INLINE bool is_packet_valid(std::string_view packet_from_address, std::string_view packet_to_address, const std::vector<std::string>& packet_path, routing_option options)
 {
-    if (packet.from.empty() || packet.to.empty())
+    // Performs various checks on the packet.
+    //
+    // The packet is valid if:
+    //
+    //   - the 'from' address is not empty
+    //   - the 'to' address is not empty
+    //   - the 'path' is not empty and has less than 8 addresses
+    //   - each address ('from', 'to', 'path') is valid if:
+    //     - the address is alphanumeric
+    //     - the address is uppercase
+    //     - the address is not longer than 9 characters with ssid
+    //     - the address is not longer than 6 characters without ssid
+    //     - the ssid if present us a number in the range of 1-15
+    //     - the address might containd the used '*' flag at the end
+    //
+    // NOTE: we are not checking whether data is valid, as it is not the router's job
+    // we only operate on the 'from', 'to' and 'path' addresses
+
+    if (packet_from_address.empty() || packet_to_address.empty())
     {
         return false;
     }
 
-    if (packet.path.empty() || packet.path.size() > 8)
+    if (packet_path.empty() || packet_path.size() > 8)
     {
         return false;
     }
@@ -3401,21 +3432,16 @@ APRS_ROUTER_INLINE bool is_packet_valid(const struct APRS_ROUTER_PACKET_NAMESPAC
         return true;
     }
 
-    if (packet.data.size() == 0 || packet.data.size() > 256)
-    {
-        return false;
-    }
-
     std::string callsign;
     int ssid;
 
-    if (!try_parse_address_with_used_flag(packet.from, callsign, ssid) ||
-        !try_parse_address_with_used_flag(packet.to, callsign, ssid))
+    if (!try_parse_address_with_used_flag(packet_from_address, callsign, ssid) ||
+        !try_parse_address_with_used_flag(packet_to_address, callsign, ssid))
     {
         return false;
     }
 
-    for (const auto& p : packet.path)
+    for (const auto& p : packet_path)
     {
         if (!try_parse_address_with_used_flag(p, callsign, ssid))
         {
@@ -3428,7 +3454,7 @@ APRS_ROUTER_INLINE bool is_packet_valid(const struct APRS_ROUTER_PACKET_NAMESPAC
 
 APRS_ROUTER_INLINE bool is_packet_valid(const route_state& state)
 {
-    return is_packet_valid(state.packet, state.settings.options);
+    return is_packet_valid(state.packet_from_address, state.packet_to_address, state.packet_path, state.settings.options);
 }
 
 APRS_ROUTER_INLINE bool is_valid_router_address_and_packet(const route_state& state)
@@ -3436,13 +3462,13 @@ APRS_ROUTER_INLINE bool is_valid_router_address_and_packet(const route_state& st
     return state.settings.address.empty() || !is_packet_valid(state);
 }
 
-APRS_ROUTER_INLINE bool is_packet_from_us(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, std::string_view router_address)
+APRS_ROUTER_INLINE bool is_packet_from_us(std::string_view packet_from_address, std::string_view router_address)
 {
     // Router address: DIGI
     //
     // Packet has ben sent by us: DIGI>APRS,CALL,WIDE1-1,WIDE2-2:data
     //                            ~~~~
-    return packet.from == router_address;
+    return packet_from_address == router_address;
 }
 
 APRS_ROUTER_INLINE bool is_packet_from_us(const route_state& state)
@@ -3451,16 +3477,16 @@ APRS_ROUTER_INLINE bool is_packet_from_us(const route_state& state)
     //
     // Packet has ben sent by us: DIGI>APRS,CALL,WIDE1-1,WIDE2-2:data
     //                            ~~~~
-    return is_packet_from_us(state.packet, state.settings.address);
+    return is_packet_from_us(state.packet_from_address, state.settings.address);
 }
 
-APRS_ROUTER_INLINE bool is_packet_sent_to_us(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, std::string_view router_address)
+APRS_ROUTER_INLINE bool is_packet_sent_to_us(std::string_view packet_to_address, std::string_view router_address)
 {
     // Router address: DIGI
     //
     // Packet: N0CALL>DIGI,CALL,WIDE1-1,WIDE2-2:data
     //                ~~~~
-    return packet.to == router_address;
+    return packet_to_address == router_address;
 }
 
 APRS_ROUTER_INLINE bool is_packet_sent_to_us(const route_state& state)
@@ -3469,7 +3495,7 @@ APRS_ROUTER_INLINE bool is_packet_sent_to_us(const route_state& state)
     //
     // Packet: N0CALL>DIGI,CALL,WIDE1-1,WIDE2-2:data
     //                ~~~~
-    return is_packet_sent_to_us(state.packet, state.settings.address);
+    return is_packet_sent_to_us(state.packet_to_address, state.settings.address);
 }
 
 APRS_ROUTER_INLINE bool has_packet_routing_ended(const std::vector<address>& packet_addresses, std::optional<size_t> maybe_last_used_address_index)
