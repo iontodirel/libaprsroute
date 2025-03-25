@@ -1,3 +1,4 @@
 build/*
 tests/out/*
 example/out/*
+examples/basic/out/*

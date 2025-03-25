@@ -233,4 +233,4 @@ Include the header in your source file:
 
 There are a few samples provided in the `examples` directory.
 
-The `android_kotlin` sample is an example on how to integrated the library in an Android application. The sample was generated using Google Android Studio.
+The `android_basic` sample shows how to integrate the library in an Android application. The sample was generated using Android Studio.
