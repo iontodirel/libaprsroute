@@ -1517,7 +1517,7 @@ TEST(addresses, set_address_as_used)
 
     std::vector<address> segments;
     try_parse_addresses(p.path, segments);
-    set_addresses_offset(p, segments);
+    set_addresses_offset(p.from, p.to, segments);
 
     // N0CALL>APRS,CALLA,CALLB*,CALLC,CALLD,CALLE,CALLF:data
     //             ~~~~~ ~~~~~~ ~~~~~ ~~~~~ ~~~~~ ~~~~~
@@ -1580,7 +1580,7 @@ TEST(diagnostic, push_address_unset_diagnostic)
     // Initialize offsets
     std::vector<address> segments;
     try_parse_addresses(p.path, segments);
-    set_addresses_offset(p, segments);
+    set_addresses_offset(p.from, p.to, segments);
 
     std::vector<routing_diagnostic> diag;
     push_address_unset_diagnostic(segments, 5, true, diag);
@@ -1635,7 +1635,7 @@ TEST(diagnostic, push_address_set_diagnostic)
 
     std::vector<address> segments;
     try_parse_addresses(p.path, segments);
-    set_addresses_offset(p, segments);
+    set_addresses_offset(p.from, p.to, segments);
 
     set_address_as_used(segments, 5);
 
@@ -1919,7 +1919,9 @@ void init_router_addresses(const packet& p, const std::vector<std::string>& path
     route_state state;
     state.router_n_N_addresses = get_router_n_N_addresses(router_addresses);
     state.router_explicit_addresses = get_router_explicit_addresses(router_addresses);
-    state.packet = p;
+    state.packet_from_address = p.from;
+    state.packet_to_address = p.to;
+    state.packet_path = p.path;
     state.settings = settings;
     init_addresses(state);
 
