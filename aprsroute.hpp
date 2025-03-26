@@ -478,10 +478,10 @@ enum class address_kind
 struct address
 {
     std::string text;
-    int n = 0;
-    int N = 0;
-    int ssid = 0;
-    bool mark = false;
+    int n = 0; // the n component of a n_N address, ex: WIDE1-2, n=1
+    int N = 0; // the N component of a n_N address, ex: WIDE1-2, N=2
+    int ssid = 0; // the ssid component of an address, ex: CALL-1, ssid=1
+    bool mark = false; // whether the address is marked as used, ex: 'CALL*' used, 'CALL' unused
     address_kind kind = address_kind::other;
     q_construct q = q_construct::none;
     size_t index = 0;  // index inside the packet path
