@@ -4,3 +4,4 @@ example/out/*
 examples/basic/out/*
 examples/basic/external/*
 tests/routes.old.json
+examples/python_basic/out/*
