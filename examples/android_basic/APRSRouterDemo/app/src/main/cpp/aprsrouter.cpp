@@ -140,7 +140,9 @@ void init_router_addresses(const packet& p, const std::vector<std::string>& path
     route_state state;
     state.router_n_N_addresses = get_router_n_N_addresses(router_addresses);
     state.router_explicit_addresses = get_router_explicit_addresses(router_addresses);
-    state.packet = p;
+    state.packet_from_address = p.from;
+    state.packet_to_address = p.to;
+    state.packet_path = p.path;
     state.settings = settings;
     init_addresses(state);
 
