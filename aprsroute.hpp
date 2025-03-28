@@ -987,7 +987,12 @@ APRS_ROUTER_INLINE bool try_route_packet(const std::string& original_packet_from
 {
 APRS_ROUTER_DETAIL_NAMESPACE_USE
 
-    route_state state { original_packet_from, original_packet_to, original_packet_path, settings };
+    route_state state;
+    
+    state.packet_from_address = original_packet_from;
+    state.packet_to_address = original_packet_to;
+    state.packet_path = original_packet_path;
+    state.settings = settings;
 
     init_addresses(state);
 
