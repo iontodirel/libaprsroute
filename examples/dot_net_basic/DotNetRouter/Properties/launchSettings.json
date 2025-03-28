@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DotNetRouter": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}
