@@ -621,6 +621,19 @@ TEST(packet, equality)
 #endif
 }
 
+TEST(router, try_route_packet_no_packet)
+{
+    struct router_settings router_settings = { "DIGI", {}, { "WIDE1" }, routing_option::none, false };
+    std::vector<std::string> routed_path;
+    enum routing_state routing_state = routing_state::not_routed;
+    std::vector<routing_diagnostic> routing_options;
+    try_route_packet("CALL", "APRS", { "WIDE1-1" }, router_settings, routed_path, routing_state, routing_options);
+    EXPECT_TRUE(routing_state == routing_state::routed);
+    EXPECT_TRUE(routed_path.size() == 2);
+    EXPECT_TRUE(routed_path[0] == "DIGI");
+    EXPECT_TRUE(routed_path[1] == "WIDE1*");
+}
+
 TEST(router, try_route_packet_explicit_loop)
 {
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
