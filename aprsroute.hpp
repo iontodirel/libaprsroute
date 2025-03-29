@@ -206,6 +206,17 @@ APRS_ROUTER_NAMESPACE_BEGIN
 //                                             ~~~~
 // Will be routed as: N0CALL>APRS,DIGI*,CALLD,CALLE,CALLF:data
 //                                ~~~~~
+// ------------
+// preempt_mark
+// ------------
+//
+// Enables preemptive routing for explicitly routed packets.
+// With this option, all other addresses in front of us are ignored.
+//
+// This packet: N0CALL>APRS,CALLA,CALLB*,CALLC,DIGI,CALLD,CALLE,CALLF:data
+//                                             ~~~~
+// Will be routed as: N0CALL>APRS,CALLA,CALLB,CALLC,DIGI*,CALLD,CALLE,CALLF:data
+//                                                  ~~~~~
 // ------------------------
 // substitute_complete_n_N_address
 // ------------------------
@@ -1344,6 +1355,9 @@ APRS_ROUTER_INLINE bool try_preempt_transform_explicit_route(route_state& state)
 
     if (enum_has_flag(options, routing_option::preempt_front))
     {
+        // Diagnostics are calculated before the move.
+        // Store diagnostics in a temporary vector, and if the move is not successful
+        // then we will not add the diagnostics to the actions.
         std::vector<routing_diagnostic> temp_d;
         create_address_move_diagnostic(packet_addresses, router_address_index, unused_address_index, enable_diagnostics, temp_d);
         if (try_move_address_to_position(packet_addresses, router_address_index, unused_address_index))
@@ -1354,6 +1368,9 @@ APRS_ROUTER_INLINE bool try_preempt_transform_explicit_route(route_state& state)
     }
     else if (enum_has_flag(options, routing_option::preempt_truncate))
     {
+        // Diagnostics are calculated before the move.
+        // Store diagnostics in a temporary vector, and if the move is not successful
+        // then we will not add the diagnostics to the actions.
         std::vector<routing_diagnostic> temp_d;
         create_truncate_address_range_diagnostic(packet_addresses, unused_address_index, router_address_index, enable_diagnostics, temp_d);
         if (try_truncate_address_range(packet_addresses, unused_address_index, router_address_index))
@@ -1364,26 +1381,57 @@ APRS_ROUTER_INLINE bool try_preempt_transform_explicit_route(route_state& state)
     }
     else if (enum_has_flag(options, routing_option::preempt_drop))
     {
+        // Diagnostics are calculated before the move.
+        // Store diagnostics in a temporary vector, and if the move is not successful
+        // then we will not add the diagnostics to the actions.
         std::vector<routing_diagnostic> temp_d;
         create_truncate_address_range_diagnostic(packet_addresses, 0, router_address_index, enable_diagnostics, temp_d);
         if (try_truncate_address_range(packet_addresses, 0, router_address_index))
         {
             std::copy(temp_d.begin(), temp_d.end(), std::back_inserter(actions));
         }
+
+        // Reset the unused address index to 0 as we are dropping all the addresses
+        // in front of the router's matched address
+        //
+        // Example:
+        //
+        // Router address: DIGI
+        // Router path: E
+        //
+        // Original packet: N0CALL>APRS,A,B*,C,D,E,F:data
+        //                                   ~
+        //                                   unused_address_index = 2
+        // 
+        // Truncated packet: N0CALL>APRS,E,F:data
+        //                               ~
+        //                               unused_address_index = 0
+
         unused_address_index = 0;
+
         return true;
     }
-    // else if (enum_has_flag(options, routing_option::preempt_mark))
-    // {
-    //     std::vector<routing_diagnostic> temp_d;
-    //     create_truncate_address_range_diagnostic(packet_addresses, 0, router_address_index, enable_diagnostics, temp_d);
-    //     if (try_truncate_address_range(packet_addresses, 0, router_address_index))
-    //     {
-    //         std::copy(temp_d.begin(), temp_d.end(), std::back_inserter(actions));
-    //     }
-    //     unused_address_index = 0;
-    //     return true;
-    // }
+    else if (enum_has_flag(options, routing_option::preempt_mark))
+    {
+        // Reset the unused address index to the index of the router's matched address
+        //
+        // Example:
+        //
+        // Router address: DIGI
+        // Router path: E
+        //
+        // Original packet: N0CALL>APRS,A,B*,C,D,E,F:data
+        //                                   ~
+        //                                   unused_address_index = 2
+        // 
+        // Original packet: N0CALL>APRS,A,B*,C,D,E,F:data
+        //                                       ~
+        //                                       unused_address_index = 4
+
+        unused_address_index = router_address_index;
+
+        return true;
+    }
 
     return false;
 }
