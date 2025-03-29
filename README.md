@@ -181,17 +181,21 @@ Other examples can be found in the tests directory.
   - Can parse WIDE aliases, and decode n, N, or the used flag
   - Can parse callsigns, and decode ssid, or the used flag
 - Explicit routing
-  - Supports preemptive routing: `front`, `truncate` and `drop`
+  - Supports all preemptive forms of routing: `front`, `truncate`, `drop` and `mark`
+    - Preemptive `front` routing reorders the packet path
   - Supports any arbitrary aliases, ex: WIDE2-2 can be used for explicit routing as an address "WIDE2" with callsign "2"
   - Supports optional router address substitution
 - n-N routing
   - Supports any arbitrary aliases, ex: FOOBAR2-2 can be used
   - Supports optional completed alias substitution
   - Trap excessive hops
+  - Configure hop limits per alias, ex: WIDE2-2 - 2 maximum hops, WIDE2 - unlimited (7) number of hops
 - Diagnostics: every routing action is surfaced as a diagnostic
   - Routed packets can be fully restored using the routing actions alone
   - Intelligent post-routing decisions can be made using the routing actions
   - Routing actions can be printed as a ready string using `to_string`, or customized with `format`
+- With or without packet type support, with no coupling on a packet data type
+- No external dependencies, only uses a small set of the C++ standard library
 
 ## Goals
 
