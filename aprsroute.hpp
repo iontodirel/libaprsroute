@@ -45,6 +45,7 @@
 //   - How APRS paths work: https://blog.aprs.fi/2020/02/how-aprs-paths-work.html
 //   - APRS Digipeating and Path Selection: http://wa8lmf.net/DigiPaths
 //   - Examining Ambiguities in the Automatic Packet Reporting System: https://digitalcommons.calpoly.edu/theses/1341
+//   - Digi Question (viscous QRM): https://web.archive.org/web/20151022062516/https://tapr.org/pipermail/aprssig/2013-March/041554.html
 
 #pragma once
 
@@ -56,6 +57,22 @@
 #include <optional>
 #include <unordered_map>
 #include <stdexcept>
+
+// This header only library can be compiled in a TU and shared between TUs
+// to minimize compilation time, by defining the APRS_ROUTER_PUBLIC_FORWARD_DECLARATIONS_ONLY preprocessor directive.
+//
+// Example:
+//
+// In the TU where the library is compiled:
+//
+// #define APRS_ROUTER_INLINE
+// #include "aprsroute.hpp"
+//
+// In the header where the library is included:
+//
+// #define APRS_ROUTER_INLINE
+// #define APRS_ROUTER_PUBLIC_FORWARD_DECLARATIONS_ONLY
+// #include "aprsroute.hpp"
 
 #ifndef APRS_ROUTER_NAMESPACE
 #define APRS_ROUTER_NAMESPACE aprs::router
