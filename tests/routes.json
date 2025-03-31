@@ -739,7 +739,7 @@
                 "                                                                                                     ",
                 "                                                                                                     ",
                 "                                                                                                     ",
-                " Generic path                                                                                        ",
+                " Explicit path                                                                                        ",
                 "                                                                                                     ",
                 "                                                                                                     ",
                 "                                                                                                     ",
@@ -748,7 +748,7 @@
         },
         {
             "id": "74",
-            "comment": "Generic path: Explicitely route a packet through the router's generic path",
+            "comment": "Explicit path: Explicitely route a packet through the router's explicit path",
             "address": "DIGI",
             "path": "CALL",
             "original_packet": "N0CALL>APRS,CALL:data",
@@ -757,7 +757,7 @@
         },
         {
             "id": "75",
-            "comment": "Generic path: Explicitely route a packet through the router's generic path, with some addresses already routed",
+            "comment": "Explicit path: Explicitely route a packet through the router's explicit path, with some addresses already routed",
             "address": "DIGI",
             "path": "CALLB",
             "original_packet": "N0CALL>APRS,CALLA*,CALLB,CALLC:data",
