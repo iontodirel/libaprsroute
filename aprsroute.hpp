@@ -343,7 +343,7 @@ enum class routing_option : int
 //                              will be rejected or trapped if their hop count exceeds the maximum (2)
 //                              specified (WIDE3-4 > WIDE3-2 and will be rejected or trapped)
 //
-//        default setting: WIDE1-2,WIDE2-2,TRACE1-2,TRACE2-2,WIDE,RELAY,TRACE
+//        default setting: none
 //
 // options - contains a list of options, ex: "preempt_front | trap_limit_exceeding_n_N_address" will enable two options on the router
 //
@@ -352,8 +352,8 @@ enum class routing_option : int
 struct router_settings
 {
     std::string address;
-    std::vector<std::string> explicit_addresses = { "WIDE", "RELAY", "TRACE" };
-    std::vector<std::string> n_N_addresses = { "WIDE1-2", "WIDE2-2", "TRACE1-2", "TRACE2-2" };
+    std::vector<std::string> explicit_addresses;
+    std::vector<std::string> n_N_addresses;
     routing_option options = routing_option::none;
     bool enable_diagnostics = false;
 };
