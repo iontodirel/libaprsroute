@@ -325,8 +325,8 @@ enum class routing_option : int
 // address - this is our callsign (or the router's callsign)
 //           if implementing a digipeater, this should be set to the digipeater's callsign
 //
-// explicit_addresses - contains an optional list of aliases, and an optional list of n-N addresses
-// n_N_addresses
+// explicit_addresses - contains an optional list of aliases
+// n_N_addresses - contains an optional list of n-N addresses (generic addresses)
 //
 //        ex: WIDE1,RELAY,WIDE2,WIDE3-2
 //            ~~~~~       ~~~~~

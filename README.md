@@ -144,7 +144,7 @@ for (auto& e : diag.entries)
 
 ### Address parsing:
 
-#### Parsing a WIDE alias
+#### Parsing a WIDE generic address
 
 ``` cpp
 address s;
@@ -178,18 +178,18 @@ Other examples can be found in the tests directory.
 
 - Packet decoding
 - Address parsing, encoding and decomposition
-  - Can parse WIDE aliases, and decode n, N, or the used flag
+  - Can parse WIDE generic addresses, and decode n, N, or the used flag
   - Can parse callsigns, and decode ssid, or the used flag
 - Explicit routing
   - Supports all preemptive forms of routing: `front`, `truncate`, `drop` and `mark`
     - Preemptive `front` routing reorders the packet path
-  - Supports any arbitrary aliases, ex: WIDE2-2 can be used for explicit routing as an address "WIDE2" with callsign "2"
+  - Supports any arbitrary aliases, ex: WIDE2-2 can be used for explicit routing, as an address "WIDE2" with callsign "2"
   - Supports optional router address substitution
 - n-N routing
-  - Supports any arbitrary aliases, ex: FOOBAR2-2 can be used
-  - Supports optional completed alias substitution
+  - Supports any arbitrary generic addresses, ex: FOOBAR2-2 can be used
+  - Supports optional used address substitution
   - Trap excessive hops
-  - Configure hop limits per alias, ex: WIDE2-2 - 2 maximum hops, WIDE2 - unlimited (7) number of hops
+  - Configure hop limits per generic address, ex: WIDE2-2 - _2 maximum hops_, WIDE2 - _unlimited (7) number of hops_
 - Diagnostics: every routing action is surfaced as a diagnostic
   - Routed packets can be fully restored using the routing actions alone
   - Intelligent post-routing decisions can be made using the routing actions
