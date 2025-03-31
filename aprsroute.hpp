@@ -135,7 +135,7 @@ APRS_ROUTER_PACKET_NAMESPACE_BEGIN
 //
 // #define APRS_ROUTER_ENABLE_PACKET_SUPPORT false
 // #define APRS_ROUTER_PACKET_NAMESPACE aprs
-// #include "../aprsroute.hpp"
+// #include "aprsroute.hpp"
 //
 // If the packet type is not in a namespace, also define the APRS_ROUTER_PACKET_NAMESPACE_REFERENCE
 //
@@ -144,7 +144,7 @@ APRS_ROUTER_PACKET_NAMESPACE_BEGIN
 // #define APRS_ROUTER_ENABLE_PACKET_SUPPORT false
 // #define APRS_ROUTER_PACKET_NAMESPACE
 // #define APRS_ROUTER_PACKET_NAMESPACE_REFERENCE
-// #include "../aprsroute.hpp"
+// #include "aprsroute.hpp"
 //
 // The test external_packet_test provides an example of how to use the external packet type.
 
