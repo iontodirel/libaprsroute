@@ -233,8 +233,12 @@ Include the header in your source file:
 
 `#include "external/aprsroute.hpp"`
 
-## Samples
+## Examples
 
-There are a few samples provided in the `examples` directory.
+There are multiple examples provided in the `examples` directory.
 
-The `android_basic` sample shows how to integrate the library in an Android application. The sample was generated using Android Studio.
+- The `android_basic` example shows how to integrate the library in an Android application. The sample was generated using Android Studio.
+- The `basic` example shows how to host the library in a standalone C++ CMake project.
+- The `python_basic` example showcases a demo of the library from Python.
+- The `dot_net_basic` example shows how to use the library from a .NET C# project. It contains a solution and two projects generated from Visual Studio.
+- The `digipeater` example, contains a barebone implementation of a digipeater. This can be used to implement a digipeater.
