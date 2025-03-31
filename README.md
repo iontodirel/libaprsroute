@@ -172,7 +172,7 @@ assert(s.ssid == 10); // 10
 assert(s.text == "N0CALL");
 ```
 
-Other examples can be found in the tests directory.
+Other examples can be found in the `tests` and `examples` directories.
 
 ## Features
 
