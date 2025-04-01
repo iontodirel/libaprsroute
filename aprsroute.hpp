@@ -40,7 +40,6 @@
 //   - The New n-N Paradigm: http://www.aprs.org/fix14439.html
 //   - Preemptive Digipeating: http://www.aprs.org/aprs12/preemptive-digipeating.txt
 //   - Q Construct: https://www.aprs-is.net/q.aspx
-//   - APRS digipeaters: https://dvbr.net/cloud/direwolf/direwolf_git_v1.7/direwolf-doc_git/APRS-Digipeaters.pdf
 //   - APRS digipeaters v2: https://github.com/wb2osz/direwolf-doc/blob/main/APRS-Digipeaters.pdf
 //   - How APRS paths work: https://blog.aprs.fi/2020/02/how-aprs-paths-work.html
 //   - APRS Digipeating and Path Selection: http://wa8lmf.net/DigiPaths
