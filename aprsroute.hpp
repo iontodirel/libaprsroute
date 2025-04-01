@@ -2561,6 +2561,10 @@ APRS_ROUTER_INLINE bool try_parse_n_N_address(std::string_view address_string, s
 
 APRS_ROUTER_INLINE bool try_parse_address_with_ssid(std::string_view address_string, struct address& address)
 {
+    // This function is a wrapper around try_parse_address
+    // it will parse the address and ssid from the address_string
+    // and create an address type.
+
     std::string address_no_ssid;
     int ssid = 0;
     bool mark = false;
@@ -2580,6 +2584,20 @@ APRS_ROUTER_INLINE bool try_parse_address_with_ssid(std::string_view address_str
 
 APRS_ROUTER_INLINE bool try_parse_address(std::string_view address, std::string& address_no_ssid, int& ssid)
 {
+    // Try parse an address like: ADDRESS[-SSID]
+    //
+    // Example:
+    //
+    // CALL1-10
+    // ~~~~~ ~~
+    // ^     ssid = 10
+    // |
+    // address_no_ssid = CALL1
+    // 
+    // This functions expects a valid AX.25 address,
+    // and will return false if the address is not valid.
+    // An address with a non numeric ssid will be rejected, ex: CALL-AB
+
     ssid = 0;
 
     if (address.empty() || address.size() > 9)
