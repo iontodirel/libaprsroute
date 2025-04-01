@@ -241,4 +241,4 @@ There are multiple examples provided in the `examples` directory.
 - The `basic` example shows how to host the library in a standalone C++ CMake project.
 - The `python_basic` example showcases a demo of the library from Python.
 - The `dot_net_basic` example shows how to use the library from a .NET C# project. It contains a solution and two projects generated from Visual Studio.
-- The `digipeater` example, contains a barebone implementation of a digipeater. This can be used to implement a digipeater.
+- The `digipeater` example, contains a barebone implementation of a digipeater. This can be used to implement a digipeater. Note, the CMake projects contains references to boost and nlohmann/json, but aren't actually used, they are for implementation convenience and can be removed. I plan to implement a digipeater as a standalone project, using this `digipeater` sample as a starting point.
