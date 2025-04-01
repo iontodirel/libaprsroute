@@ -3250,9 +3250,11 @@ APRS_ROUTER_INLINE std::optional<std::pair<size_t, size_t>> find_first_unused_n_
 
     bool reject_limit_exceeding_n_N_address = enum_has_flag(options, routing_option::reject_limit_exceeding_n_N_address);
 
-    for (size_t i = 0; const auto& address : packet_addresses)
+    size_t i = 0;
+    for (const auto& address : packet_addresses)
     {
-        for (size_t j = 0; const auto& p : router_n_N_addresses)
+        size_t j = 0;
+        for (const auto& p : router_n_N_addresses)
         {
             if (address.n == p.n && address.N > 0 && address.text == p.text)
             {
