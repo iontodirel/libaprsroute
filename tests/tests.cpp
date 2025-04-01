@@ -135,6 +135,36 @@ bool try_parse_addresses(const std::vector<std::string>& addresses, std::vector<
 //                                                                  //
 // **************************************************************** //
 
+TEST(number, try_parse_int)
+{
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+    int n = 0;
+
+    EXPECT_TRUE(try_parse_int("123", n));
+    EXPECT_TRUE(n == 123);
+
+    EXPECT_TRUE(try_parse_int("0", n));
+    EXPECT_TRUE(n == 0);
+
+    EXPECT_TRUE(try_parse_int("-1", n));
+    EXPECT_TRUE(n == -1);
+
+    EXPECT_TRUE(try_parse_int("abc", n) == false);
+    EXPECT_TRUE(n == 0);
+
+    EXPECT_TRUE(try_parse_int("123abc", n) == false);
+    EXPECT_TRUE(n == 0);
+
+    EXPECT_TRUE(try_parse_int("123.456", n) == false);
+    EXPECT_TRUE(n == 0);
+
+    EXPECT_TRUE(try_parse_int("12345678901234567890", n) == false);
+    EXPECT_TRUE(n == 0);
+#else 
+    EXPECT_TRUE(true);
+#endif
+}
+
 TEST(address, to_string)
 {
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING

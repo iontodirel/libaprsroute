@@ -55,7 +55,7 @@
 #include <cassert>
 #include <optional>
 #include <unordered_map>
-#include <stdexcept>
+#include <charconv>
 
 // This header only library can be compiled in a TU and shared between TUs
 // to minimize compilation time, by defining the APRS_ROUTER_PUBLIC_FORWARD_DECLARATIONS_ONLY preprocessor directive.
@@ -602,6 +602,7 @@ bool try_parse_address_with_ssid(std::string_view address_string, struct address
 bool try_parse_address(std::string_view address, std::string& address_no_ssid, int& ssid);
 bool try_parse_address_with_used_flag(std::string_view address, std::string& address_no_ssid, int& ssid);
 bool try_parse_address_with_used_flag(std::string_view address, std::string& address_no_ssid, int& ssid, bool& mark);
+bool try_parse_int(std::string_view str, int& result);
 
 void init_addresses(route_state& state);
 void unset_all_used_addresses(std::vector<address>& packet_addresses, size_t offset, size_t count);
@@ -2467,15 +2468,7 @@ APRS_ROUTER_INLINE bool try_parse_address(std::string_view address_string, struc
         if (ssid_str.size() == 1 || (ssid_str.size() == 2 && std::isdigit(static_cast<int>(ssid_str[1]))))
         {
             int ssid;
-            try
-            {
-                ssid = std::atoi(ssid_str.c_str());
-            }
-            catch (const std::invalid_argument&)
-            {
-                return true;
-            }
-            catch (const std::out_of_range&)
+            if (!try_parse_int(ssid_str, ssid))
             {
                 return true;
             }
@@ -2622,15 +2615,7 @@ APRS_ROUTER_INLINE bool try_parse_address(std::string_view address, std::string&
             return false;
         }
 
-        try
-        {
-            ssid = std::stoi(ssid_string);
-        }
-        catch (const std::invalid_argument&)
-        {
-            return false;
-        }
-        catch (const std::out_of_range&)
+        if (!try_parse_int(ssid_string, ssid))
         {
             return false;
         }
@@ -2688,6 +2673,27 @@ APRS_ROUTER_INLINE bool try_parse_address_with_used_flag(std::string_view addres
     }
 
     return try_parse_address(address, address_no_ssid, ssid);
+}
+
+APRS_ROUTER_INLINE bool try_parse_int(std::string_view str, int& value)
+{
+    // Attempt to parse an integer from the given string_view.
+    // Returns true if parsing is successful, false otherwise.
+    // If parsing fails, the value is set to 0.
+
+    auto result = std::from_chars(str.data(), str.data() + str.size(), value);
+
+    // Check if the parsing was successful and if the entire string was consumed
+    // The result.ec should be std::errc() and result.ptr should point to the end of the string    
+    bool success = (result.ec == std::errc()) && (result.ptr == (str.data() + str.size()));
+    
+    // If parsing fails, set value to 0
+    if (!success)
+    {
+        value = 0;
+    }
+
+    return success;
 }
 
 // **************************************************************** //
