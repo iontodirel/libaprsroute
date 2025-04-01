@@ -195,7 +195,7 @@ Other examples can be found in the `tests` and `examples` directories.
   - Intelligent post-routing decisions can be made using the routing actions
   - Routing actions can be printed as a ready string using `to_string`, or customized with `format`
 - With or without packet type support, with no coupling on a packet data type
-- No external dependencies, only uses a small set of the C++ standard library
+- No external dependencies, only uses a small set of the C++ standard library (C++20)
 
 ## Goals
 
