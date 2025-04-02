@@ -451,6 +451,8 @@ routing_option operator|(routing_option lhs, routing_option rhs);
 bool try_parse_routing_option(std::string_view str, routing_option& result);
 bool enum_has_flag(routing_option value, routing_option flag);
 std::string to_string(const routing_result& result);
+std::string to_string(routing_action action);
+std::string to_string(applies_to target);
 routing_diagnostic_display format(const routing_result& result);
 bool try_route_packet(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, const router_settings& settings, routing_result& result);
 bool try_route_packet(const std::string& original_packet_from, const std::string& original_packet_to, const std::vector<std::string>& original_packet_path, const router_settings& settings, std::vector<std::string>& routed_packet_path, enum routing_state& routing_state, std::vector<routing_diagnostic>& routing_actions);
@@ -947,6 +949,43 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
     }
 
     return diag_string;
+}
+
+APRS_ROUTER_INLINE std::string to_string(routing_action action)
+{
+    switch (action)
+    {
+        case routing_action::none: return "none";
+        case routing_action::insert: return "insert";
+        case routing_action::remove: return "remove";
+        case routing_action::replace: return "replace";
+        case routing_action::unset: return "unset";
+        case routing_action::set: return "set";
+        case routing_action::decrement: return "decrement";
+        case routing_action::error: return "error";
+        case routing_action::warn: return "warn";
+        case routing_action::message: return "message";
+    }
+
+    assert(false);
+
+    return "";
+}
+
+APRS_ROUTER_INLINE std::string to_string(applies_to target)
+{
+    switch (target)
+    {
+        case applies_to::none: return "none";
+        case applies_to::from: return "from";
+        case applies_to::to: return "to";
+        case applies_to::path: return "path";
+        case applies_to::data: return "data";
+    }
+
+    assert(false);
+
+    return "";
 }
 
 APRS_ROUTER_INLINE routing_diagnostic_display format(const routing_result& result)
