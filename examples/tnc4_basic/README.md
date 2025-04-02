@@ -2,7 +2,9 @@
 
 The `libaprsroute` library can be used on the Mobilinkd TNC4 project.
 
-**NOTE**: while I do have a Mobilinkd TNC4, I have not tested this on a real device, use at your own risk. These changes are development changes, they do not add any new functionality. I provide no warranty for this code. 
+**NOTE**: while I do have a Mobilinkd TNC4, I have not tested this on a real device, use at your own risk. These changes are development changes, they do not add any new functionality. I provide no warranty for this code. Use at your own risk.
+
+Product names mentioned in this document may be trademarks or registered trademarks of their respective owners.
 
 ## Build Instructions
 
@@ -92,3 +94,7 @@ The patch can be applied using:
 ``` bash
 git apply example.patch
 ```
+
+## License
+
+All the files, code, documents, materials etc. in the `tnc4_basic` directory are in the public domain. See `LICENSE` for more information.
