@@ -203,7 +203,7 @@ Other examples can be found in the `tests` and `examples` directories.
 - **Diagnostics**. This library generates extensive diagnostics as part of its core routing API, which allow for clean detailed diagnostics and logging, without an actual dependency on stdout or a dependency on a logging library.
 - **Testability**. This library has a comprehensive set of tests to ensure quality and correctness. The library has been written with testability in mind.
 - **Documentation**. Democratize APRS. The documentation in the code, combined with a comprehensive set of tests, can be used for learning and understanding of how the APRS network routing works.
-- **Cross Platform**. The library works on Linux, Windows or OSX systems. And has been tested with an MSVC, Clang and GCC compiler.
+- **Cross Platform**. The library works on Linux, Windows, OSX and embedded platforms. And has been tested with an MSVC, Clang and GCC compiler.
 
 ## Testing
 
@@ -242,3 +242,4 @@ There are multiple examples provided in the `examples` directory.
 - The `python_basic` example showcases a demo of the library from Python.
 - The `dot_net_basic` example shows how to use the library from a .NET C# project. It contains a solution and two projects generated from Visual Studio.
 - The `digipeater` example, contains a barebone implementation of a digipeater. This can be used to implement a digipeater. Note, the CMake projects contains references to boost and nlohmann/json, but aren't actually used, they are for implementation convenience and can be removed. I plan to implement a digipeater as a standalone project, using this `digipeater` sample as a starting point.
+- The `pico_basic` example demonstrates simple usage of the library in an embedded Raspberry Pi Pico 2 project. The project was generated with the official Raspberry Pi Pico extension in VSCode with the default C++17 as the language standard.
