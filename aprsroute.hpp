@@ -260,18 +260,24 @@ APRS_ROUTER_NAMESPACE_BEGIN
 //
 // Replace excessive hops.
 //
-// This packet: N0CALL>APRS,CALLA,WIDE7-7,WIDE2-2:data
+// This packet: N0CALL>APRS,CALLA,WIDE2-2,WIDE3-2:data
 //                                ~~~~~~~
-// Will be routed as: N0CALL>APRS,CALLA,DIGI*,WIDE2-2:data
+// Will be routed as: N0CALL>APRS,CALLA,DIGI*,WIDE3-2:data
 //                                      ~~~~~
+//
+// If the matching address in the n_N_addresses list, has a hop limit, ex: WIDE2-1
+//
 // ------------------------
 // reject_limit_exceeding_n_N_address
 // ------------------------
 //
 // Reject excessive hops.
 //
-// This packet won't be routed: N0CALL>APRS,CALLA,WIDE7-7,WIDE2-2:data
+// This packet won't be routed: N0CALL>APRS,CALLA,WIDE2-2,WIDE3-2:data
 //                                                ~~~~~~~
+//
+// If the matching address in the n_N_addresses list, has a hop limit, ex: WIDE2-1
+//
 // ------
 // strict
 // ------
