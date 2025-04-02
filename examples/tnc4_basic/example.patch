@@ -1,0 +1,33 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 520fb21..d51f26c 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -78,3 +78,5 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
+     # Add user defined libraries
+     tnc
+ )
++
++file(DOWNLOAD https://raw.githubusercontent.com/iontodirel/libaprsroute/main/aprsroute.hpp ${CMAKE_SOURCE_DIR}/external/aprsroute.hpp)
+diff --git a/Core/TNC/Digipeater.hpp b/Core/TNC/Digipeater.hpp
+index bba437a..691cfde 100644
+--- a/Core/TNC/Digipeater.hpp
++++ b/Core/TNC/Digipeater.hpp
+@@ -23,6 +23,8 @@ void beacon(void* arg);
+ #include "KissHardware.hpp"
+ #include "HdlcFrame.hpp"
+ 
++#include "../../external/aprsroute.hpp"
++
+ namespace mobilinkd { namespace tnc {
+ 
+ /**
+@@ -76,6 +78,9 @@ struct Digipeater
+ 
+   hdlc::IoFrame* rewrite_frame(hdlc::IoFrame* frame)
+   {
++    aprs::router::router_settings settings { "DIGI", {}, { "WIDE1" }, aprs::router::routing_option::none, true };
++    aprs::router::routing_result result;
++    aprs::router::try_route_packet("N0CALL>APRS,WIDE1-1,WIDE2-2:data", settings, result);
+     return frame;
+   }
+ };
