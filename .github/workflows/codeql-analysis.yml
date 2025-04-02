@@ -26,12 +26,12 @@ jobs:
         sudo ${{github.workspace}}/install_dependencies.sh
 
     - name: Initialize CodeQL
-      uses: github/codeql-action/init@v2
+      uses: github/codeql-action/init@v3
       with:
         languages: cpp
 
     - name: Configure CMake
-      working-directory: ${{github.workflow}}/tests
+      working-directory: ${{github.workspace}}/tests
       run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=Release
 
     - name: Build
@@ -39,4 +39,4 @@ jobs:
       run: cmake --build ${{github.workspace}}/build
 
     - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v2
+      uses: github/codeql-action/analyze@v3
