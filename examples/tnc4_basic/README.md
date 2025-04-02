@@ -6,6 +6,8 @@ The `libaprsroute` library can be used on the Mobilinkd TNC4 project.
 
 Product names mentioned in this document may be trademarks or registered trademarks of their respective owners.
 
+The `example.patch` file contains code that was automatically generated. This code is Copyright © 2017 Rob Riggs <rob@mobilinkd.com>. The patch file is provided as-is for convenience purposes only. No copyright claims are made on the patch contents.
+
 ## Build Instructions
 
 I use a local Ubuntu WSL environment in Windows, for building the TNC4 project.
