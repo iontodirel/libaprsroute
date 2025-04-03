@@ -221,6 +221,16 @@ Install the CMake and C++ extensions in VSCode, or the Native Desktop workload i
 
 On Linux systems, install the dependencies listed in `install_dependencies.sh`, which include a compiler, the CMake build system, and a native build system like make. Example for Debian systems: `apt-get install -y gcc g++ clang make cmake ninja-build`.
 
+### AX25 and modularity
+
+The library routes APRS packets directly, to maintain maximum flexibility and modularity. To do this, a routing result maintains both the original APRS packet, as well as the routed (transformed) APRS packet. An APRS packet can trivially be transformed to an AX25 or FX25 frame, after the routing has been completed.
+
+The library does not interface directly with AX25 or HDLC frames. AX25 is a way to represent an APRS packet, but it is not the only way. APRS packets can also be stored, sent or received as FX25 frames, they could be sent in textual form via TCP sockets, or encapsulated in other protocols.
+
+The library's focus on APRS packes for the routing, allows a developer to implement various transport mechanisms as need, with no coupling on a particular frame type or transport. This abstraction layering, allows the library to work seamlessly in any environment, from embedded systems interfacing with hardware TNCs, to software TNCs that provide forward error correction, to local connected applications communicating over computer protocols like TCP, to internet connected applications using APRS-IS.
+
+By maintaining protocol independence, the library can be used in conjunction with existing AX.25 implementations, modern FX.25 systems with forward error correction, or even entirely new transport mechanisms that may emerge in the amateur radio community.
+
 ## Integration with CMake
 
 As this is a header only library, you can simple download the header and use it:
