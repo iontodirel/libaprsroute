@@ -165,6 +165,31 @@ TEST(number, try_parse_int)
 #endif
 }
 
+TEST(address, parse_address_kind)
+{
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+    EXPECT_TRUE(parse_address_kind("ECHO") == address_kind::echo);
+    EXPECT_TRUE(parse_address_kind("NOGATE") == address_kind::nogate);
+    EXPECT_TRUE(parse_address_kind("RFONLY") == address_kind::rfonly);
+    EXPECT_TRUE(parse_address_kind("TRACE") == address_kind::trace);
+    EXPECT_TRUE(parse_address_kind("ECHO") == address_kind::echo);
+#else 
+    EXPECT_TRUE(true);
+#endif
+}
+
+TEST(address, parse_q_construct)
+{
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+    EXPECT_TRUE(parse_q_construct("qAC") == q_construct::qAC);
+    EXPECT_TRUE(parse_q_construct("qAS") == q_construct::qAS);
+    EXPECT_TRUE(parse_q_construct("qAZ") == q_construct::qAZ);
+    EXPECT_TRUE(parse_q_construct("qAr") == q_construct::qAr);
+#else 
+    EXPECT_TRUE(true);
+#endif
+}
+
 TEST(address, to_string)
 {
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING

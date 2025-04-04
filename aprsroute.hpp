@@ -54,7 +54,8 @@
 #include <iterator>
 #include <cassert>
 #include <optional>
-#include <unordered_map>
+#include <array>
+#include <algorithm>
 #include <charconv>
 
 // This header only library can be compiled in a TU and shared between TUs
@@ -602,8 +603,8 @@ std::string create_display_name_diagnostic(const routing_diagnostic_display_entr
 routing_diagnostic_display_entry create_diagnostic_print_line(const routing_diagnostic& diag, const APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& routed_packet);
 
 std::string to_string(const struct address& address);
-q_construct parse_q_construct(const std::string& input);
-address_kind parse_address_kind(const std::string& text);
+q_construct parse_q_construct(std::string_view input);
+address_kind parse_address_kind(std::string_view text);
 bool try_parse_address(std::string_view address_string, address& result);
 bool try_parse_n_N_address(std::string_view address_string, struct address& address);
 bool try_parse_address_with_ssid(std::string_view address_string, struct address& address);
@@ -2367,25 +2368,31 @@ APRS_ROUTER_INLINE std::string to_string(const struct address& address)
     return result;
 }
 
-APRS_ROUTER_INLINE q_construct parse_q_construct(const std::string& text)
+APRS_ROUTER_INLINE q_construct parse_q_construct(std::string_view text)
 {
-    // NOTE: input parameter is a std::string as map::find does not support std::string_view
+    using pair_t = std::pair<std::string_view, q_construct>;
 
-    static const std::unordered_map<std::string, q_construct> lookup_table =
-    {
+    // NOTE: lookup_table is sorted by the first element of the pair
+
+    static constexpr std::array<pair_t, 10> lookup_table =
+    {{
         { "qAC", q_construct::qAC },
-        { "qAX", q_construct::qAX },
-        { "qAU", q_construct::qAU },
-        { "qAo", q_construct::qAo },
+        { "qAI", q_construct::qAI },
         { "qAO", q_construct::qAO },
-        { "qAS", q_construct::qAS },
-        { "qAr", q_construct::qAr },
         { "qAR", q_construct::qAR },
+        { "qAS", q_construct::qAS },
+        { "qAU", q_construct::qAU },
+        { "qAX", q_construct::qAX },
         { "qAZ", q_construct::qAZ },
-        { "qAI", q_construct::qAI }
-    };
+        { "qAo", q_construct::qAo },
+        { "qAr", q_construct::qAr }
+    }};
 
-    if (auto it = lookup_table.find(text); it != lookup_table.end())
+    auto it = std::lower_bound(lookup_table.begin(), lookup_table.end(), text, [](const pair_t& lhs, std::string_view rhs) {
+        return lhs.first < rhs;
+    });
+
+    if (it != lookup_table.end() && it->first == text)
     {
         return it->second;
     }
@@ -2393,28 +2400,34 @@ APRS_ROUTER_INLINE q_construct parse_q_construct(const std::string& text)
     return q_construct::none;
 }
 
-APRS_ROUTER_INLINE address_kind parse_address_kind(const std::string& text)
+APRS_ROUTER_INLINE address_kind parse_address_kind(std::string_view text)
 {
-    // NOTE: input parameter is a std::string as map::find does not support std::string_view
+    using pair_t = std::pair<std::string_view, address_kind>;
 
-    static const std::unordered_map<std::string, address_kind> lookup_table =
-    {
-        { "WIDE", address_kind::wide },
-        { "TRACE", address_kind::trace },
-        { "RELAY", address_kind::relay },
+    // NOTE: lookup_table is sorted by the first element of the pair
+
+    static constexpr std::array<pair_t, 13> lookup_table =
+    {{
         { "ECHO", address_kind::echo },
         { "GATE", address_kind::gate },
+        { "IGATECALL", address_kind::igatecall },
+        { "NOGATE", address_kind::nogate },
+        { "OPNTRC", address_kind::opntrc },
+        { "OPNTRK", address_kind::opntrk },
+        { "RELAY", address_kind::relay },
+        { "RFONLY", address_kind::rfonly },
         { "TEMP", address_kind::temp },
         { "TCPIP", address_kind::tcpip },
         { "TCPXX", address_kind::tcpxx },
-        { "NOGATE", address_kind::nogate },
-        { "RFONLY", address_kind::rfonly },
-        { "IGATECALL", address_kind::igatecall },
-        { "OPNTRK", address_kind::opntrk },
-        { "OPNTRC", address_kind::opntrc }
-    };
+        { "TRACE", address_kind::trace },
+        { "WIDE", address_kind::wide }
+    }};
 
-    if (auto it = lookup_table.find(text); it != lookup_table.end())
+    auto it = std::lower_bound(lookup_table.begin(), lookup_table.end(), text, [](const pair_t& lhs, std::string_view rhs) {
+        return lhs.first < rhs;
+    });
+
+    if (it != lookup_table.end() && it->first == text)
     {
         return it->second;
     }
