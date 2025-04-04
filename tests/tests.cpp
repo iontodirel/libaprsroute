@@ -40,8 +40,6 @@
 #include <sstream>
 #include <locale>
 
-#include <string.h>
-
 #ifdef _MSC_VER
 #pragma warning(push)
 #pragma warning(disable: 4267 4127)
@@ -82,7 +80,6 @@ using namespace aprs::router::detail;
 
 routing_result test_packet_routing_iteration(const packet& p, router_settings digi, std::vector<std::string> addresses,  std::vector<size_t> digipeated_indices, int count);
 bool try_parse_addresses(const std::vector<std::string>& addresses, std::vector<address>& result);
-void dummy_copy_string(const char *source, int offset);
 
 routing_result test_packet_routing_iteration(const packet& p, router_settings digi, std::vector<std::string> addresses,  std::vector<size_t> digipeated_indices, int count)
 {
@@ -128,13 +125,6 @@ bool try_parse_addresses(const std::vector<std::string>& addresses, std::vector<
         result.push_back(s);
     }
     return true;
-}
-
-void dummy_copy_string(const char *source, int offset)
-{
-    char buffer[10];
-    const char* ptr = source + offset;  // Dynamic offset makes it harder for compiler to analyze
-    strcpy(buffer, ptr);         // Potential buffer overflow
 }
 
 // **************************************************************** //
@@ -852,10 +842,6 @@ TEST(router, routing_n_N_with_addresses_in_front)
 
 TEST(router, placeholder_test)
 {
-    const char* test = "This is a very long string that exceeds 10 characters";
-    int len = 2;
-    dummy_copy_string(test, len);
-
     router_settings digi{ "DIGI", {}, { "WIDE1", "WIDE2" }, routing_option::skip_complete_n_N_address, true };
     routing_result result;
 
