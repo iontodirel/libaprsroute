@@ -156,7 +156,7 @@ struct packet
     packet& operator=(const packet& other) = default;
     packet(const std::string& from, const std::string& to, const std::vector<std::string>& path, const std::string& data);
     packet(const char* packet_string);
-    packet(const std::string packet_string);
+    packet(const std::string& packet_string);
     operator std::string() const;
 
     std::string from;
@@ -687,7 +687,7 @@ APRS_ROUTER_INLINE packet::packet(const char* packet_string) : packet(std::strin
 {
 }
 
-APRS_ROUTER_INLINE packet::packet(const std::string packet_string)
+APRS_ROUTER_INLINE packet::packet(const std::string& packet_string)
 {
     bool result = try_decode_packet(packet_string, *this);
     (void)result;
