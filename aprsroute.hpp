@@ -462,7 +462,7 @@ std::string to_string(routing_action action);
 std::string to_string(applies_to target);
 routing_diagnostic_display format(const routing_result& result);
 bool try_route_packet(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, const router_settings& settings, routing_result& result);
-bool try_route_packet(const std::string& original_packet_from, const std::string& original_packet_to, const std::vector<std::string>& original_packet_path, const router_settings& settings, std::vector<std::string>& routed_packet_path, enum routing_state& routing_state, std::vector<routing_diagnostic>& routing_actions);
+bool try_route_packet(std::string_view original_packet_from, std::string_view original_packet_to, const std::vector<std::string>& original_packet_path, const router_settings& settings, std::vector<std::string>& routed_packet_path, enum routing_state& routing_state, std::vector<routing_diagnostic>& routing_actions);
 
 APRS_ROUTER_NAMESPACE_END
 
@@ -1062,7 +1062,7 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
     return result.routed;
 }
 
-APRS_ROUTER_INLINE bool try_route_packet(const std::string& original_packet_from, const std::string& original_packet_to, const std::vector<std::string>& original_packet_path, const router_settings& settings, std::vector<std::string>& routed_packet_path, enum routing_state& routing_state, std::vector<routing_diagnostic>& routing_actions)
+APRS_ROUTER_INLINE bool try_route_packet(std::string_view original_packet_from, std::string_view original_packet_to, const std::vector<std::string>& original_packet_path, const router_settings& settings, std::vector<std::string>& routed_packet_path, enum routing_state& routing_state, std::vector<routing_diagnostic>& routing_actions)
 {
 APRS_ROUTER_DETAIL_NAMESPACE_USE
 
