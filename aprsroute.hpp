@@ -536,8 +536,8 @@ APRS_ROUTER_DETAIL_NAMESPACE_BEGIN
 
 struct route_state
 {
-    std::string packet_from_address;
-    std::string packet_to_address;
+    std::string_view packet_from_address;
+    std::string_view packet_to_address;
     std::vector<std::string> packet_path;
     router_settings settings;
     std::vector<address> packet_addresses;
@@ -602,6 +602,8 @@ bool create_truncate_address_range_diagnostic(const std::vector<address>& packet
 std::string create_display_name_diagnostic(const routing_diagnostic_display_entry& line);
 routing_diagnostic_display_entry create_diagnostic_print_line(const routing_diagnostic& diag, const APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& routed_packet);
 
+bool operator==(const address& lhs, const address& rhs);
+bool operator!=(const address& lhs, const address& rhs);
 std::string to_string(const struct address& address);
 q_construct parse_q_construct(std::string_view input);
 address_kind parse_address_kind(std::string_view text);
@@ -684,8 +686,11 @@ APRS_ROUTER_INLINE packet::packet(const std::string& from, const std::string& to
 {
 }
 
-APRS_ROUTER_INLINE packet::packet(const char* packet_string) : packet(std::string(packet_string))
+APRS_ROUTER_INLINE packet::packet(const char* packet_string)
 {
+    bool result = try_decode_packet(packet_string, *this);
+    (void)result;
+    assert(result);
 }
 
 APRS_ROUTER_INLINE packet::packet(const std::string& packet_string)
@@ -2336,6 +2341,20 @@ APRS_ROUTER_INLINE routing_diagnostic_display_entry create_diagnostic_print_line
 //                                                                  //
 // **************************************************************** //
 
+APRS_ROUTER_INLINE bool operator==(const address& lhs, const address& rhs)
+{
+    return lhs.text == rhs.text &&
+           lhs.n == rhs.n &&
+           lhs.N == rhs.N &&
+           lhs.ssid == rhs.ssid &&
+           lhs.mark == rhs.mark;
+}
+
+APRS_ROUTER_INLINE bool operator!=(const address& lhs, const address& rhs)
+{
+    return !(lhs == rhs);
+}
+
 APRS_ROUTER_INLINE std::string to_string(const struct address& address)
 {
     if (address.text.empty())
@@ -2852,6 +2871,8 @@ APRS_ROUTER_INLINE void init_addresses(route_state& state)
     //                                                    ~~~~~ ~~~~~ ~~~~ ~~~~~
     // Addresses parsed with try_parse_n_N_address: WIDE2-1,WIDE3-2
     //                                              ------- -------  
+
+    state.packet_addresses.reserve(state.packet_path.size());
 
     index = 0;
 
