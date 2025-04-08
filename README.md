@@ -243,7 +243,7 @@ This is the packet used for testing: N0CALL-10>CALL-5,CALLA-10*,CALLB-5*,CALLC-1
 
 The router's address is "DIGI". And the router's path is "WIDE1-2" and "WIDE2-3".
 
-Diagnostics was disabled, as it is not a critical feature. The analysis measures the try_route_packet function performance. Routing memory shows total memory used, alongside total allocations (_do not multiplicate the two_).  
+Diagnostics was disabled, as it is not a critical feature. The analysis measures the try_route_packet function performance. Routing memory shows total memory used, alongside total allocations (_do not multiplicate the two_).
 
 | Platform     | Hardware                     | Throughput  | Routing time  | Routing memory             |
 |--------------|------------------------------|-------------|---------------|----------------------------|
@@ -254,6 +254,7 @@ Diagnostics was disabled, as it is not a critical feature. The analysis measures
 | Linux Clang  | Intel Celeron N5095, 8GB RAM | 600K pkts/s | 1 μs          | 1664 bytes, 6 allocations  |
 | RISCV GCC    | ESP32 C6, 512KB RAM          | 5.6K pkts/s | 224 μs        | 1248 bytes, 6 allocations  |
 | ARM GCC      | Pico 2 W, 520KB RAM          | 3.3K pkts/s | 285 μs        | 1248 bytes, 6 allocations  |
+| ARM GCC      | Teensy 4.1, 1024KB RAM       | 38K pkts/s  | 25 μs         | 1248 bytes, 6 allocations  |
 
 ### Integration with CMake
 
