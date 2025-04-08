@@ -243,7 +243,7 @@ This is the packet used for testing: N0CALL-10>CALL-5,CALLA-10*,CALLB-5*,CALLC-1
 
 The router's address is "DIGI". And the router's path is "WIDE1-2" and "WIDE2-3".
 
-Diagnostics was disabled, as it is not a critical feature. The analysis measures the try_route_packet function performance.
+Diagnostics was disabled, as it is not a critical feature. The analysis measures the try_route_packet function performance. Routing memory shows total memory used, alongside total allocations (_do not multiplicate the two_).  
 
 | Platform     | Hardware                     | Throughput  | Routing time  | Routing memory             |
 |--------------|------------------------------|-------------|---------------|----------------------------|
