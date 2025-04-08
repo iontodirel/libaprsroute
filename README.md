@@ -245,15 +245,15 @@ The router's address is "DIGI". And the router's path is "WIDE1-2" and "WIDE2-3"
 
 Diagnostics was disabled, as it is not a critical feature. The analysis measures the try_route_packet function performance.
 
-| Platform          | Hardware                     | Throughput       | Routing time  | Routing memory             |
-|-------------------|------------------------------|------------------|---------------|----------------------------|
-| Windows MSVC      | Intel i9-14900HX, 97GB RAM   | 1M packets / s   | 0.13 μs       | 1424 bytes, 6 allocations  |
-| Windows WSL GCC   | Intel i9-14900HX, 97GB RAM   | 1.4M packets / s | 0.01 μs       | 1664 bytes, 6 allocations  |
-| Windows WSL Clang | Intel i9-14900HX, 97GB RAM   | 1.4M packets / s | 0.01 μs       | 1664 bytes, 6 allocations  |
-| Linux GCC         | Intel Celeron N5095, 8GB RAM | 585K packets / s | 1 μs          | 1664 bytes, 6 allocations  |
-| Linux Clang       | Intel Celeron N5095, 8GB RAM | 600K packets / s | 1 μs          | 1664 bytes, 6 allocations  |
-| Windows ARM GCC   | ESP32 C6, 512KB RAM          | 5.6K packets / s | 224 μs        | 1248 bytes, 6 allocations  |
-| Windows ARM GCC   | Pico 2 W, 520KB RAM          | 3.3K packets / s | 285 μs        | 1248 bytes, 6 allocations  |
+| Platform     | Hardware                     | Throughput  | Routing time  | Routing memory             |
+|--------------|------------------------------|-------------|---------------|----------------------------|
+| Windows MSVC | Intel i9-14900HX, 97GB RAM   | 1M pkts/s   | 0.13 μs       | 1424 bytes, 6 allocations  |
+| WSL GCC      | Intel i9-14900HX, 97GB RAM   | 1.4M pkts/s | 0.01 μs       | 1664 bytes, 6 allocations  |
+| WSL Clang    | Intel i9-14900HX, 97GB RAM   | 1.4M pkts/s | 0.01 μs       | 1664 bytes, 6 allocations  |
+| Linux GCC    | Intel Celeron N5095, 8GB RAM | 585K pkts/s | 1 μs          | 1664 bytes, 6 allocations  |
+| Linux Clang  | Intel Celeron N5095, 8GB RAM | 600K pkts/s | 1 μs          | 1664 bytes, 6 allocations  |
+| ARM GCC      | ESP32 C6, 512KB RAM          | 5.6K pkts/s | 224 μs        | 1248 bytes, 6 allocations  |
+| ARM GCC      | Pico 2 W, 520KB RAM          | 3.3K pkts/s | 285 μs        | 1248 bytes, 6 allocations  |
 
 ### Integration with CMake
 
