@@ -39,6 +39,7 @@
 #include <fstream>
 #include <sstream>
 #include <locale>
+#include <memory_resource>
 
 #ifdef _MSC_VER
 #pragma warning(push)
@@ -79,7 +80,7 @@ using namespace aprs::router::detail;
 // **************************************************************** //
 
 routing_result test_packet_routing_iteration(const packet& p, router_settings digi, std::vector<std::string> addresses,  std::vector<size_t> digipeated_indices, int count);
-bool try_parse_addresses(const std::vector<std::string>& addresses, std::vector<address>& result);
+bool try_parse_addresses(const std::vector<std::string>& addresses, std::pmr::vector<address>& result);
 
 routing_result test_packet_routing_iteration(const packet& p, router_settings digi, std::vector<std::string> addresses,  std::vector<size_t> digipeated_indices, int count)
 {
@@ -91,7 +92,7 @@ routing_result test_packet_routing_iteration(const packet& p, router_settings di
     {
         digi.address = addresses[i - 1];
 
-        try_route_packet(result.routed_packet, digi, result);
+        try_route_packet(packet(result.routed_packet), digi, result);
         EXPECT_TRUE(result.routed == true);
         EXPECT_TRUE(result.success == true);
         EXPECT_TRUE(result.state == routing_state::routed);
@@ -112,7 +113,7 @@ routing_result test_packet_routing_iteration(const packet& p, router_settings di
     return result;
 }
 
-bool try_parse_addresses(const std::vector<std::string>& addresses, std::vector<address>& result)
+bool try_parse_addresses(const std::vector<std::string>& addresses, std::pmr::vector<address>& result)
 {
     result.clear();
     size_t index = 0;
@@ -1583,7 +1584,7 @@ TEST(addresses, set_address_as_used)
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
     packet p = { "N0CALL", "APRS", { "CALLA", "CALLB*", "CALLC", "CALLD", "CALLE", "CALLF" }, "data"};
 
-    std::vector<address> segments;
+    std::pmr::vector<address> segments;
     try_parse_addresses(p.path, segments);
     set_addresses_offset(p.from, p.to, segments);
 
@@ -1646,11 +1647,11 @@ TEST(diagnostic, push_address_unset_diagnostic)
     packet p = { "N0CALL", "APRS", { "CALLA*", "CALLB*", "CALLC", "WIDE2-2*", "CALLD*", "CALLE", "CALLF" }, "data"};
 
     // Initialize offsets
-    std::vector<address> segments;
+    std::pmr::vector<address> segments;
     try_parse_addresses(p.path, segments);
     set_addresses_offset(p.from, p.to, segments);
 
-    std::vector<routing_diagnostic> diag;
+    std::pmr::vector<routing_diagnostic> diag;
     push_address_unset_diagnostic(segments, 5, true, diag);
 
     // N0CALL>APRS,CALLA*,CALLB*,CALLC,WIDE2-2*,CALLD*,CALLE,CALLF:data
@@ -1701,7 +1702,7 @@ TEST(diagnostic, push_address_set_diagnostic)
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
     packet p = { "N0CALL", "APRS", { "CALLA*", "CALLB*", "CALLC", "WIDE2-2*", "CALLD*", "CALLE", "CALLF" }, "data"};
 
-    std::vector<address> segments;
+    std::pmr::vector<address> segments;
     try_parse_addresses(p.path, segments);
     set_addresses_offset(p.from, p.to, segments);
 
@@ -1716,7 +1717,7 @@ TEST(diagnostic, push_address_set_diagnostic)
     // N0CALL>APRS,CALLA,CALLB,CALLC,WIDE2-2,CALLD,CALLE*,CALLF:data
     //                                                  ~
 
-    std::vector<routing_diagnostic> diag;
+    std::pmr::vector<routing_diagnostic> diag;
     push_address_set_diagnostic(segments, 5, true, diag);
 
     // N0CALL>APRS,CALLA,CALLB,CALLC,WIDE2-2,CALLD,CALLE*,CALLF:data
@@ -1764,9 +1765,9 @@ bool try_parse_bool(const std::string& s, bool& b);
 std::vector<route_test> load_routing_tests(const std::string& test_file);
 std::vector<std::string> split_comma_separated_values(const std::string& str);
 std::string to_string(routing_option o);
-std::vector<address> get_router_n_N_addresses(const std::vector<address>& router_addresses);
-std::vector<address> get_router_explicit_addresses(const std::vector<address>& router_addresses);
-std::vector<std::string> to_vector_of_string(const std::vector<address>& addresses);
+std::pmr::vector<address> get_router_n_N_addresses(const std::pmr::vector<address>& router_addresses);
+std::pmr::vector<address> get_router_explicit_addresses(const std::pmr::vector<address>& router_addresses);
+template <class Allocator> std::vector<std::string> to_vector_of_string(const std::vector<address, Allocator>& addresses);
 void init_router_addresses(const packet& p, const std::vector<std::string>& path, router_settings& settings);
 bool try_get_routing_test_set(route_test test, packet& p, router_settings& settings);
 void debugger_break();
@@ -1938,9 +1939,9 @@ std::string to_string(routing_option o)
     return result.empty() ? "unknown" : result;
 }
 
-std::vector<address> get_router_n_N_addresses(const std::vector<address>& router_addresses)
+std::pmr::vector<address> get_router_n_N_addresses(const std::pmr::vector<address>& router_addresses)
 {
-    std::vector<address> result;
+    std::pmr::vector<address> result;
     for (const auto& p : router_addresses)
     {
         if (p.n > 0)
@@ -1951,9 +1952,9 @@ std::vector<address> get_router_n_N_addresses(const std::vector<address>& router
     return result;
 }
 
-std::vector<address> get_router_explicit_addresses(const std::vector<address>& router_addresses)
+std::pmr::vector<address> get_router_explicit_addresses(const std::pmr::vector<address>& router_addresses)
 {
-    std::vector<address> result;
+    std::pmr::vector<address> result;
     for (const auto& p : router_addresses)
     {
         if (p.n == 0)
@@ -1964,7 +1965,8 @@ std::vector<address> get_router_explicit_addresses(const std::vector<address>& r
     return result;
 }
 
-std::vector<std::string> to_vector_of_string(const std::vector<address>& addresses)
+template <class Allocator>
+std::vector<std::string> to_vector_of_string(const std::vector<address, Allocator>& addresses)
 {
     std::vector<std::string> result;
     for (const auto& p : addresses)
@@ -1981,7 +1983,7 @@ void init_router_addresses(const packet& p, const std::vector<std::string>& path
         return;
     }
 
-    std::vector<address> router_addresses;
+    std::pmr::vector<address> router_addresses;
     try_parse_addresses(path, router_addresses);
 
     route_state state;
@@ -1989,7 +1991,7 @@ void init_router_addresses(const packet& p, const std::vector<std::string>& path
     state.router_explicit_addresses = get_router_explicit_addresses(router_addresses);
     state.packet_from_address = p.from;
     state.packet_to_address = p.to;
-    state.packet_path = p.path;
+    state.packet_path.assign(p.path.begin(), p.path.end());
     state.settings = settings;
     init_addresses(state);
 
@@ -2045,6 +2047,11 @@ bool run_test(const route_test& test, const packet& p, const router_settings& se
     routing_result result;
 
     bool result_bool = try_route_packet(p, settings, result);
+
+    if (result_bool != test.routed)
+    {
+        printf("test %s failed\n", test.id.c_str());
+    }
 
     EXPECT_TRUE(result_bool == test.routed);
     EXPECT_TRUE(result.routed == test.routed);
