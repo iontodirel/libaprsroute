@@ -619,6 +619,7 @@ routing_diagnostic_display_entry create_diagnostic_print_line(const routing_diag
 bool operator==(const address& lhs, const address& rhs);
 bool operator!=(const address& lhs, const address& rhs);
 std::string to_string(const struct address& address);
+bool equal_addresses_ignore_mark(const struct address& lhs, const struct address& rhs);
 q_construct parse_q_construct(std::string_view input);
 address_kind parse_address_kind(std::string_view text);
 bool try_parse_address(std::string_view address_string, address& result);
@@ -2464,6 +2465,146 @@ APRS_ROUTER_INLINE std::string to_string(const struct address& address)
     return result;
 }
 
+APRS_ROUTER_INLINE bool equal_addresses_ignore_mark(const struct address& lhs, const struct address& rhs)
+{
+    // Normally we simply use to_string(lhs) == to_string(rhs) to compare addresses.
+    // But "to_string" requires us to make a copy of an address to unset the "mark" fields (we typically ignore '*' in address comparisons).
+    // Additionally, to_string allocates heap memory in debug builds.
+    //
+    // This implementation is a fast address comparison function. This function makes no heap memory allocations, nor requires object copies.
+    // It trades a bit of speed speed for memory usage.
+    // As part of the comparison, it ignores the "mark" field of the address.
+
+    // Ensure the addresses are valid.
+    // An address cannot have both the n and N fields and ssid set.
+    // If the N number is set, the n number must also be set.
+
+    assert(lhs.n >= 0 && lhs.n <= 7 && lhs.N >= 0 && lhs.N <= 7);
+    assert(rhs.n >= 0 && rhs.n <= 7 && rhs.N >= 0 && rhs.N <= 7);
+    assert(lhs.ssid >= 0 && lhs.ssid <= 15);
+    assert(rhs.ssid >= 0 && rhs.ssid <= 15);
+    assert(lhs.n == 0 || lhs.ssid == 0);
+    assert(rhs.n == 0 || rhs.ssid == 0);
+    assert(lhs.N == 0 || (lhs.N > 0 && lhs.n > 0));
+    assert(rhs.N == 0 || (rhs.N > 0 && rhs.n > 0));
+
+    // Various combinations of n, N numbers and ssid can make addresses be equal to each other.
+    // 
+    //      address      address text     n     -    N   ssid                 
+    //  --------------------------------------------------------
+    //      WIDE1-2          WIDE         1     -    2    0
+    //      WIDE1-2          WIDE1        0     -    0    2
+    //      WIDE1            WIDE         1     -    0    0
+    //      WIDE1            WIDE1        0     -    0    0
+    //      WIDE1            WIDE         1     -    0    0
+    //      WIDE2            WIDE         2     -    0    0
+    //      WIDE1-1          WIDE         1     -    1    0
+    //      WIDE2-2          WIDE         1     -    2    0
+    //      WIDE1-1          WIDE         1     -    1    0
+    //      WIDE1-1          WIDE1        0     -    0    1
+    //      WIDE11-1         WIDE1        1     -    1    0
+    //      WIDE11-1         WIDE11       0     -    0    1
+    //      WIDE1            WIDE         1     -    0    0
+    //      WIDE1            WIDE1        0     -    0    0
+
+    bool equal_address_text = (lhs.text == rhs.text);
+
+    // If all address fields are equal, then we can immediately return true.
+
+    if (equal_address_text && lhs.n == rhs.n &&
+        lhs.N == rhs.N && lhs.ssid == rhs.ssid)
+    {
+        return true;
+    }
+
+    // If all the address fields are equal, except for the the address text,
+    // we can immediately return false, as there is no way for the addresses to be equal.
+
+    if (lhs.n == rhs.n && lhs.N == rhs.N &&
+        lhs.ssid == rhs.ssid && !equal_address_text)
+    {
+        return false;
+    }
+
+    // If both addresses have an n, N number or ssid, and they are not equal,
+    // then we can immediately return false, as the addresses cannot be equal.
+    //
+    // Example:
+    //
+    // WIDE1   !=  WIDE2
+    // WIDE1-1 !=  WIDE1-2
+    // CALL-1  !=  CALL-2
+
+    if ((lhs.n > 0 && rhs.n > 0 && lhs.n != rhs.n) ||
+        (lhs.N > 0 && rhs.N > 0 && lhs.N != rhs.N) ||
+        (lhs.ssid > 0 && rhs.ssid > 0 && lhs.ssid != rhs.ssid))
+    {
+        return false;
+    }
+
+    // If the address text is equal, but the n, N numbers or ssid are different,
+    // we can return false, as the addresses cannot be equal.
+
+    if (equal_address_text && (lhs.n != rhs.n || lhs.N != rhs.N || lhs.ssid != rhs.ssid))
+    {
+        return false;
+    }
+
+    // Compare ADDRESSn-N with ADDRESS-SSID
+    //
+    // Example: "WIDE1-1" can be represented as either n-N (WIDE1-1) or SSID (WIDE1-1)
+    // 
+    // Check if the base text part is the same ("WIDE" == "WIDE") and the numeric parts match, numerically and by text comparison
+
+    if (!equal_address_text && std::abs(static_cast<int>(lhs.text.size()) - static_cast<int>(rhs.text.size())) == 1)
+    {
+        if (lhs.n > 0)
+        {
+            if (lhs.text.size() >= rhs.text.size())
+            {
+                return false;
+            }
+
+            if (!std::equal(lhs.text.begin(), lhs.text.end(), rhs.text.begin()))
+            {
+                return false;
+            }
+
+            if ((rhs.text.back() - '0') == lhs.n)
+            {
+                if (rhs.ssid > 0)
+                {
+                    return lhs.N == rhs.ssid;
+                }
+                return true;
+            }
+        }
+        else if (rhs.n > 0)
+        {
+            if (rhs.text.size() >= lhs.text.size())
+            {
+                return false;
+            }
+
+            if (!std::equal(rhs.text.begin(), rhs.text.end(), lhs.text.begin()))
+            {
+                return false;
+            }
+
+            if ((lhs.text.back() - '0') == rhs.n)
+            {
+                if (lhs.ssid > 0)
+                {
+                    return rhs.N == lhs.ssid;
+                }
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 APRS_ROUTER_INLINE q_construct parse_q_construct(std::string_view text)
 {
     using pair_t = std::pair<std::string_view, q_construct>;
@@ -3540,17 +3681,14 @@ APRS_ROUTER_INLINE std::optional<size_t> find_router_address_index(const std::pm
 
     for (size_t i = offset; i < packet_addresses.size(); i++)
     {
-        address packet_address_unmarked = packet_addresses[i];
-        packet_address_unmarked.mark = false;
-
-        if (to_string(packet_address_unmarked) == to_string(router_address))
+        if (equal_addresses_ignore_mark(packet_addresses[i], router_address))
         {
             return i;
         }
 
         for (size_t j = 0; j < router_explicit_addresses.size(); j++)
         {
-            if (to_string(packet_address_unmarked) == to_string(router_explicit_addresses[j]))
+            if (equal_addresses_ignore_mark(packet_addresses[i], router_explicit_addresses[j]))
             {
                 return i;
             }
@@ -3620,11 +3758,8 @@ APRS_ROUTER_INLINE void find_used_addresses(route_state& state)
 
     if (state.maybe_router_address_index)
     {
-        address packet_router_address_unmarked = state.packet_addresses[state.maybe_router_address_index.value()];
-        packet_router_address_unmarked.mark = false;
-
         // Compare the two addresses to determine if the packet is being routed by the router's address
-        state.is_path_based_routing = (to_string(packet_router_address_unmarked) != to_string(state.router_address));
+        state.is_path_based_routing = !equal_addresses_ignore_mark(state.packet_addresses[state.maybe_router_address_index.value()], state.router_address);
     }
 }
 
@@ -3636,9 +3771,7 @@ APRS_ROUTER_INLINE bool has_address(const std::pmr::vector<address>& addresses, 
     address.mark = false;
     for (size_t i = offset; i < addresses.size(); i++)
     {
-        struct address a = addresses[i];
-        a.mark = false;
-        if (to_string(a) == to_string(address))
+        if (equal_addresses_ignore_mark(addresses[i], address))
         {
             return true;
         }
