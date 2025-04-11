@@ -72,6 +72,12 @@
         "variant": "cpp",
         "format": "cpp",
         "codecvt": "cpp",
-        "valarray": "cpp"
+        "valarray": "cpp",
+        "bitset": "cpp",
+        "cfenv": "cpp",
+        "complex": "cpp",
+        "expected": "cpp",
+        "source_location": "cpp",
+        "typeindex": "cpp"
     }
 }
