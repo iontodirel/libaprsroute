@@ -79,10 +79,10 @@ using namespace aprs::router::detail;
 //                                                                  //
 // **************************************************************** //
 
-routing_result test_packet_routing_iteration(const packet& p, router_settings digi, std::vector<std::string> addresses,  std::vector<size_t> digipeated_indices, int count);
-bool try_parse_addresses(const std::vector<std::string>& addresses, std::pmr::vector<address>& result);
+routing_result test_packet_routing_iteration(const packet& p, router_settings digi, std::vector<std::string> addresses, std::vector<size_t> digipeated_indices, int count);
+bool try_parse_addresses(const std::vector<std::string>& addresses, internal_vector_t<address>& result);
 
-routing_result test_packet_routing_iteration(const packet& p, router_settings digi, std::vector<std::string> addresses,  std::vector<size_t> digipeated_indices, int count)
+routing_result test_packet_routing_iteration(const packet& p, router_settings digi, std::vector<std::string> addresses, std::vector<size_t> digipeated_indices, int count)
 {
     routing_result result;
 
@@ -113,7 +113,7 @@ routing_result test_packet_routing_iteration(const packet& p, router_settings di
     return result;
 }
 
-bool try_parse_addresses(const std::vector<std::string>& addresses, std::pmr::vector<address>& result)
+bool try_parse_addresses(const std::vector<std::string>& addresses, internal_vector_t<address>& result)
 {
     result.clear();
     size_t index = 0;
@@ -415,7 +415,7 @@ TEST(address, try_parse_address)
     EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
-    EXPECT_TRUE(s.ssid== 10);
+    EXPECT_TRUE(s.ssid == 10);
     EXPECT_TRUE(s.text == "WIDE4");
     EXPECT_TRUE(s.kind == address_kind::other);
 
@@ -424,7 +424,7 @@ TEST(address, try_parse_address)
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
     EXPECT_TRUE(s.mark == true);
-    EXPECT_TRUE(s.ssid== 0);
+    EXPECT_TRUE(s.ssid == 0);
     EXPECT_TRUE(s.text == "WID4-100"); // partial parsing of mark
     EXPECT_TRUE(s.kind == address_kind::other);
 
@@ -492,6 +492,84 @@ TEST(address, try_parse_address_with_ssid)
 
     address = "N0CALL-20";
     EXPECT_FALSE(try_parse_address(address, callsign, ssid));
+#else
+    EXPECT_TRUE(true);
+#endif
+}
+
+TEST(address, equal_addresses_ignore_mark)
+{
+#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+    {
+        address a1 { "WIDE", 0, 0, 0 };
+        address a2 { "WIDE", 0, 0, 0 };
+        assert(equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDE", 1, 1, 0 };
+        address a2{ "WIDE", 1, 1, 0 };
+        assert(equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDE", 1, 1, 0, true };
+        address a2{ "WIDE", 1, 1, 0, false };
+        assert(equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDE", 1, 2, 0 };
+        address a2{ "WIDE", 1, 1, 0 };
+        assert(!equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDE", 1, 1, 0 };
+        address a2{ "WIDE", 0, 0, 1 };
+        assert(!equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDE", 1, 1, 0 };
+        address a2{ "WIDE", 1, 0, 0 };
+        assert(!equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDE", 0, 0, 1 };
+        address a2{ "WIDE", 0, 0, 1 };
+        assert(equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDE", 0, 0, 1 };
+        address a2{ "WIDE", 0, 0, 2 };
+        assert(!equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDE", 1, 1, 0 };
+        address a2{ "WIDE1", 0, 0, 1 };
+        assert(equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDE1", 0, 0, 1 };
+        address a2{ "WIDE", 1, 1, 0 };
+        assert(equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDE1", 0, 0, 0 };
+        address a2{ "WIDE", 1, 0, 0 };
+        assert(equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDE", 1, 0, 0 };
+        address a2{ "WIDE1", 0, 0, 0 };
+        assert(equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDE1", 0, 0, 2 };
+        address a2{ "WIDE", 1, 1, 0 };
+        assert(!equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDE", 1, 0, 0 };
+        address a2{ "WIDE1", 0, 0, 1 };
+        assert(!equal_addresses_ignore_mark(a1, a2));
+    }
 #else
     EXPECT_TRUE(true);
 #endif
@@ -1584,7 +1662,7 @@ TEST(addresses, set_address_as_used)
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
     packet p = { "N0CALL", "APRS", { "CALLA", "CALLB*", "CALLC", "CALLD", "CALLE", "CALLF" }, "data"};
 
-    std::pmr::vector<address> segments;
+    internal_vector_t<address> segments;
     try_parse_addresses(p.path, segments);
     set_addresses_offset(p.from, p.to, segments);
 
@@ -1647,11 +1725,11 @@ TEST(diagnostic, push_address_unset_diagnostic)
     packet p = { "N0CALL", "APRS", { "CALLA*", "CALLB*", "CALLC", "WIDE2-2*", "CALLD*", "CALLE", "CALLF" }, "data"};
 
     // Initialize offsets
-    std::pmr::vector<address> segments;
+    internal_vector_t<address> segments;
     try_parse_addresses(p.path, segments);
     set_addresses_offset(p.from, p.to, segments);
 
-    std::pmr::vector<routing_diagnostic> diag;
+    internal_vector_t<routing_diagnostic> diag;
     push_address_unset_diagnostic(segments, 5, true, diag);
 
     // N0CALL>APRS,CALLA*,CALLB*,CALLC,WIDE2-2*,CALLD*,CALLE,CALLF:data
@@ -1702,7 +1780,7 @@ TEST(diagnostic, push_address_set_diagnostic)
 #ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
     packet p = { "N0CALL", "APRS", { "CALLA*", "CALLB*", "CALLC", "WIDE2-2*", "CALLD*", "CALLE", "CALLF" }, "data"};
 
-    std::pmr::vector<address> segments;
+    internal_vector_t<address> segments;
     try_parse_addresses(p.path, segments);
     set_addresses_offset(p.from, p.to, segments);
 
@@ -1717,7 +1795,7 @@ TEST(diagnostic, push_address_set_diagnostic)
     // N0CALL>APRS,CALLA,CALLB,CALLC,WIDE2-2,CALLD,CALLE*,CALLF:data
     //                                                  ~
 
-    std::pmr::vector<routing_diagnostic> diag;
+    internal_vector_t<routing_diagnostic> diag;
     push_address_set_diagnostic(segments, 5, true, diag);
 
     // N0CALL>APRS,CALLA,CALLB,CALLC,WIDE2-2,CALLD,CALLE*,CALLF:data
@@ -1765,8 +1843,8 @@ bool try_parse_bool(const std::string& s, bool& b);
 std::vector<route_test> load_routing_tests(const std::string& test_file);
 std::vector<std::string> split_comma_separated_values(const std::string& str);
 std::string to_string(routing_option o);
-std::pmr::vector<address> get_router_n_N_addresses(const std::pmr::vector<address>& router_addresses);
-std::pmr::vector<address> get_router_explicit_addresses(const std::pmr::vector<address>& router_addresses);
+internal_vector_t<address> get_router_n_N_addresses(const internal_vector_t<address>& router_addresses);
+internal_vector_t<address> get_router_explicit_addresses(const internal_vector_t<address>& router_addresses);
 template <class Allocator> std::vector<std::string> to_vector_of_string(const std::vector<address, Allocator>& addresses);
 void init_router_addresses(const packet& p, const std::vector<std::string>& path, router_settings& settings);
 bool try_get_routing_test_set(route_test test, packet& p, router_settings& settings);
@@ -1776,7 +1854,7 @@ void test_diagnostics_reconstruct_packet_by_index(const route_test& test, const 
 void test_diagnostics_reconstruct_packet_by_start_end(const route_test& test, const routing_result& r);
 bool has_marked_tests(const std::vector<route_test>& tests);
 
-std::string to_lower(const std::string &str)
+std::string to_lower(const std::string& str)
 {
     std::locale loc;
     std::string s;
@@ -1786,7 +1864,7 @@ std::string to_lower(const std::string &str)
     return s;
 }
 
-bool try_parse_bool(const std::string &s, bool &b)
+bool try_parse_bool(const std::string& s, bool& b)
 {
     std::string s_lower = to_lower(s);
     if (s_lower == "true")
@@ -1939,9 +2017,9 @@ std::string to_string(routing_option o)
     return result.empty() ? "unknown" : result;
 }
 
-std::pmr::vector<address> get_router_n_N_addresses(const std::pmr::vector<address>& router_addresses)
+internal_vector_t<address> get_router_n_N_addresses(const internal_vector_t<address>& router_addresses)
 {
-    std::pmr::vector<address> result;
+    internal_vector_t<address> result;
     for (const auto& p : router_addresses)
     {
         if (p.n > 0)
@@ -1952,9 +2030,9 @@ std::pmr::vector<address> get_router_n_N_addresses(const std::pmr::vector<addres
     return result;
 }
 
-std::pmr::vector<address> get_router_explicit_addresses(const std::pmr::vector<address>& router_addresses)
+internal_vector_t<address> get_router_explicit_addresses(const internal_vector_t<address>& router_addresses)
 {
-    std::pmr::vector<address> result;
+    internal_vector_t<address> result;
     for (const auto& p : router_addresses)
     {
         if (p.n == 0)
@@ -1983,7 +2061,7 @@ void init_router_addresses(const packet& p, const std::vector<std::string>& path
         return;
     }
 
-    std::pmr::vector<address> router_addresses;
+    internal_vector_t<address> router_addresses;
     try_parse_addresses(path, router_addresses);
 
     route_state state;
@@ -2034,9 +2112,9 @@ bool try_get_routing_test_set(route_test test, packet& p, router_settings& setti
 void debugger_break()
 {
 #ifdef _MSC_VER
-        __debugbreak();
+    __debugbreak();
 #else
-        raise(SIGTRAP);
+    raise(SIGTRAP);
 #endif
 }
 
@@ -2096,7 +2174,7 @@ bool run_test(const route_test& test, const packet& p, const router_settings& se
             {
                 debugger_break();
             }
-        
+
             // route again for debugging purposes
             try_route_packet(p, settings, result);
         }
