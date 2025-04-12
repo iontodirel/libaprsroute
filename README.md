@@ -233,28 +233,35 @@ By maintaining protocol independence, the library can be used in conjunction wit
 
 ### Performance
 
-The primary design goals of this project is modularity, usability and maintainability. However, the library tries its best to leverage zero overhead abstractions, like `string_view` as much as possible, to minimize the number of allocations and maximize throughput. As I work on this project, I will continue to improve the library performance on constrained embedded devices.
+The primary design goals of this project is modularity, usability and maintainability. However, the library tries its best to leverage zero overhead abstractions, like `string_view` as much as possible, to minimize the number of allocations and maximize throughput. The library clearly separates allocations and data structures, in a way
+that makes it easy to minimize them. As I work on this project, I will continue to improve the library performance on constrained embedded devices.
+
+All vector allocations can be configured with an optionally supplied allocator. All string allocations are effectively eliminated thanks to the small string optimization. This effectively eliminates all heap usage, when the router is configured with a stack allocator.
 
 #### Performance analysis
 
-This analysis contains routing performance for a typical but worse case scenario, while routing a packet using the New n-N paradigm.
+This analysis contains routing performance for a typical but worse case scenario.
 
 This is the packet used for testing: N0CALL-10>CALL-5,CALLA-10*,CALLB-5*,CALLC-15*,WIDE1*,WIDE2-1:data
 
 The router's address is "DIGI". And the router's path is "WIDE1-2" and "WIDE2-3".
 
-Diagnostics was disabled, as it is not a critical feature. The analysis measures the try_route_packet function performance. Routing memory shows total memory used, alongside total allocations (_do not multiplicate the two_).
+Diagnostics was disabled, as it is not a critical feature. The analysis measures the try_route_packet function performance. Routing memory shows total memory used, alongside total allocations (_do not multiplicate the two_). Routing time is calculated as an average over 10M routed packets, on desktop platforms; and 1K packets on embedded platforms.
 
-| Platform     | Hardware                     | Throughput  | Routing time  | Routing memory             |
+Typically by default, the retail/release optimizations enable no heap memory usage even without a stack allocator. But using a stack allocator, guarantees that **no heap memory** is used by the router. For stack tests, the router is configured with a 4K reusable buffer allocated as a static C array on the stack. All string allocations are optimized away with the built-in small string optimization within std::string. All std::vector allocations are on the stack.
+
+The tests were configured with `APRSROUTE_USE_STACK_ALLOCATOR2` in the stress harness, this configuration uses a non-PMR stack allocator.
+
+| Platform     | Hardware                     | Throughput  | Routing time  | Routing memory (heap)      |
 |--------------|------------------------------|-------------|---------------|----------------------------|
-| Windows MSVC | Intel i9-14900HX, 97GB RAM   | 1M pkts/s   | 0.13 μs       | 1424 bytes, 6 allocations  |
-| WSL GCC      | Intel i9-14900HX, 97GB RAM   | 1.4M pkts/s | 0.01 μs       | 1664 bytes, 6 allocations  |
-| WSL Clang    | Intel i9-14900HX, 97GB RAM   | 1.4M pkts/s | 0.01 μs       | 1664 bytes, 6 allocations  |
-| Linux GCC    | Intel Celeron N5095, 8GB RAM | 585K pkts/s | 1 μs          | 1664 bytes, 6 allocations  |
-| Linux Clang  | Intel Celeron N5095, 8GB RAM | 600K pkts/s | 1 μs          | 1664 bytes, 6 allocations  |
-| RISCV GCC    | ESP32 C6, 512KB RAM          | 5.6K pkts/s | 224 μs        | 1248 bytes, 6 allocations  |
-| ARM GCC      | Pico 2 W, 520KB RAM          | 3.3K pkts/s | 285 μs        | 1248 bytes, 6 allocations  |
-| ARM GCC      | Teensy 4.1, 1024KB RAM       | 38K pkts/s  | 25 μs         | 1248 bytes, 6 allocations  |
+| Windows MSVC | Intel i9-14900HX, 97GB RAM   | 1.4M pkts/s | 0.68 μs       | 0 bytes, 0 allocations     |
+| WSL GCC      | Intel i9-14900HX, 97GB RAM   | 1.9M pkts/s | 0.53 μs       | 0 bytes, 0 allocations     |
+| WSL Clang    | Intel i9-14900HX, 97GB RAM   | 1.7M pkts/s | 0.58 μs       | 0 bytes, 0 allocations     |
+| Linux GCC    | Intel Celeron N5095, 8GB RAM | 693K pkts/s | 1.44 μs       | 0 bytes, 0 allocations     |
+| Linux Clang  | Intel Celeron N5095, 8GB RAM | 677K pkts/s | 1.48 μs       | 0 bytes, 0 allocations     |
+| RISCV GCC    | ESP32 C6, 512KB RAM          | 6K pkts/s   | 165 μs        | 0 bytes, 0 allocations     |
+| ARM GCC      | Pico 2 W, 520KB RAM          | 4.1K pkts/s | 242 μs        | 0 bytes, 0 allocations     |
+| ARM GCC      | Teensy 4.1, 1024KB RAM       | 44K pkts/s  | 22 μs         | 0 bytes, 0 allocations     |
 
 ### Integration with CMake
 
