@@ -119,7 +119,7 @@
 #endif
 // Configure the library whether it should use PMR and PMR data structures or not.
 #ifndef APRS_ROUTER_USE_PMR
-#define APRS_ROUTER_USE_PMR 1
+#define APRS_ROUTER_USE_PMR 0
 #endif
 
 // **************************************************************** //
