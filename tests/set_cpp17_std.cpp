@@ -34,16 +34,26 @@
 #include <cstdio>
 
 // Helper macros to detect C++ standard version
-#if __cplusplus == 201103L
-#   error "C++11 is enabled. Expected C++17."
-#elif __cplusplus == 201402L
-#   error "C++14 is enabled. Expected C++17."
-#elif __cplusplus == 201703L
-    constexpr bool correct_std = true;
-#elif __cplusplus > 201703L
-#   error "C++20 or newer is enabled. Expected exactly C++17."
-#else
-#   error "Unknown or unsupported C++ standard version."
+#if defined(_MSC_VER) && !defined(__clang__) // MSVC (not Clang pretending to be MSVC)
+#   if !defined(_MSVC_LANG) || _MSVC_LANG < 201703L
+#       error "MSVC is using a C++ standard older than C++17. Ensure /std:c++17 or /std:c++latest and /Zc:__cplusplus are set."
+#   elif _MSVC_LANG == 201703L
+        constexpr bool correct_std = true;
+#   else
+#       error "MSVC is using C++20 or newer. Expected exactly C++17."
+#   endif
+#else // Non-MSVC compilers
+#   if __cplusplus == 201103L
+#       error "C++11 is enabled. Expected C++17."
+#   elif __cplusplus == 201402L
+#       error "C++14 is enabled. Expected C++17."
+#   elif __cplusplus == 201703L
+        constexpr bool correct_std = true;
+#   elif __cplusplus > 201703L
+#       error "C++20 or newer is enabled. Expected exactly C++17."
+#   else
+#       error "Unknown or unsupported C++ standard version."
+#   endif
 #endif
 
 using namespace aprs::router;
