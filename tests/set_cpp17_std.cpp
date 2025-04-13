@@ -33,10 +33,25 @@
 
 #include <cstdio>
 
+// Helper macros to detect C++ standard version
+#if __cplusplus == 201103L
+#   error "C++11 is enabled. Expected C++17."
+#elif __cplusplus == 201402L
+#   error "C++14 is enabled. Expected C++17."
+#elif __cplusplus == 201703L
+    constexpr bool correct_std = true;
+#elif __cplusplus > 201703L
+#   error "C++20 or newer is enabled. Expected exactly C++17."
+#else
+#   error "Unknown or unsupported C++ standard version."
+#endif
+
 using namespace aprs::router;
 
 int main()
 {
+    static_assert(correct_std, "C++17 is not enabled. Expected C++17.");
+
     router_settings digi{ "DIGI", {}, { "WIDE1" }, routing_option::none, true };
     routing_result result;
 
