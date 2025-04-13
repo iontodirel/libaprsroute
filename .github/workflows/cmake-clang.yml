@@ -1,0 +1,46 @@
+name: CMake Clang
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, debian-latest, fedora-latest]
+        build_type: [Release, Debug]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install dependencies
+        run: |
+          if [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
+            chmod +x ${{github.workspace}}/install_dependencies.sh
+            sudo ${{github.workspace}}/install_dependencies.sh
+          elif [ "${{ matrix.os }}" == "debian-latest" ]; then
+            sudo apt-get update && sudo apt-get install -y clang cmake ninja-build
+          elif [ "${{ matrix.os }}" == "fedora-latest" ]; then
+            sudo dnf install -y clang cmake ninja-build
+          fi
+
+      - name: Configure
+        working-directory: ${{github.workspace}}/tests
+        run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+
+      - name: Build
+        working-directory: ${{github.workspace}}/tests
+        run: cmake --build ${{github.workspace}}/build --config ${{ matrix.build_type }}
+
+      - name: Test
+        working-directory: ${{github.workspace}}/build
+        run: ctest -C ${{ matrix.build_type }}
