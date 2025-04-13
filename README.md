@@ -8,7 +8,9 @@ Automatic Packet Reporting System (APRS) is a system for real-time digital data 
 
 See more info at http://www.aprs.org/ and https://groups.io/g/APRS.
 
-![Build Status](https://github.com/iontodirel/libaprsroute/actions/workflows/cmake.yml/badge.svg)
+![CMake Build Status](https://github.com/iontodirel/libaprsroute/actions/workflows/cmake.yml/badge.svg)
+![CMake Clang Build Status](https://github.com/iontodirel/libaprsroute/actions/workflows/cmake-clang.yml/badge.svg)
+![CodeQL Analysis Status](https://github.com/iontodirel/libaprsroute/actions/workflows/codeql-analysis.yml/badge.svg)
 
 ## Examples
 
