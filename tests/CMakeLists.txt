@@ -56,6 +56,9 @@ FetchContent_MakeAvailable(json)
 FetchContent_Declare(fmt GIT_REPOSITORY https://github.com/fmtlib/fmt.git GIT_TAG master)
 FetchContent_MakeAvailable(fmt)
 
+FetchContent_Declare(etl GIT_REPOSITORY https://github.com/ETLCPP/etl GIT_TAG 20.40.0)
+FetchContent_MakeAvailable(etl)
+
 enable_testing()
 
 set(INPUT_TEST_FILE ${CMAKE_SOURCE_DIR}/routes.json)
@@ -87,6 +90,10 @@ set_property(TARGET aprsroute_with_pmr_build_test PROPERTY CXX_STANDARD 20)
 
 add_executable(aprsroute_set_cpp17_std "set_cpp17_std.cpp" "../aprsroute.hpp")
 set_property(TARGET aprsroute_set_cpp17_std PROPERTY CXX_STANDARD 17)
+
+add_executable(aprsroute_with_etl_vector_test "with_etl_vector.cpp" "../aprsroute.hpp")
+set_property(TARGET aprsroute_with_etl_vector_test PROPERTY CXX_STANDARD 20)
+target_link_libraries(aprsroute_with_etl_vector_test PRIVATE etl::etl)
 
 add_definitions(-DINPUT_TEST_FILE="${INPUT_TEST_FILE}")
 
