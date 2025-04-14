@@ -2777,7 +2777,7 @@ APRS_ROUTER_INLINE bool try_parse_address(std::string_view address_string, struc
     auto sep_position = address_text.find("-");
 
     // No separator found
-    if (sep_position == std::string::npos)
+    if (sep_position == std::string_view::npos)
     {
         if (!address_text.empty() && isdigit(address_text.back()))
         {
@@ -2805,7 +2805,7 @@ APRS_ROUTER_INLINE bool try_parse_address(std::string_view address_string, struc
 
     // Separator found, check if we have exactly one digit on both sides of the separator, ex WIDE1-1
     // If the address does not match the n-N format, we will treat it as a regular address ex address with SSID
-    if (sep_position != std::string::npos &&
+    if (sep_position != std::string_view::npos &&
         std::isdigit(static_cast<int>(address_text[sep_position - 1])) &&
         (sep_position + 1) < address_text.size() && std::isdigit(static_cast<int>(address_text[sep_position + 1])) &&
         (sep_position + 2 == address_text.size()))
@@ -2875,7 +2875,7 @@ APRS_ROUTER_INLINE bool try_parse_n_N_address(std::string_view address_string, s
     auto sep_position = address_text.find("-");
 
     // No separator found
-    if (sep_position == std::string::npos)
+    if (sep_position == std::string_view::npos)
     {
         if (!address_text.empty() && isdigit(address_text.back()))
         {
@@ -2903,7 +2903,7 @@ APRS_ROUTER_INLINE bool try_parse_n_N_address(std::string_view address_string, s
 
     // Separator found, check if we have exactly one digit on both sides of the separator, ex WIDE1-1
     // If the address does not match the n-N format, we will treat it as a regular address ex address with SSID
-    if (sep_position != std::string::npos &&
+    if (sep_position != std::string_view::npos &&
         std::isdigit(static_cast<int>(address_text[sep_position - 1])) &&
         (sep_position + 1) < address_text.size() && std::isdigit(static_cast<int>(address_text[sep_position + 1])) &&
         (sep_position + 2 == address_text.size()))
@@ -2976,7 +2976,7 @@ APRS_ROUTER_INLINE bool try_parse_address(std::string_view address, std::string&
 
     auto sep_position = address.find("-");
 
-    if (sep_position != std::string::npos)
+    if (sep_position != std::string_view::npos)
     {
         // Check few error conditions
         // If packet ends with a separator but no ssid, ex: "CALL-"
