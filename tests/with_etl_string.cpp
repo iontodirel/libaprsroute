@@ -32,6 +32,7 @@
 #include <cassert>
 #include <vector>
 #include <etl/vector.h>
+#include <etl/string.h>
 
 #define APRS_ROUTER_USE_PMR 0
 #define APRS_ROUTER_DEFINE_CUSTOM_TYPES
@@ -42,7 +43,8 @@ namespace aprs::router::detail
     using internal_vector_t = etl::vector<T, 8>;
 
     template<class T>
-    using internal_string_t = std::basic_string<T>;
+    //using internal_string_t = std::basic_string<T>;
+    using internal_string_t = etl::string<20>;
 }
 
 #include "../aprsroute.hpp"

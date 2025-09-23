@@ -131,6 +131,9 @@ namespace aprs::router::detail
 {
     template<class T>
     using internal_vector_t = std::vector<T, stack_allocator<T>>;
+
+    template<class T>
+    using internal_string_t = std::basic_string<T>;
 }
 
 #endif // APRSROUTE_USE_STACK_ALLOCATOR2
