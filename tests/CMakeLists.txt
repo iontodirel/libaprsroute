@@ -56,7 +56,7 @@ FetchContent_MakeAvailable(json)
 FetchContent_Declare(fmt GIT_REPOSITORY https://github.com/fmtlib/fmt.git GIT_TAG master)
 FetchContent_MakeAvailable(fmt)
 
-FetchContent_Declare(etl GIT_REPOSITORY https://github.com/ETLCPP/etl GIT_TAG 20.40.0)
+FetchContent_Declare(etl GIT_REPOSITORY https://github.com/ETLCPP/etl GIT_TAG 20.43.4)
 FetchContent_MakeAvailable(etl)
 
 enable_testing()
@@ -95,6 +95,10 @@ add_executable(aprsroute_with_etl_vector_test "with_etl_vector.cpp" "../aprsrout
 set_property(TARGET aprsroute_with_etl_vector_test PROPERTY CXX_STANDARD 20)
 target_link_libraries(aprsroute_with_etl_vector_test PRIVATE etl::etl)
 
+add_executable(aprsroute_with_etl_string_test "with_etl_string.cpp" "../aprsroute.hpp")
+set_property(TARGET aprsroute_with_etl_string_test PROPERTY CXX_STANDARD 20)
+target_link_libraries(aprsroute_with_etl_string_test PRIVATE etl::etl)
+
 add_definitions(-DINPUT_TEST_FILE="${INPUT_TEST_FILE}")
 
 if(MSVC)
@@ -107,3 +111,5 @@ include(GoogleTest)
 
 gtest_discover_tests(aprsroute_tests)
 gtest_discover_tests(aprsroute_external_packet_test)
+gtest_discover_tests(aprsroute_external_custom_packet_test)
+

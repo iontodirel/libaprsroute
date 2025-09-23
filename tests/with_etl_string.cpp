@@ -54,20 +54,39 @@ using namespace aprs::router::detail;
 
 int main()
 {
-    aprs::router::router_settings settings{ "DIGI", {}, { "WIDE1-2", "WIDE2-3" }, aprs::router::routing_option::none, false };
+    {
+        aprs::router::router_settings settings{ "DIGI", {}, { "WIDE1-2", "WIDE2-3" }, aprs::router::routing_option::none, false };
 
-    std::vector<std::string> original_packet_path{ "CALLA-10*", "CALLB-5*", "CALLC-15*", "WIDE1*", "WIDE2-1" };
+        std::vector<std::string> original_packet_path{ "CALLA-10*", "CALLB-5*", "CALLC-15*", "WIDE1*", "WIDE2-1" };
 
-    aprs::router::routing_state routing_state;
+        aprs::router::routing_state routing_state;
 
-    std::vector<routing_diagnostic> routing_actions;
+        std::vector<routing_diagnostic> routing_actions;
 
-    std::vector<std::string> routed_packet_path;
-    routed_packet_path.reserve(8);
+        std::vector<std::string> routed_packet_path;
+        routed_packet_path.reserve(8);
 
-    aprs::router::try_route_packet("N0CALL-10", "CALL-5", original_packet_path.begin(), original_packet_path.end(), settings, std::back_inserter(routed_packet_path), routing_state, std::back_inserter(routing_actions), nullptr);
+        aprs::router::try_route_packet("N0CALL-10", "CALL-5", original_packet_path.begin(), original_packet_path.end(), settings, std::back_inserter(routed_packet_path), routing_state, std::back_inserter(routing_actions), nullptr);
 
-    assert((routed_packet_path == std::vector<std::string>{ "CALLA-10", "CALLB-5", "CALLC-15", "WIDE1", "DIGI", "WIDE2*" }));
+        assert((routed_packet_path == std::vector<std::string>{ "CALLA-10", "CALLB-5", "CALLC-15", "WIDE1", "DIGI", "WIDE2*" }));
+    }
+
+    {
+        aprs::router::router_settings settings{ "DIGI", {}, { "WIDE1-2", "WIDE2-3" }, aprs::router::routing_option::none, false };
+
+        std::vector<etl::string<20>> original_packet_path{ "CALLA-10*", "CALLB-5*", "CALLC-15*", "WIDE1*", "WIDE2-1" };
+
+        aprs::router::routing_state routing_state;
+
+        std::vector<routing_diagnostic> routing_actions;
+
+        std::vector<std::string> routed_packet_path;
+        routed_packet_path.reserve(8);
+
+        aprs::router::try_route_packet("N0CALL-10", "CALL-5", original_packet_path.begin(), original_packet_path.end(), settings, std::back_inserter(routed_packet_path), routing_state, std::back_inserter(routing_actions), nullptr);
+
+        assert((routed_packet_path == std::vector<std::string>{ "CALLA-10", "CALLB-5", "CALLC-15", "WIDE1", "DIGI", "WIDE2*" }));
+    }
 
     return 0;
 }
