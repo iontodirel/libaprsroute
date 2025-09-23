@@ -53,6 +53,10 @@
 
 #include "../aprsroute.hpp"
 
+#if defined(IS_LINUX_MAC) && !defined(APRS_ROUTE_DISABLE_AUTO_TESTING)
+#include <signal.h>
+#endif
+
 // Disable the auto testing if defined. This will run the regular tests only.
 #ifdef APRS_ROUTE_DISABLE_AUTO_TESTING
 // Intentionally left empty
@@ -60,8 +64,6 @@
 
 using namespace aprs::router;
 using namespace aprs::router::detail;
-
-// TODO: split into autotests and iteration tests
 
 // **************************************************************** //
 //                                                                  //

@@ -60,10 +60,6 @@
 // Intentionally left empty
 #endif // APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
 
-#if defined(IS_LINUX_MAC) && !defined(APRS_ROUTE_DISABLE_AUTO_TESTING)
-#include <signal.h>
-#endif
-
 using namespace aprs::router;
 using namespace aprs::router::detail;
 
