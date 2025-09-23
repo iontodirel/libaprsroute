@@ -59,7 +59,7 @@
 #include <charconv>
 #include <memory_resource>
 
-// This header only library can be compiled in a TU and shared between TUs
+// This header only library can be compiled in a TU to be shared between TUs,
 // to minimize compilation time, by defining the APRS_ROUTER_PUBLIC_FORWARD_DECLARATIONS_ONLY preprocessor directive.
 //
 // Example:
@@ -69,7 +69,7 @@
 // #define APRS_ROUTER_INLINE
 // #include "aprsroute.hpp"
 //
-// In the header where the library is included:
+// In the header where the library is included as a header:
 //
 // #define APRS_ROUTER_INLINE
 // #define APRS_ROUTER_PUBLIC_FORWARD_DECLARATIONS_ONLY
@@ -122,12 +122,17 @@
 #define APRS_ROUTER_USE_PMR 0
 #endif
 
-// Library container and memory configuration.
+// Container and memory configuration.
+//
 // The library can used with custom allocators via standard C++17 PMR support.
 // This allows the containers to be allocated on the heap or on the stack.
 // However, a PMR allocator and supporting containers incure a small performance penalty.
 // To this end, the library can be configured to use standard C++17 containers
-// or PMR containers. The default is to use PMR containers.
+// or PMR containers. The default is to not use PMR containers.
+//
+// The PMR support can only be enabled for the internal vector type.
+// The internal string type always uses the allocator specified by the internal_string_t type alias.
+// This is because the string type is usually enabled for the small string optimization.
 
 APRS_ROUTER_NAMESPACE_BEGIN
 
