@@ -30,6 +30,7 @@
 // SOFTWARE.
 
 #include <cassert>
+#include <string>
 #include <vector>
 #include <etl/vector.h>
 

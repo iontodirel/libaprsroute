@@ -43,7 +43,6 @@ namespace aprs::router::detail
     using internal_vector_t = etl::vector<T, 8>;
 
     template<class T>
-    //using internal_string_t = std::basic_string<T>;
     using internal_string_t = etl::string<20>;
 }
 
