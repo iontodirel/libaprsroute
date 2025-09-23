@@ -1762,6 +1762,7 @@ APRS_ROUTER_INLINE bool try_n_N_route_no_trap(route_state& state, size_t packet_
     assert(packet_n_N_address_index < packet_addresses.size());
 
     bool substitute_zero_hops = enum_has_flag(options, routing_option::substitute_complete_n_N_address);
+    bool traceless_n_N = enum_has_flag(options, routing_option::traceless_n_N_route);
 
     address& n_N_address = packet_addresses[packet_n_N_address_index];
 
@@ -1780,7 +1781,7 @@ APRS_ROUTER_INLINE bool try_n_N_route_no_trap(route_state& state, size_t packet_
         return true;
     }
 
-    if (substitute_zero_hops && n_N_address.N == 0)
+    if (substitute_zero_hops && !traceless_n_N && n_N_address.N == 0)
     {
         try_substitute_complete_n_N_address(state, packet_n_N_address_index);
         return true;
@@ -1870,7 +1871,7 @@ APRS_ROUTER_INLINE bool try_insert_n_N_route(route_state& state, size_t& packet_
 
     bool set_new_address_as_used = false;
 
-    if (substitute_zero_hops || n_N_address.N > 0)
+    if ((substitute_zero_hops && !traceless_n_N) || n_N_address.N > 0)
     {
         set_new_address_as_used = true;
     }
@@ -1939,17 +1940,21 @@ APRS_ROUTER_INLINE bool try_trap_n_N_route(route_state& state, address& packet_n
     internal_vector_t<routing_diagnostic>& actions = state.actions;
 
     bool trap_limit_exceeding_n_N_address = enum_has_flag(options, routing_option::trap_limit_exceeding_n_N_address);
+    bool traceless_n_N = enum_has_flag(options, routing_option::traceless_n_N_route);
 
     if (trap_limit_exceeding_n_N_address)
     {
         if (router_n_N_address.N > 0 && packet_n_N_address.N > router_n_N_address.N)
         {
-            push_address_replaced_diagnostic(packet_addresses, packet_n_N_address.index, router_address, enable_diagnostics, actions);
+            if (!traceless_n_N)
+            {
+                push_address_replaced_diagnostic(packet_addresses, packet_n_N_address.index, router_address, enable_diagnostics, actions);
 
-            packet_n_N_address.text.assign(router_address.begin(), router_address.end());
-            packet_n_N_address.length = router_address.size();
-            packet_n_N_address.n = 0;
-            packet_n_N_address.N = 0;
+                packet_n_N_address.text.assign(router_address.begin(), router_address.end());
+                packet_n_N_address.length = router_address.size();
+                packet_n_N_address.n = 0;
+                packet_n_N_address.N = 0;
+            }
 
             push_address_unset_diagnostic(packet_addresses, packet_n_N_address.index, enable_diagnostics, actions);
             set_address_as_used(packet_addresses, packet_n_N_address);
