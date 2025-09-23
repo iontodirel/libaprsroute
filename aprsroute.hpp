@@ -1182,11 +1182,10 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
     state.packet_to_address = original_packet_to;
 
     state.packet_path.clear();
+    state.packet_path.reserve(std::distance(original_packet_path_begin, original_packet_path_end));
     for (auto it = original_packet_path_begin; it != original_packet_path_end; ++it)
     {
-        internal_string_t<char> temp;
-        temp.assign(it->data(), it->size());
-        state.packet_path.push_back(temp);
+       state.packet_path.emplace_back(it->data(), it->size());
     }
 
     state.settings.emplace(std::ref(settings));
@@ -2153,7 +2152,7 @@ APRS_ROUTER_INLINE bool create_routed_routing(route_state& state, OutputIterator
 
     for (auto& address : routed_packet_path)
     {
-        *routed_packet_path_out++ = std::string(address.data(), address.size());
+        *routed_packet_path_out++ = std::string(address.begin(), address.end());
     }
 
     for (auto& diag : routing_actions)
@@ -2244,7 +2243,7 @@ APRS_ROUTER_INLINE bool push_address_set_diagnostic(const internal_vector_t<addr
         diag.target = applies_to::path;
         diag.type = routing_action::set;
         diag.message = "Packet address marked as 'set'";
-        auto address_text = to_string(address);
+        internal_string_t<char> address_text = to_string(address);
         diag.address.assign(address_text.begin(), address_text.end());
         diag.start = address.offset;
         diag.end = diag.start + address.length;
@@ -2286,7 +2285,7 @@ APRS_ROUTER_INLINE bool push_address_unset_diagnostic(const internal_vector_t<ad
                 diag.target = applies_to::path;
                 diag.type = routing_action::unset;
                 diag.message = "Packet address marked as 'unset'";
-                auto address_text = to_string(address);
+                internal_string_t<char> address_text = to_string(address);
                 diag.address.assign(address_text.begin(), address_text.end());
                 diag.start = offset;
                 diag.end = diag.start + length;
@@ -2346,7 +2345,7 @@ APRS_ROUTER_INLINE bool push_address_decremented_diagnostic(address& address, bo
         diag.target = applies_to::path;
         diag.type = routing_action::decrement;
         diag.message = "Packet address decremented";
-        auto address_text = to_string(address);
+        internal_string_t<char> address_text = to_string(address);
         diag.address.assign(address_text.begin(), address_text.end());
         diag.start = address.offset;
         diag.end = diag.start + address.length;
@@ -2424,7 +2423,7 @@ APRS_ROUTER_INLINE bool create_address_move_diagnostic(const internal_vector_t<a
         remove_diag.target = applies_to::path;
         remove_diag.type = routing_action::remove;
         remove_diag.message = "Packet address removed";
-        auto removed_address_text = to_string(removed_address);
+        internal_string_t<char> removed_address_text = to_string(removed_address);
         remove_diag.address.assign(removed_address_text.begin(), removed_address_text.end());
         remove_diag.start = removed_address.offset;
         remove_diag.end = remove_diag.start + removed_address.length;
@@ -2439,7 +2438,7 @@ APRS_ROUTER_INLINE bool create_address_move_diagnostic(const internal_vector_t<a
         insert_diag.target = applies_to::path;
         insert_diag.type = routing_action::insert;
         insert_diag.message = "Packet address inserted";
-        auto inserted_address_text = to_string(removed_address);
+        internal_string_t<char> inserted_address_text = to_string(removed_address);
         insert_diag.address.assign(inserted_address_text.begin(), inserted_address_text.end());
         insert_diag.start = inserted_address.offset;
         insert_diag.end = insert_diag.start + removed_address.length;
@@ -2748,34 +2747,27 @@ APRS_ROUTER_INLINE bool equal_addresses_ignore_mark(const struct address& lhs, c
 
 APRS_ROUTER_INLINE q_construct parse_q_construct(std::string_view text)
 {
-    using pair_t = std::pair<std::string_view, q_construct>;
-
-    // NOTE: lookup_table is sorted by the first element of the pair
-
-    static constexpr std::array<pair_t, 10> lookup_table =
-    {{
-        { "qAC", q_construct::qAC },
-        { "qAI", q_construct::qAI },
-        { "qAO", q_construct::qAO },
-        { "qAR", q_construct::qAR },
-        { "qAS", q_construct::qAS },
-        { "qAU", q_construct::qAU },
-        { "qAX", q_construct::qAX },
-        { "qAZ", q_construct::qAZ },
-        { "qAo", q_construct::qAo },
-        { "qAr", q_construct::qAr }
-    }};
-
-    auto it = std::lower_bound(lookup_table.begin(), lookup_table.end(), text, [](const pair_t& lhs, std::string_view rhs) {
-        return lhs.first < rhs;
-    });
-
-    if (it != lookup_table.end() && it->first == text)
+    if (text.size() != 3 || text[0] != 'q' || text[1] != 'A')
     {
-        return it->second;
+        return q_construct::none;
     }
+    
+    switch (text[2])
+    {
+        case 'C': return q_construct::qAC;
+        case 'I': return q_construct::qAI;
+        case 'O': return q_construct::qAO;
+        case 'R': return q_construct::qAR;
+        case 'S': return q_construct::qAS;
+        case 'U': return q_construct::qAU;
+        case 'X': return q_construct::qAX;
+        case 'Z': return q_construct::qAZ;
+        case 'o': return q_construct::qAo;
+        case 'r': return q_construct::qAr;
 
-    return q_construct::none;
+        default:
+            return q_construct::none;
+    }
 }
 
 APRS_ROUTER_INLINE address_kind parse_address_kind(std::string_view text)
@@ -2823,7 +2815,7 @@ APRS_ROUTER_INLINE bool try_parse_address(std::string_view address_string, struc
     address.length = address_text.size();
     address.n = 0;
     address.N = 0;
-    address.q = parse_q_construct(std::string_view{address.text.data(), address.text.size()});
+    address.q = parse_q_construct({address.text.data(), address.text.size()});
     address.kind = address_kind::other;
 
     // Parse Q construct first
@@ -2855,7 +2847,7 @@ APRS_ROUTER_INLINE bool try_parse_address(std::string_view address_string, struc
             if (address.n > 0 && address.n <= 7)
             {
                 address.text.assign(address_text.begin(), address_text.end());
-                address.kind = parse_address_kind(std::string_view{address.text.data(), address.text.size()});
+                address.kind = parse_address_kind({address.text.data(), address.text.size()});
             }
             else
             {
@@ -2864,7 +2856,7 @@ APRS_ROUTER_INLINE bool try_parse_address(std::string_view address_string, struc
         }
         else
         {
-            address.kind = parse_address_kind(std::string_view{address.text.data(), address.text.size()});
+            address.kind = parse_address_kind({address.text.data(), address.text.size()});
         }
 
         return true;
@@ -2882,11 +2874,8 @@ APRS_ROUTER_INLINE bool try_parse_address(std::string_view address_string, struc
 
         if (address.N >= 0 && address.N <= 7 && address.n > 0 && address.n <= 7)
         {
-            // remove the separator and both digits from the address text
-            auto address_text_no_digits = address_text.substr(0, sep_position - 1);
-            address.text.assign(address_text_no_digits.data(), address_text_no_digits.size());
-
-            address.kind = parse_address_kind(std::string_view{address.text.data(), address.text.size()});
+            address.text.assign(address_text.data(), sep_position - 1); // remove the separator and both digits from the address text
+            address.kind = parse_address_kind({address.text.data(), address.text.size()});
         }
         else
         {
@@ -2901,15 +2890,14 @@ APRS_ROUTER_INLINE bool try_parse_address(std::string_view address_string, struc
     // Expecting the separator to be followed by a digit, ex: CALL-1
     if ((sep_position + 1) < address_text.size() && std::isdigit(static_cast<int>(address_text[sep_position + 1])))
     {
-        auto ssid_string_view = address_text.substr(sep_position + 1);
         internal_string_t<char> ssid_str;
-        ssid_str.assign(ssid_string_view.data(), ssid_string_view.size());
+        ssid_str.assign(address_text.begin() + sep_position + 1, address_text.end());
 
         // Check for a single digit or two digits, ex: CALL-1 or CALL-12
         if (ssid_str.size() == 1 || (ssid_str.size() == 2 && std::isdigit(static_cast<int>(ssid_str[1]))))
         {
             int ssid;
-            if (!try_parse_int(std::string_view(ssid_str.data(), ssid_str.size()), ssid))
+            if (!try_parse_int({ssid_str.data(), ssid_str.size()}, ssid))
             {
                 return true;
             }
@@ -2917,9 +2905,7 @@ APRS_ROUTER_INLINE bool try_parse_address(std::string_view address_string, struc
             if (ssid >= 0 && ssid <= 15)
             {
                 address.ssid = ssid;
-
-                auto address_text_no_digits = address_text.substr(0, sep_position);
-                address.text.assign(address_text_no_digits.data(), address_text_no_digits.size());
+                address.text.assign(address_text.data(), sep_position);
             }
         }
     }
@@ -2969,7 +2955,7 @@ APRS_ROUTER_INLINE bool try_parse_n_N_address(std::string_view address_string, s
         }
         else
         {
-            address.kind = parse_address_kind(std::string_view(address.text.data(), address.text.size()));
+            address.kind = parse_address_kind({address.text.data(), address.text.size()});
         }
 
         return true;
@@ -2987,10 +2973,7 @@ APRS_ROUTER_INLINE bool try_parse_n_N_address(std::string_view address_string, s
 
         if (address.N >= 0 && address.N <= 7 && address.n > 0 && address.n <= 7)
         {
-            // remove the separator and both digits from the address text
-            auto address_text_no_digits = address_text.substr(0, sep_position - 1);
-            address.text.assign(address_text_no_digits.data(), address_text_no_digits.size());
-
+            address.text.assign(address_text.data(), sep_position - 1); // remove the separator and both digits from the address text
             address.kind = parse_address_kind(std::string_view(address.text.data(), address.text.size()));
         }
         else
@@ -3063,12 +3046,10 @@ APRS_ROUTER_INLINE bool try_parse_address(std::string_view address, internal_str
             return false;
         }
 
-        auto address_no_ssid_view = address.substr(0, sep_position);
-        address_no_ssid.assign(address_no_ssid_view.begin(), address_no_ssid_view.end());        
+        address_no_ssid.assign(address.begin(), address.begin() + sep_position);
 
-        auto ssid_string_view = address.substr(sep_position + 1);
         internal_string_t<char> ssid_string;
-        ssid_string.assign(ssid_string_view.begin(), ssid_string_view.end());
+        ssid_string.assign(address.begin() + sep_position + 1, address.end());
 
         if (ssid_string[0] == '0')
         {
@@ -3082,7 +3063,7 @@ APRS_ROUTER_INLINE bool try_parse_address(std::string_view address, internal_str
             return false;
         }
 
-        if (!try_parse_int(std::string_view(ssid_string.data(), ssid_string.size()), ssid))
+        if (!try_parse_int({ssid_string.data(), ssid_string.size()}, ssid))
         {
             return false;
         }
@@ -3267,7 +3248,7 @@ APRS_ROUTER_INLINE void init_addresses(route_state& state)
         {
             struct address packet_explicit_address;
 
-            if (try_parse_address_with_ssid(std::string_view(packet_address_string.data(), packet_address_string.size()), packet_explicit_address))
+            if (try_parse_address_with_ssid({packet_address_string.data(), packet_address_string.size()}, packet_explicit_address))
             {
                 if ((packet_explicit_address.ssid == router_explicit_address.ssid && packet_explicit_address.text == router_explicit_address.text) ||
                     (router_address.ssid == router_explicit_address.ssid && router_address.text == router_explicit_address.text))
@@ -3290,7 +3271,7 @@ APRS_ROUTER_INLINE void init_addresses(route_state& state)
         {
             struct address packet_n_N_adress;
 
-            if (try_parse_n_N_address(std::string_view(packet_address_string.data(), packet_address_string.size()), packet_n_N_adress))
+            if (try_parse_n_N_address({packet_address_string.data(), packet_address_string.size()}, packet_n_N_adress))
             {
                 if (packet_n_N_adress.n == router_n_N_address.n && packet_n_N_adress.text == router_n_N_address.text)
                 {
@@ -3310,7 +3291,7 @@ APRS_ROUTER_INLINE void init_addresses(route_state& state)
 
         struct address packet_address;
 
-        if (try_parse_address(std::string_view(packet_address_string.data(), packet_address_string.size()), packet_address))
+        if (try_parse_address({packet_address_string.data(), packet_address_string.size()}, packet_address))
         {
             packet_address.index = index;
             packet_addresses.push_back(packet_address);
@@ -3987,7 +3968,7 @@ APRS_ROUTER_INLINE bool is_packet_valid(std::string_view packet_from_address, st
 
     for (const auto& p : packet_path)
     {
-        if (!try_parse_address_with_used_flag(std::string_view(p.data(), p.size()), callsign, ssid))
+        if (!try_parse_address_with_used_flag({p.data(), p.size()}, callsign, ssid))
         {
             return false;
         }
