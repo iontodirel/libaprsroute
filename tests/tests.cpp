@@ -29,32 +29,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include <gtest/gtest.h>
-#ifndef APRS_ROUTE_DISABLE_AUTO_TESTING
-#include <nlohmann/json.hpp>
-#endif
-
-#include <chrono>
-#include <filesystem>
-#include <fstream>
-#include <sstream>
-#include <locale>
-#include <memory_resource>
-
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable: 4267 4127)
-#endif
-
-#include <fmt/format.h>
-#include <fmt/color.h>
-
-#ifdef _MSC_VER
-#pragma warning(pop)
-#endif
-
-#include "../aprsroute.hpp"
-
 // Enable only the auto testing if defined. This will run the auto tests only.
 #ifdef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
 // Intentionally left empty
