@@ -62,6 +62,7 @@
 #include <utility>
 #include <tuple>
 #include <type_traits>
+#include <cstring>
 
 // This header only library can be compiled in a TU and shared between TUs
 // to minimize compilation time, by defining the APRS_ROUTER_PUBLIC_FORWARD_DECLARATIONS_ONLY preprocessor directive.
@@ -1228,16 +1229,16 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
     //                                                     ~~~~~
     if (has_packet_routing_ended(state))
     {
-        auto [routing_actions_out, result] = create_routing_ended_routing(state, routing_state, routing_actions_out);
-        return { routed_packet_path_out, routing_actions_out, false };
+        auto [routing_actions_out_updated, _] = create_routing_ended_routing(state, routing_state, routing_actions_out);
+        return { routed_packet_path_out, routing_actions_out_updated, false };
     }
 
     // Packet has already been routing by us: N0CALL>APRS,CALL,DIGI*,WIDE1-1,WIDE2-2:data
     //                                                         ~~~~~
     if (has_packet_been_routed_by_us(state))
     {
-        auto [routing_actions_out, result] = create_routed_by_us_routing(state, routing_state, routing_actions_out);
-        return { routed_packet_path_out, routing_actions_out, false };
+        auto [routing_actions_out_updated, _] = create_routed_by_us_routing(state, routing_state, routing_actions_out);
+        return { routed_packet_path_out, routing_actions_out_updated, false };
     }
 
     // Packet has been sent to us: N0CALL>DIGI,CALL,WIDE1-1,WIDE2-2:data
