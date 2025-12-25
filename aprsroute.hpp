@@ -3074,6 +3074,7 @@ APRS_ROUTER_INLINE bool try_parse_address(std::string_view address, internal_str
             return false;
         }
 
+        // SSIDs are 4-bit values and must be in the [0, 15] range
         if (ssid < 0 || ssid > 15)
         {
             ssid = 0;
