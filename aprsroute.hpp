@@ -2952,7 +2952,7 @@ APRS_ROUTER_INLINE bool try_parse_n_N_address(std::string_view address_string, s
             if (address.n > 0 && address.n <= 7)
             {
                 address.text.assign(address_text.begin(), address_text.end());
-                address.kind = parse_address_kind(std::string_view(address.text.data(), address.text.size()));
+                address.kind = parse_address_kind({address.text.data(), address.text.size()});
             }
             else
             {
@@ -2980,7 +2980,7 @@ APRS_ROUTER_INLINE bool try_parse_n_N_address(std::string_view address_string, s
         if (address.N >= 0 && address.N <= 7 && address.n > 0 && address.n <= 7)
         {
             address.text.assign(address_text.data(), sep_position - 1); // remove the separator and both digits from the address text
-            address.kind = parse_address_kind(std::string_view(address.text.data(), address.text.size()));
+            address.kind = parse_address_kind({address.text.data(), address.text.size()});
         }
         else
         {
