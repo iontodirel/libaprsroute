@@ -1645,7 +1645,9 @@ TEST(router, try_route_packet_flat_api_with_iterators)
     aprs::router::routing_state routing_state;
     std::vector<routing_diagnostic> routing_actions;
 
-    EXPECT_TRUE(aprs::router::try_route_packet("W7ION-5", "T7SVVQ", packet_path.begin(), packet_path.end(), settings, std::back_inserter(routed_path), routing_state, std::back_inserter(routing_actions), nullptr));
+    auto [routed_packet_path_out, routing_actions_out, result] = aprs::router::try_route_packet("W7ION-5", "T7SVVQ", packet_path.begin(), packet_path.end(), settings, std::back_inserter(routed_path), routing_state, std::back_inserter(routing_actions), nullptr);
+
+    EXPECT_TRUE(result);
 
     EXPECT_TRUE(routed_path == (std::vector<std::string>{ "DIGI", "WIDE1*", "WIDE2-1" }));
 

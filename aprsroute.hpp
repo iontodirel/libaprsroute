@@ -59,6 +59,9 @@
 #include <charconv>
 #include <memory_resource>
 #include <cctype>
+#include <utility>
+#include <tuple>
+#include <type_traits>
 
 // This header only library can be compiled in a TU and shared between TUs
 // to minimize compilation time, by defining the APRS_ROUTER_PUBLIC_FORWARD_DECLARATIONS_ONLY preprocessor directive.
@@ -157,6 +160,12 @@ template<class T>
 using internal_string_t = std::basic_string<T>;
 
 #endif // APRS_ROUTER_DEFINE_CUSTOM_TYPES
+
+template<typename T, typename = void>
+struct has_data_and_size : std::false_type {};
+
+template<typename T>
+struct has_data_and_size<T, std::void_t<decltype(std::declval<T>().data()), decltype(std::declval<T>().size())>> : std::true_type {};
 
 APRS_ROUTER_NAMESPACE_END
 
@@ -535,7 +544,7 @@ bool try_route_packet(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet
 bool try_route_packet(std::string_view original_packet_from, std::string_view original_packet_to, const std::vector<std::string>& original_packet_path, const router_settings& settings, std::vector<std::string>& routed_packet_path, enum routing_state& routing_state, std::vector<routing_diagnostic>& routing_actions);
 
 template<class InputIterator, class OutputIterator1, class OutputIterator2>
-bool try_route_packet(std::string_view original_packet_from, std::string_view original_packet_to, InputIterator original_packet_path_begin, InputIterator original_packet_path_end, const router_settings& settings, OutputIterator1 routed_packet_path_out, enum routing_state& routing_state, OutputIterator2 routing_actions_out, std::pmr::memory_resource* memory_resource = std::pmr::get_default_resource());
+std::tuple<OutputIterator1, OutputIterator2, bool> try_route_packet(std::string_view original_packet_from, std::string_view original_packet_to, InputIterator original_packet_path_begin, InputIterator original_packet_path_end, const router_settings& settings, OutputIterator1 routed_packet_path_out, enum routing_state& routing_state, OutputIterator2 routing_actions_out, std::pmr::memory_resource* memory_resource = std::pmr::get_default_resource());
 
 APRS_ROUTER_NAMESPACE_END
 
@@ -668,11 +677,11 @@ bool try_route_packet_by_index(const struct routing_result& routing_result, APRS
 bool try_route_packet_by_start_end(const struct routing_result& routing_result, APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& result);
 
 void init_routing_result(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, routing_result& result);
-template <class OutputIterator> bool create_routing_ended_routing(const route_state& state, enum routing_state& routing_state, OutputIterator routing_actions_out);
+template <class OutputIterator> std::pair<OutputIterator, bool> create_routing_ended_routing(const route_state& state, enum routing_state& routing_state, OutputIterator routing_actions_out);
 bool create_routing_ended_routing(const route_state& state, enum routing_state& routing_state, internal_vector_t<routing_diagnostic>& routing_actions);
-template <class OutputIterator> bool create_routed_by_us_routing(const route_state& state, enum routing_state& routing_state, OutputIterator routing_actions_out);
+template <class OutputIterator> std::pair<OutputIterator, bool> create_routed_by_us_routing(const route_state& state, enum routing_state& routing_state, OutputIterator routing_actions_out);
 bool create_routed_by_us_routing(const route_state& state, enum routing_state& routing_state, internal_vector_t<routing_diagnostic>& routing_actions);
-template <class OutputIterator1, class OutputIterator2> bool create_routed_routing(route_state& state, OutputIterator1 routed_packet_path_out, OutputIterator2 routing_actions_out);
+template <class OutputIterator1, class OutputIterator2> std::tuple<OutputIterator1, OutputIterator2, bool> create_routed_routing(route_state& state, OutputIterator1 routed_packet_path_out, OutputIterator2 routing_actions_out);
 bool create_routed_routing(route_state& state, internal_vector_t<internal_string_t<char>>& routed_packet_path, internal_vector_t<routing_diagnostic>& routing_actions);
 
 bool push_routing_ended_diagnostic(const address& address, bool enable_diagnostics, internal_vector_t<routing_diagnostic>& d);
@@ -1161,11 +1170,14 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
 
 APRS_ROUTER_INLINE bool try_route_packet(std::string_view original_packet_from, std::string_view original_packet_to, const std::vector<std::string>& original_packet_path, const router_settings& settings, std::vector<std::string>& routed_packet_path, enum routing_state& routing_state, std::vector<routing_diagnostic>& routing_actions)
 {
-    return try_route_packet(original_packet_from, original_packet_to, original_packet_path.begin(), original_packet_path.end(), settings, std::back_inserter(routed_packet_path), routing_state, std::back_inserter(routing_actions));
+    auto [routed_packet_path_out, routing_actions_out, result] = try_route_packet(original_packet_from, original_packet_to, original_packet_path.begin(), original_packet_path.end(), settings, std::back_inserter(routed_packet_path), routing_state, std::back_inserter(routing_actions));
+    (void)routed_packet_path_out;
+    (void)routing_actions_out;
+    return result;
 }
 
 template<class InputIterator, class OutputIterator1, class OutputIterator2>
-APRS_ROUTER_INLINE bool try_route_packet(std::string_view original_packet_from, std::string_view original_packet_to, InputIterator original_packet_path_begin, InputIterator original_packet_path_end, const router_settings& settings, OutputIterator1 routed_packet_path_out, enum routing_state& routing_state, OutputIterator2 routing_actions_out, std::pmr::memory_resource* memory_resource)
+APRS_ROUTER_INLINE std::tuple<OutputIterator1, OutputIterator2, bool> try_route_packet(std::string_view original_packet_from, std::string_view original_packet_to, InputIterator original_packet_path_begin, InputIterator original_packet_path_end, const router_settings& settings, OutputIterator1 routed_packet_path_out, enum routing_state& routing_state, OutputIterator2 routing_actions_out, std::pmr::memory_resource* memory_resource)
 {
 APRS_ROUTER_DETAIL_NAMESPACE_USE
 
@@ -1177,7 +1189,7 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
     route_state state;
 
     (void)memory_resource;
-#endif    
+#endif
 
     state.packet_from_address = original_packet_from;
     state.packet_to_address = original_packet_to;
@@ -1186,7 +1198,15 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
     state.packet_path.reserve(std::distance(original_packet_path_begin, original_packet_path_end));
     for (auto it = original_packet_path_begin; it != original_packet_path_end; ++it)
     {
-       state.packet_path.emplace_back(it->data(), it->size());
+        using value_type = typename std::iterator_traits<InputIterator>::value_type;
+        if constexpr (has_data_and_size<value_type>::value)
+        {
+            state.packet_path.emplace_back(it->data(), it->size());
+        }
+        else
+        {
+            state.packet_path.emplace_back(*it, std::strlen(*it));
+        }
     }
 
     state.settings.emplace(std::ref(settings));
@@ -1199,7 +1219,7 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
     if (is_valid_router_address_and_packet(state))
     {
         routing_state = routing_state::not_routed;
-        return false;
+        return { routed_packet_path_out, routing_actions_out, false };
     }
 
     find_used_addresses(state);
@@ -1208,14 +1228,16 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
     //                                                     ~~~~~
     if (has_packet_routing_ended(state))
     {
-        return create_routing_ended_routing(state, routing_state, routing_actions_out);
+        auto [routing_actions_out, result] = create_routing_ended_routing(state, routing_state, routing_actions_out);
+        return { routed_packet_path_out, routing_actions_out, false };
     }
 
     // Packet has already been routing by us: N0CALL>APRS,CALL,DIGI*,WIDE1-1,WIDE2-2:data
     //                                                         ~~~~~
     if (has_packet_been_routed_by_us(state))
     {
-        return create_routed_by_us_routing(state, routing_state, routing_actions_out);
+        auto [routing_actions_out, result] = create_routed_by_us_routing(state, routing_state, routing_actions_out);
+        return { routed_packet_path_out, routing_actions_out, false };
     }
 
     // Packet has been sent to us: N0CALL>DIGI,CALL,WIDE1-1,WIDE2-2:data
@@ -1223,7 +1245,7 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
     if (is_packet_sent_to_us(state))
     {
         routing_state = routing_state::already_routed;
-        return false;
+        return { routed_packet_path_out, routing_actions_out, false };
     }
 
     if (try_explicit_or_n_N_route(state, routing_state))
@@ -1231,7 +1253,7 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
         return create_routed_routing(state, routed_packet_path_out, routing_actions_out);
     }
 
-    return false;
+    return { routed_packet_path_out, routing_actions_out, false };
 }
 
 #endif // APRS_ROUTER_PUBLIC_FORWARD_DECLARATIONS_ONLY
@@ -2098,7 +2120,7 @@ APRS_ROUTER_INLINE void init_routing_result(const struct APRS_ROUTER_PACKET_NAME
 }
 
 template <class OutputIterator>
-APRS_ROUTER_INLINE bool create_routing_ended_routing(const route_state& state, enum routing_state& routing_state, OutputIterator routing_actions_out)
+APRS_ROUTER_INLINE std::pair<OutputIterator, bool> create_routing_ended_routing(const route_state& state, enum routing_state& routing_state, OutputIterator routing_actions_out)
 {
 #if APRS_ROUTER_USE_PMR
     internal_vector_t<routing_diagnostic> routing_actions(state.memory_resource);
@@ -2110,7 +2132,7 @@ APRS_ROUTER_INLINE bool create_routing_ended_routing(const route_state& state, e
     {
         *routing_actions_out++ = std::move(diag);
     }
-    return result;
+    return { routing_actions_out, result };
 }
 
 APRS_ROUTER_INLINE bool create_routing_ended_routing(const route_state& state, enum routing_state& routing_state, internal_vector_t<routing_diagnostic>& routing_actions)
@@ -2121,7 +2143,7 @@ APRS_ROUTER_INLINE bool create_routing_ended_routing(const route_state& state, e
 }
 
 template <class OutputIterator>
-APRS_ROUTER_INLINE bool create_routed_by_us_routing(const route_state& state, enum routing_state& routing_state, OutputIterator routing_actions_out)
+APRS_ROUTER_INLINE std::pair<OutputIterator, bool> create_routed_by_us_routing(const route_state& state, enum routing_state& routing_state, OutputIterator routing_actions_out)
 {
 #if APRS_ROUTER_USE_PMR
     internal_vector_t<routing_diagnostic> routing_actions(state.memory_resource);
@@ -2133,7 +2155,7 @@ APRS_ROUTER_INLINE bool create_routed_by_us_routing(const route_state& state, en
     {
         *routing_actions_out++ = std::move(diag);
     }
-    return result;
+    return { routing_actions_out, result };
 }
 
 APRS_ROUTER_INLINE bool create_routed_by_us_routing(const route_state& state, enum routing_state& routing_state, internal_vector_t<routing_diagnostic>& routing_actions)
@@ -2144,7 +2166,7 @@ APRS_ROUTER_INLINE bool create_routed_by_us_routing(const route_state& state, en
 }
 
 template <class OutputIterator1, class OutputIterator2>
-APRS_ROUTER_INLINE bool create_routed_routing(route_state& state, OutputIterator1 routed_packet_path_out, OutputIterator2 routing_actions_out)
+APRS_ROUTER_INLINE std::tuple<OutputIterator1, OutputIterator2, bool> create_routed_routing(route_state& state, OutputIterator1 routed_packet_path_out, OutputIterator2 routing_actions_out)
 {
 #if APRS_ROUTER_USE_PMR
     internal_vector_t<routing_diagnostic> routing_actions(state.memory_resource);
@@ -2158,6 +2180,9 @@ APRS_ROUTER_INLINE bool create_routed_routing(route_state& state, OutputIterator
 
     for (auto& address : routed_packet_path)
     {
+        // Always expect std::string for the routed path output iterator
+        // This is to make the interface simpler to use
+        // Addresses should always use the small string optimization
         *routed_packet_path_out++ = std::string(address.begin(), address.end());
     }
 
@@ -2166,7 +2191,7 @@ APRS_ROUTER_INLINE bool create_routed_routing(route_state& state, OutputIterator
         *routing_actions_out++ = std::move(diag);
     }
 
-    return result;
+    return { routed_packet_path_out, routing_actions_out, result };
 }
 
 APRS_ROUTER_INLINE bool create_routed_routing(route_state& state, internal_vector_t<internal_string_t<char>>& routed_packet_path, internal_vector_t<routing_diagnostic>& routing_actions)

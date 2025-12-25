@@ -104,6 +104,10 @@ add_executable(aprsroute_with_etl_string_test "with_etl_string.cpp" "../aprsrout
 set_property(TARGET aprsroute_with_etl_string_test PROPERTY CXX_STANDARD 20)
 target_link_libraries(aprsroute_with_etl_string_test PRIVATE etl::etl)
 
+add_executable(aprsroute_with_etl_test "with_etl.cpp" "../aprsroute.hpp")
+set_property(TARGET aprsroute_with_etl_test PROPERTY CXX_STANDARD 20)
+target_link_libraries(aprsroute_with_etl_test PRIVATE etl::etl GTest::gtest_main gtest gtest_main)
+
 add_definitions(-DINPUT_TEST_FILE="${INPUT_TEST_FILE}")
 
 if(MSVC)
@@ -118,4 +122,4 @@ gtest_discover_tests(aprsroute_tests)
 gtest_discover_tests(aprsroute_auto_tests)
 gtest_discover_tests(aprsroute_external_packet_test)
 gtest_discover_tests(aprsroute_external_custom_packet_test)
-
+gtest_discover_tests(aprsroute_with_etl_test)
