@@ -66,6 +66,7 @@ set(INPUT_TEST_FILE ${CMAKE_SOURCE_DIR}/routes.json)
 add_executable(aprsroute_tests "tests.cpp" "../aprsroute.hpp")
 target_link_libraries(aprsroute_tests GTest::gtest_main gtest gtest_main nlohmann_json::nlohmann_json fmt::fmt)
 set_property(TARGET aprsroute_tests PROPERTY CXX_STANDARD 20)
+target_precompile_headers(aprsroute_tests PRIVATE "pch.h")
 
 add_executable(aprsroute_auto_tests "auto_tests.cpp" "../aprsroute.hpp")
 target_link_libraries(aprsroute_auto_tests GTest::gtest_main gtest gtest_main nlohmann_json::nlohmann_json fmt::fmt etl::etl)
