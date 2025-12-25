@@ -1229,16 +1229,16 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
     //                                                     ~~~~~
     if (has_packet_routing_ended(state))
     {
-        auto [routing_actions_out_updated, _] = create_routing_ended_routing(state, routing_state, routing_actions_out);
-        return { routed_packet_path_out, routing_actions_out_updated, false };
+        auto [routing_actions_out_updated, result] = create_routing_ended_routing(state, routing_state, routing_actions_out);
+        return { routed_packet_path_out, routing_actions_out_updated, result };
     }
 
     // Packet has already been routing by us: N0CALL>APRS,CALL,DIGI*,WIDE1-1,WIDE2-2:data
     //                                                         ~~~~~
     if (has_packet_been_routed_by_us(state))
     {
-        auto [routing_actions_out_updated, _] = create_routed_by_us_routing(state, routing_state, routing_actions_out);
-        return { routed_packet_path_out, routing_actions_out_updated, false };
+        auto [routing_actions_out_updated, result] = create_routed_by_us_routing(state, routing_state, routing_actions_out);
+        return { routed_packet_path_out, routing_actions_out_updated, result };
     }
 
     // Packet has been sent to us: N0CALL>DIGI,CALL,WIDE1-1,WIDE2-2:data
