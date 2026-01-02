@@ -56,9 +56,9 @@
 #include "../aprsroute.hpp"
 
 // Enable only the auto testing if defined. This will run the auto tests only.
-#ifdef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifdef APRS_ROUTE_DISABLE_TESTS
 // Intentionally left empty
-#endif // APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#endif // APRS_ROUTE_DISABLE_TESTS
 
 using namespace aprs::router;
 using namespace aprs::router::detail;
@@ -130,7 +130,7 @@ bool try_parse_addresses(const std::vector<std::string>& addresses, internal_vec
 
 TEST(number, try_parse_int)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     int n = 0;
 
     EXPECT_TRUE(try_parse_int("123", n));
@@ -160,7 +160,7 @@ TEST(number, try_parse_int)
 
 TEST(address, parse_address_kind)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     EXPECT_TRUE(parse_address_kind("ECHO") == address_kind::echo);
     EXPECT_TRUE(parse_address_kind("NOGATE") == address_kind::nogate);
     EXPECT_TRUE(parse_address_kind("RFONLY") == address_kind::rfonly);
@@ -173,7 +173,7 @@ TEST(address, parse_address_kind)
 
 TEST(address, parse_q_construct)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     EXPECT_TRUE(parse_q_construct("qAC") == q_construct::qAC);
     EXPECT_TRUE(parse_q_construct("qAS") == q_construct::qAS);
     EXPECT_TRUE(parse_q_construct("qAZ") == q_construct::qAZ);
@@ -185,7 +185,7 @@ TEST(address, parse_q_construct)
 
 TEST(address, to_string)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     address s;
     s.text = "WIDE";
     s.n = 2;
@@ -226,7 +226,7 @@ TEST(address, to_string)
 
 TEST(packet, to_string)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     packet p = { "FROM", "TO", { "WIDE1-1", "WIDE2-1" }, "data"};
     EXPECT_TRUE(to_string(p) == "FROM>TO,WIDE1-1,WIDE2-1:data");
 
@@ -239,7 +239,7 @@ TEST(packet, to_string)
 
 TEST(address, try_parse_address)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     address s;
     std::string path;
 
@@ -433,7 +433,7 @@ TEST(address, try_parse_address)
 
 TEST(address, try_parse_address_with_ssid)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     std::string address;
     std::string callsign;
     int ssid = 0;
@@ -491,76 +491,81 @@ TEST(address, try_parse_address_with_ssid)
 
 TEST(address, equal_addresses_ignore_mark)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     {
         address a1 { "WIDE", 0, 0, 0 };
         address a2 { "WIDE", 0, 0, 0 };
-        assert(equal_addresses_ignore_mark(a1, a2));
+        EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
     {
         address a1{ "WIDE", 1, 1, 0 };
         address a2{ "WIDE", 1, 1, 0 };
-        assert(equal_addresses_ignore_mark(a1, a2));
+        EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
     {
         address a1{ "WIDE", 1, 1, 0, true };
         address a2{ "WIDE", 1, 1, 0, false };
-        assert(equal_addresses_ignore_mark(a1, a2));
+        EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
     {
         address a1{ "WIDE", 1, 2, 0 };
         address a2{ "WIDE", 1, 1, 0 };
-        assert(!equal_addresses_ignore_mark(a1, a2));
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
     {
         address a1{ "WIDE", 1, 1, 0 };
         address a2{ "WIDE", 0, 0, 1 };
-        assert(!equal_addresses_ignore_mark(a1, a2));
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
     {
         address a1{ "WIDE", 1, 1, 0 };
         address a2{ "WIDE", 1, 0, 0 };
-        assert(!equal_addresses_ignore_mark(a1, a2));
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
     {
         address a1{ "WIDE", 0, 0, 1 };
         address a2{ "WIDE", 0, 0, 1 };
-        assert(equal_addresses_ignore_mark(a1, a2));
+        EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
     {
         address a1{ "WIDE", 0, 0, 1 };
         address a2{ "WIDE", 0, 0, 2 };
-        assert(!equal_addresses_ignore_mark(a1, a2));
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
     {
         address a1{ "WIDE", 1, 1, 0 };
         address a2{ "WIDE1", 0, 0, 1 };
-        assert(equal_addresses_ignore_mark(a1, a2));
+        EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
     {
         address a1{ "WIDE1", 0, 0, 1 };
         address a2{ "WIDE", 1, 1, 0 };
-        assert(equal_addresses_ignore_mark(a1, a2));
+        EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
     {
         address a1{ "WIDE1", 0, 0, 0 };
         address a2{ "WIDE", 1, 0, 0 };
-        assert(equal_addresses_ignore_mark(a1, a2));
+        EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
     {
         address a1{ "WIDE", 1, 0, 0 };
         address a2{ "WIDE1", 0, 0, 0 };
-        assert(equal_addresses_ignore_mark(a1, a2));
+        EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
     {
         address a1{ "WIDE1", 0, 0, 2 };
         address a2{ "WIDE", 1, 1, 0 };
-        assert(!equal_addresses_ignore_mark(a1, a2));
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
     {
         address a1{ "WIDE", 1, 0, 0 };
         address a2{ "WIDE1", 0, 0, 1 };
-        assert(!equal_addresses_ignore_mark(a1, a2));
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDE", 1, 3, 0 };
+        address a2{ "WIDE1", 0, 0, 0 };
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
 #else
     EXPECT_TRUE(true);
@@ -569,7 +574,7 @@ TEST(address, equal_addresses_ignore_mark)
 
 TEST(packet, try_decode_packet)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     std::string packet_string;
     packet p;
 
@@ -695,7 +700,7 @@ TEST(packet, try_decode_packet)
 
 TEST(packet, try_decode_packet_ctor)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     packet p = "N0CALL>APRS,WIDE2-2:data";
 
     EXPECT_TRUE(p.from == "N0CALL");
@@ -712,7 +717,7 @@ TEST(packet, try_decode_packet_ctor)
 
 TEST(packet, equality)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     // Test: Equal packets
     packet p1{"N0CALL", "APRS", {"CALLA", "CALLB"}, "data"};
     packet p2{"N0CALL", "APRS", {"CALLA", "CALLB"}, "data"};
@@ -762,7 +767,7 @@ TEST(router, try_route_packet_no_packet)
 
 TEST(router, try_route_packet_explicit_loop)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     routing_result result;
     router_settings digi;
 
@@ -791,7 +796,7 @@ TEST(router, try_route_packet_explicit_loop)
 
 TEST(router, try_route_packet_n_N_loop)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     routing_result result;
     router_settings digi;
 
@@ -841,7 +846,7 @@ TEST(router, try_route_packet_n_N_loop)
 
 TEST(routing_option, enum_has_flag)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     routing_option op = routing_option::preempt_front | routing_option::substitute_complete_n_N_address;
 
     EXPECT_TRUE(enum_has_flag(op, routing_option::preempt_front));
@@ -854,7 +859,7 @@ TEST(routing_option, enum_has_flag)
 
 TEST(router, simple_demo)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     router_settings digi { "DIGI", {}, { "WIDE1" }, routing_option::none, false };
     routing_result result;
 
@@ -871,7 +876,7 @@ TEST(router, simple_demo)
 
 TEST(router, preempt_front_with_explicit_ssid_diag)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     router_settings digi{ "DIGI2-3", {}, {}, routing_option::preempt_front, true };
     routing_result result;
 
@@ -920,9 +925,35 @@ TEST(router, preempt_front_with_explicit_ssid_diag)
 #endif
 }
 
+TEST(router, try_route_packet_n_N_as_explicit)
+{
+#ifndef APRS_ROUTE_DISABLE_TESTS
+    router_settings digi{ "DIGI", { "WIDE1" }, {}, routing_option::none, true };
+    routing_result result;
+
+    packet p = { "N0CALL", "APRS", { "WIDE1-3" }, "data" }; // N0CALL>APRS,WIDE1-3:data
+
+    try_route_packet(p, digi, result);
+
+    /* {
+            "id": "210",
+            "comment": "Edge cases: Routing with matching WIDE SSID",
+            "address": "DIGI",
+            "explicit_addresses": "WIDE1-3",
+            "original_packet": "N0CALL>APRS,WIDE1-3:data",
+            "routed_packet": "N0CALL>APRS,DIGI,WIDE1-3*:data",
+            "routed": "true"
+        },*/
+
+    EXPECT_TRUE(result.state == routing_state::not_routed);
+#else
+    EXPECT_TRUE(true);
+#endif
+}
+
 TEST(router, routing_n_N_with_addresses_in_front)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     router_settings digi{ "DIGI", {}, { "WIDE2-2" }, routing_option::none, true };
     routing_result result;
 
@@ -950,7 +981,7 @@ TEST(router, placeholder_test)
 
 TEST(router, router_address_and_path_dual_matching)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     router_settings digi{ "ROUTER", { "DIGI" }, {}, routing_option::none, true };
     routing_result result;
 
@@ -966,7 +997,7 @@ TEST(router, router_address_and_path_dual_matching)
 
 TEST(router, substitute_explicit_address_with_ssid_diagnostic)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     router_settings digi{ "DIGI-7", { "DIGI" }, {}, routing_option::substitute_explicit_address, true };
     routing_result result;
 
@@ -1007,7 +1038,7 @@ TEST(router, substitute_explicit_address_with_ssid_diagnostic)
 
 TEST(router, try_route_packet_long_path_with_substitute)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     router_settings digi{ "DIGI2", {},  { "WIDE1", "WIDE2", "WIDE3" }, routing_option::substitute_complete_n_N_address, false };
     routing_result result;
 
@@ -1024,7 +1055,7 @@ TEST(router, try_route_packet_long_path_with_substitute)
 
 TEST(router, try_route_packet_enable_diagnostics)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     router_settings digi{ "DIGI", {},  { "WIDE1" }, routing_option::none, true };
     routing_result result;
 
@@ -1585,7 +1616,7 @@ TEST(router, try_route_packet_enable_diagnostics)
 
 TEST(router, try_route_packet_color_diagnostics)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     router_settings digi{ "DIGI", {},  { "WIDE1", "WIDE2" }, routing_option::none, true };
     routing_result result;
 
@@ -1615,7 +1646,7 @@ TEST(router, try_route_packet_color_diagnostics)
 
 TEST(router, try_route_packet_flat_api)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     std::vector<std::string> packet_path = { "WIDE1-1", "WIDE2-1" };
     aprs::router::router_settings settings = { "DIGI", {}, { "WIDE1", "WIDE2" }, routing_option::skip_complete_n_N_address, true };
 
@@ -1637,7 +1668,7 @@ TEST(router, try_route_packet_flat_api)
 
 TEST(router, try_route_packet_flat_api_with_iterators)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     std::vector<std::string> packet_path = { "WIDE1-1", "WIDE2-1" };
     aprs::router::router_settings settings = { "DIGI", {}, { "WIDE1", "WIDE2" }, routing_option::skip_complete_n_N_address, true };
 
@@ -1661,7 +1692,7 @@ TEST(router, try_route_packet_flat_api_with_iterators)
 
 TEST(routing_result, to_string)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     // N0CALL>APRS,CALLA,CALLB*,CALLC,CALLD,CALLE,CALLF:data
     //                                      ~~~~~
     //                                      37 42 - Packet address removed
@@ -1697,7 +1728,7 @@ TEST(routing_result, to_string)
 
 TEST(addresses, set_address_as_used)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     packet p = { "N0CALL", "APRS", { "CALLA", "CALLB*", "CALLC", "CALLD", "CALLE", "CALLF" }, "data"};
 
     internal_vector_t<address> segments;
@@ -1759,7 +1790,7 @@ TEST(addresses, set_address_as_used)
 
 TEST(diagnostic, push_address_unset_diagnostic)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     packet p = { "N0CALL", "APRS", { "CALLA*", "CALLB*", "CALLC", "WIDE2-2*", "CALLD*", "CALLE", "CALLF" }, "data"};
 
     // Initialize offsets
@@ -1815,7 +1846,7 @@ TEST(diagnostic, push_address_unset_diagnostic)
 
 TEST(diagnostic, push_address_set_diagnostic)
 {
-#ifndef APRS_ROUTE_ENABLE_ONLY_AUTO_TESTING
+#ifndef APRS_ROUTE_DISABLE_TESTS
     packet p = { "N0CALL", "APRS", { "CALLA*", "CALLB*", "CALLC", "WIDE2-2*", "CALLD*", "CALLE", "CALLF" }, "data"};
 
     internal_vector_t<address> segments;

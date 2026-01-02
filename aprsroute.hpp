@@ -1211,6 +1211,7 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
     }
 
     state.settings.emplace(std::ref(settings));
+
 #if APRS_ROUTER_USE_PMR
     state.memory_resource = memory_resource;
 #endif
@@ -2748,7 +2749,7 @@ APRS_ROUTER_INLINE bool equal_addresses_ignore_mark(const struct address& lhs, c
                 {
                     return lhs.N == rhs.ssid;
                 }
-                return true;
+                return lhs.N == 0;
             }
         }
         else if (rhs.n > 0)
@@ -2769,7 +2770,7 @@ APRS_ROUTER_INLINE bool equal_addresses_ignore_mark(const struct address& lhs, c
                 {
                     return rhs.N == lhs.ssid;
                 }
-                return true;
+                return rhs.N == 0;
             }
         }
     }
