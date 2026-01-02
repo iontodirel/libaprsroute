@@ -2663,7 +2663,7 @@ APRS_ROUTER_INLINE bool equal_addresses_ignore_mark(const struct address& lhs, c
 
     // Various combinations of n, N numbers and ssid can make addresses be equal to each other.
     // 
-    //      address      address text     n     -    N   ssid                 
+    //      address      address text     n     -    N   ssid
     //  --------------------------------------------------------
     //      WIDE1-2          WIDE         1     -    2    0
     //      WIDE1-2          WIDE1        0     -    0    2

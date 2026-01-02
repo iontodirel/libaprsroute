@@ -492,79 +492,258 @@ TEST(address, try_parse_address_with_ssid)
 TEST(address, equal_addresses_ignore_mark)
 {
 #ifndef APRS_ROUTE_DISABLE_TESTS
+
+    // Identical plain addresses
     {
-        address a1 { "WIDE", 0, 0, 0 };
-        address a2 { "WIDE", 0, 0, 0 };
+        address a1{ "WIDE", 0, 0, 0 };
+        address a2{ "WIDE", 0, 0, 0 };
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
+
+    // Identical n-N addresses
     {
         address a1{ "WIDE", 1, 1, 0 };
         address a2{ "WIDE", 1, 1, 0 };
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
+
+    // Mark field should be ignored
     {
         address a1{ "WIDE", 1, 1, 0, true };
         address a2{ "WIDE", 1, 1, 0, false };
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
+
+    // Different N values
     {
         address a1{ "WIDE", 1, 2, 0 };
         address a2{ "WIDE", 1, 1, 0 };
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
+
+    // n-N vs ssid with same text (WIDE1-1 != WIDE-1)
     {
         address a1{ "WIDE", 1, 1, 0 };
         address a2{ "WIDE", 0, 0, 1 };
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
+
+    // WIDE1-1 != WIDE1
     {
         address a1{ "WIDE", 1, 1, 0 };
         address a2{ "WIDE", 1, 0, 0 };
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
+
+    // Identical ssid addresses
     {
         address a1{ "WIDE", 0, 0, 1 };
         address a2{ "WIDE", 0, 0, 1 };
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
+
+    // Different ssid values
     {
         address a1{ "WIDE", 0, 0, 1 };
         address a2{ "WIDE", 0, 0, 2 };
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
+
+    // Equivalent representations: WIDE1-1 == WIDE1-1
     {
         address a1{ "WIDE", 1, 1, 0 };
         address a2{ "WIDE1", 0, 0, 1 };
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
+
+    // Equivalent representations (reversed)
     {
         address a1{ "WIDE1", 0, 0, 1 };
         address a2{ "WIDE", 1, 1, 0 };
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
+
+    // Equivalent representations: WIDE1 == WIDE1
     {
         address a1{ "WIDE1", 0, 0, 0 };
         address a2{ "WIDE", 1, 0, 0 };
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
+
+    // Equivalent representations (reversed)
     {
         address a1{ "WIDE", 1, 0, 0 };
         address a2{ "WIDE1", 0, 0, 0 };
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
+
+    // WIDE1-2 != WIDE1-1
     {
         address a1{ "WIDE1", 0, 0, 2 };
         address a2{ "WIDE", 1, 1, 0 };
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
+
+    // WIDE1 != WIDE1-1
     {
         address a1{ "WIDE", 1, 0, 0 };
         address a2{ "WIDE1", 0, 0, 1 };
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
+
+    // WIDE1-3 != WIDE1
     {
         address a1{ "WIDE", 1, 3, 0 };
         address a2{ "WIDE1", 0, 0, 0 };
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
+    }
+
+    // Bug case: WIDE1 vs WIDE1-3
+    {
+        address a1{ "WIDE1", 0, 0, 0 };
+        address a2{ "WIDE", 1, 3, 0 };
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDE", 1, 3, 0 };
+        address a2{ "WIDE1", 0, 0, 0 };
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
+    }
+
+    // Different callsigns
+    {
+        address a1{ "WIDE", 1, 1, 0 };
+        address a2{ "RELAY", 1, 1, 0 };
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "CALL1", 0, 0, 0 };
+        address a2{ "CALL2", 0, 0, 0 };
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "AB1CD", 0, 0, 5 };
+        address a2{ "AB1CD", 0, 0, 5 };
+        EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
+    }
+
+    // Text length differs by more than 1
+    {
+        address a1{ "WID", 0, 0, 0 };
+        address a2{ "WIDE1", 0, 0, 0 };
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDE", 1, 1, 0 };
+        address a2{ "WIDE11", 0, 0, 1 };
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
+    }
+
+    // Different n values
+    {
+        address a1{ "WIDE", 1, 0, 0 };
+        address a2{ "WIDE", 2, 0, 0 };
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDE", 1, 1, 0 };
+        address a2{ "WIDE", 2, 1, 0 };
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
+    }
+
+    // Mark field variations
+    {
+        address a1{ "WIDE", 1, 1, 0, false };
+        address a2{ "WIDE", 1, 1, 0, true };
+        EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "CALL", 0, 0, 7, true };
+        address a2{ "CALL", 0, 0, 7, true };
+        EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
+    }
+
+    // SSID boundary values
+    {
+        address a1{ "CALL", 0, 0, 15 };
+        address a2{ "CALL", 0, 0, 15 };
+        EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "CALL", 0, 0, 14 };
+        address a2{ "CALL", 0, 0, 15 };
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
+    }
+
+    // n-N boundary values
+    {
+        address a1{ "WIDE", 7, 7, 0 };
+        address a2{ "WIDE", 7, 7, 0 };
+        EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDE", 7, 6, 0 };
+        address a2{ "WIDE", 7, 7, 0 };
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
+    }
+
+    // Multi-digit text (WIDE11-1)
+    {
+        address a1{ "WIDE1", 1, 1, 0 };
+        address a2{ "WIDE11", 0, 0, 1 };
+        EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDE11", 0, 0, 1 };
+        address a2{ "WIDE1", 1, 1, 0 };
+        EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDE2", 1, 1, 0 };
+        address a2{ "WIDE11", 0, 0, 1 };
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
+    }
+
+    // Text ending in non-matching digit
+    {
+        address a1{ "WIDE2", 0, 0, 0 };
+        address a2{ "WIDE", 1, 0, 0 };
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDE", 2, 0, 0 };
+        address a2{ "WIDE1", 0, 0, 0 };
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
+    }
+
+    // One has n-N, other has nothing
+    {
+        address a1{ "WIDE", 1, 1, 0 };
+        address a2{ "WIDE", 0, 0, 0 };
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDE", 0, 0, 0 };
+        address a2{ "WIDE", 1, 1, 0 };
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
+    }
+
+    // One has ssid, other has nothing
+    {
+        address a1{ "WIDE", 0, 0, 5 };
+        address a2{ "WIDE", 0, 0, 0 };
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
+    }
+
+    // Prefix match but not equal
+    {
+        address a1{ "WIDE", 0, 0, 0 };
+        address a2{ "WIDEX", 0, 0, 0 };
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "WIDEA", 0, 0, 0 };
+        address a2{ "WIDE", 1, 0, 0 };
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
 #else
@@ -925,7 +1104,7 @@ TEST(router, preempt_front_with_explicit_ssid_diag)
 #endif
 }
 
-TEST(router, try_route_packet_n_N_as_explicit)
+TEST(router, try_route_packet_n_N_address_as_explicit)
 {
 #ifndef APRS_ROUTE_DISABLE_TESTS
     router_settings digi{ "DIGI", { "WIDE1" }, {}, routing_option::none, true };
