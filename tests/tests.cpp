@@ -492,7 +492,6 @@ TEST(address, try_parse_address_with_ssid)
 TEST(address, equal_addresses_ignore_mark)
 {
 #ifndef APRS_ROUTE_DISABLE_TESTS
-
     // Identical plain addresses
     {
         address a1{ "WIDE", 0, 0, 0 };

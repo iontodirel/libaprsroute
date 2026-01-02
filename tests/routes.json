@@ -2088,7 +2088,7 @@
         },
         {
             "id": "211",
-            "comment": "Edge cases: Routing with not matching WIDE n-N",
+            "comment": "Edge cases: Routing non matching n-N address as explicit",
             "address": "DIGI",
             "explicit_addresses": "WIDE1",
             "original_packet": "N0CALL>APRS,WIDE1-3:data",
