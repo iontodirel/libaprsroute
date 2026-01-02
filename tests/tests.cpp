@@ -935,16 +935,6 @@ TEST(router, try_route_packet_n_N_as_explicit)
 
     try_route_packet(p, digi, result);
 
-    /* {
-            "id": "210",
-            "comment": "Edge cases: Routing with matching WIDE SSID",
-            "address": "DIGI",
-            "explicit_addresses": "WIDE1-3",
-            "original_packet": "N0CALL>APRS,WIDE1-3:data",
-            "routed_packet": "N0CALL>APRS,DIGI,WIDE1-3*:data",
-            "routed": "true"
-        },*/
-
     EXPECT_TRUE(result.state == routing_state::not_routed);
 #else
     EXPECT_TRUE(true);
