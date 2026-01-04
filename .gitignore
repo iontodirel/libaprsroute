@@ -6,3 +6,7 @@ examples/basic/external/*
 tests/routes.old.json
 examples/python_basic/out/*
 examples/digipeater/out/*
+.vs/*
+examples/dot_net_basic/.vs/*
+examples/dot_net_basic/DotNetRouter/obj/*
+*UpgradeLog.htm
