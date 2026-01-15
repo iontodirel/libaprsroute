@@ -502,7 +502,7 @@ struct routing_diagnostic
     size_t end = 0;   // Address index within the packet string
     routing_action type = routing_action::none;
     std::string address;
-    std::string message;
+    enum message_type message_type = message_type::none;
 };
 
 struct routing_diagnostic_display_entry
@@ -786,7 +786,7 @@ bool has_packet_been_routed_by_us(route_state& state);
 
 template<typename T, size_t Size> void array_erase(std::array<T, Size>& array, size_t& size, size_t index);
 template<typename T, size_t Size> void array_erase_n(std::array<T, Size>& array, size_t& size, size_t start_index, size_t count);
-template<typename T, size_t Size> void array_insert(std::array<T, Size>& array, size_t& size, size_t index, T& value);
+template<typename T, size_t Size, typename U> void array_insert(std::array<T, Size>& array, size_t& size, size_t index, U&& value);
 template<typename T, size_t Size, typename U> void array_push_back(std::array<T, Size>& array, size_t& size, U&& value);
 
 APRS_ROUTER_NAMESPACE_END
@@ -2315,7 +2315,7 @@ APRS_ROUTER_INLINE bool push_routing_ended_diagnostic(const address& address, bo
 
         diag.target = applies_to::path;
         diag.type = routing_action::warn;
-        diag.message = "Packet has finished routing";
+        diag.message_type = message_type::routing_ended;
         diag.address.assign(address.text.begin(), address.text.end());
         diag.start = address.offset;
         diag.end = diag.start + address.length;
@@ -2336,7 +2336,7 @@ APRS_ROUTER_INLINE bool push_routed_by_us_diagnostic(const std::array<address, 8
 
         diag.target = applies_to::path;
         diag.type = routing_action::warn;
-        diag.message = "Packet has already been routed";
+        diag.message_type = message_type::already_routed;
         diag.address.assign(address.text.begin(), address.text.end());
         diag.start = address.offset;
         diag.end = diag.start + address.length;
@@ -2359,7 +2359,7 @@ APRS_ROUTER_INLINE bool push_address_set_diagnostic(const std::array<address, 8>
 
         diag.target = applies_to::path;
         diag.type = routing_action::set;
-        diag.message = "Packet address marked as 'set'";
+        diag.message_type = message_type::address_set;
         internal_string_t<char> address_text = to_string(address);
         diag.address.assign(address_text.begin(), address_text.end());
         diag.start = address.offset;
@@ -2402,7 +2402,7 @@ APRS_ROUTER_INLINE bool push_address_unset_diagnostic(const std::array<address, 
 
                 diag.target = applies_to::path;
                 diag.type = routing_action::unset;
-                diag.message = "Packet address marked as 'unset'";
+                diag.message_type = message_type::address_unset;
                 internal_string_t<char> address_text = to_string(address);
                 diag.address.assign(address_text.begin(), address_text.end());
                 diag.start = offset;
@@ -2443,7 +2443,7 @@ APRS_ROUTER_INLINE bool push_address_replaced_diagnostic(const std::array<addres
 
         diag.target = applies_to::path;
         diag.type = routing_action::replace;
-        diag.message = "Packet address replaced";
+        diag.message_type = message_type::address_replaced;
         diag.address = new_address;
         diag.start = address.offset;
         diag.end = diag.start + address.length;
@@ -2462,7 +2462,7 @@ APRS_ROUTER_INLINE bool push_address_decremented_diagnostic(address& address, bo
 
         diag.target = applies_to::path;
         diag.type = routing_action::decrement;
-        diag.message = "Packet address decremented";
+        diag.message_type = message_type::address_decremented;
         internal_string_t<char> address_text = to_string(address);
         diag.address.assign(address_text.begin(), address_text.end());
         diag.start = address.offset;
@@ -2493,7 +2493,7 @@ APRS_ROUTER_INLINE bool push_address_inserted_diagnostic(const std::array<addres
 
         diag.target = applies_to::path;
         diag.type = routing_action::insert;
-        diag.message = "Packet address inserted";
+        diag.message_type = message_type::address_inserted;
         diag.address.assign(address.text.begin(), address.text.end());
         diag.start = address.offset;
         diag.end = diag.start + address.text.size();
@@ -2516,7 +2516,7 @@ APRS_ROUTER_INLINE bool push_address_removed_diagnostic(const std::array<address
 
         diag.target = applies_to::path;
         diag.type = routing_action::remove;
-        diag.message = "Packet address removed";
+        diag.message_type = message_type::address_removed;
         diag.address.assign(address.text.begin(), address.text.end());
         diag.start = address.offset;
         diag.end = diag.start + address.text.size();
@@ -2540,7 +2540,7 @@ APRS_ROUTER_INLINE bool create_address_move_diagnostic(const std::array<address,
 
         remove_diag.target = applies_to::path;
         remove_diag.type = routing_action::remove;
-        remove_diag.message = "Packet address removed";
+        remove_diag.message_type = message_type::address_removed;
         internal_string_t<char> removed_address_text = to_string(removed_address);
         remove_diag.address.assign(removed_address_text.begin(), removed_address_text.end());
         remove_diag.start = removed_address.offset;
@@ -2555,7 +2555,7 @@ APRS_ROUTER_INLINE bool create_address_move_diagnostic(const std::array<address,
 
         insert_diag.target = applies_to::path;
         insert_diag.type = routing_action::insert;
-        insert_diag.message = "Packet address inserted";
+        insert_diag.message_type = message_type::address_inserted;
         internal_string_t<char> inserted_address_text = to_string(removed_address);
         insert_diag.address.assign(inserted_address_text.begin(), inserted_address_text.end());
         insert_diag.start = inserted_address.offset;
@@ -2590,7 +2590,7 @@ APRS_ROUTER_INLINE bool create_truncate_address_range_diagnostic(const std::arra
 
         diag.target = applies_to::path;
         diag.type = routing_action::remove;
-        diag.message = "Packet address removed";
+        diag.message_type = message_type::address_removed;
         diag.address.assign(address.text.begin(), address.text.end());
         diag.start = initial_offset;
         diag.end = diag.start + address.length;
@@ -2647,7 +2647,7 @@ APRS_ROUTER_INLINE routing_diagnostic_display_entry create_diagnostic_print_line
 
     routing_diagnostic_display_entry entry;
 
-    entry.message = diag.message;
+    entry.message = to_string(diag.message_type);
     entry.packet_string = to_string(routed_packet);
     entry.highlight_string.append(std::string(diag.start, ' '));
     entry.highlight_string.append(std::string(diag.end - diag.start, '~'));
@@ -4251,8 +4251,8 @@ APRS_ROUTER_INLINE void array_erase_n(std::array<T, Size>& array, size_t& size, 
     size -= count;
 }
 
-template<typename T, size_t Size>
-APRS_ROUTER_INLINE void array_insert(std::array<T, Size>& array, size_t& size, size_t index, T& value)
+template<typename T, size_t Size, typename U>
+APRS_ROUTER_INLINE void array_insert(std::array<T, Size>& array, size_t& size, size_t index, U&& value)
 {
     assert(index >= 0 && index <= size);
     assert(size < Size);
@@ -4261,7 +4261,7 @@ APRS_ROUTER_INLINE void array_insert(std::array<T, Size>& array, size_t& size, s
 
     std::move_backward(begin + index, begin + size, begin + size + 1);
 
-    array[index] = value;
+    array[index] = std::forward<U>(value);
 
     size++;
 }
