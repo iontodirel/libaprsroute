@@ -68,7 +68,7 @@ target_link_libraries(aprsroute_tests GTest::gtest_main gtest gtest_main nlohman
 set_property(TARGET aprsroute_tests PROPERTY CXX_STANDARD 20)
 target_precompile_headers(aprsroute_tests PRIVATE "pch.h")
 
-add_executable(aprsroute_auto_tests "auto_tests.cpp" "../aprsroute.hpp")
+add_executable(aprsroute_auto_tests "auto_tests.cpp" "../aprsroute.hpp" "routes.h" "routes.cpp")
 target_link_libraries(aprsroute_auto_tests GTest::gtest_main gtest gtest_main nlohmann_json::nlohmann_json fmt::fmt etl::etl)
 set_property(TARGET aprsroute_auto_tests PROPERTY CXX_STANDARD 17)
 
@@ -85,15 +85,18 @@ target_link_libraries(aprsroute_external_custom_packet_test GTest::gtest_main gt
 set_property(TARGET aprsroute_external_custom_packet_test PROPERTY CXX_STANDARD 20)
 
 add_executable (aprsroute_use_in_tu "use_in_tu.h" "use_in_tu.cpp" "use_in_other_tu.cpp" "compile_in_tu.cpp")
+target_link_libraries(aprsroute_use_in_tu GTest::gtest_main gtest gtest_main)
 set_property(TARGET aprsroute_use_in_tu PROPERTY CXX_STANDARD 20)
 
 add_executable(aprsroute_without_pmr_build_test "without_pmr.cpp" "../aprsroute.hpp")
+target_link_libraries(aprsroute_without_pmr_build_test GTest::gtest_main gtest gtest_main)
 set_property(TARGET aprsroute_without_pmr_build_test PROPERTY CXX_STANDARD 20)
 
 add_executable(aprsroute_with_pmr_build_test "with_pmr.cpp" "../aprsroute.hpp")
 set_property(TARGET aprsroute_with_pmr_build_test PROPERTY CXX_STANDARD 20)
 
 add_executable(aprsroute_set_cpp17_std "set_cpp17_std.cpp" "../aprsroute.hpp")
+target_link_libraries(aprsroute_set_cpp17_std GTest::gtest_main gtest gtest_main)
 set_property(TARGET aprsroute_set_cpp17_std PROPERTY CXX_STANDARD 17)
 
 add_executable(aprsroute_with_etl_vector_test "with_etl_vector.cpp" "../aprsroute.hpp")
@@ -111,7 +114,7 @@ target_link_libraries(aprsroute_with_etl_test PRIVATE etl::etl GTest::gtest_main
 add_definitions(-DINPUT_TEST_FILE="${INPUT_TEST_FILE}")
 
 if(MSVC)
-    target_compile_options(aprsroute_tests PRIVATE /W4 /WX)
+    target_compile_options(aprsroute_tests PRIVATE /W4 /WX /permissive-)
 elseif(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     target_compile_options(aprsroute_tests PRIVATE -Wall -Wextra -pedantic -Werror)
 endif()
@@ -123,3 +126,7 @@ gtest_discover_tests(aprsroute_auto_tests)
 gtest_discover_tests(aprsroute_external_packet_test)
 gtest_discover_tests(aprsroute_external_custom_packet_test)
 gtest_discover_tests(aprsroute_with_etl_test)
+gtest_discover_tests(aprsroute_set_cpp17_std)
+gtest_discover_tests(aprsroute_without_pmr_build_test)
+gtest_discover_tests(aprsroute_use_in_tu)
+gtest_discover_tests(aprsroute_stack_test)

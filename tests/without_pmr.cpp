@@ -29,16 +29,16 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include <cassert>
-
 #define APRS_ROUTER_USE_PMR 0
 
 #include "../aprsroute.hpp"
 
+#include <gtest/gtest.h>
+
 using namespace aprs::router;
 using namespace aprs::router::detail;
 
-int main()
+TEST(router, try_route_packet)
 {
     aprs::router::router_settings settings{ "DIGI", {}, { "WIDE1-2", "WIDE2-3" }, aprs::router::routing_option::none, false };
 
@@ -53,7 +53,11 @@ int main()
 
     aprs::router::try_route_packet("N0CALL-10", "CALL-5", original_packet_path.begin(), original_packet_path.end(), settings, std::back_inserter(routed_packet_path), routing_state, std::back_inserter(routing_actions), nullptr);
 
-    assert((routed_packet_path == std::vector<std::string>{ "CALLA-10", "CALLB-5", "CALLC-15", "WIDE1", "DIGI", "WIDE2*" }));
+    EXPECT_TRUE((routed_packet_path == std::vector<std::string>{ "CALLA-10", "CALLB-5", "CALLC-15", "WIDE1", "DIGI", "WIDE2*" }));
+}
 
-    return 0;
+int main(int argc, char** argv)
+{
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

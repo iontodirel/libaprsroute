@@ -73,6 +73,7 @@ using namespace aprs::router::detail;
 
 routing_result test_packet_routing_iteration(const packet& p, router_settings digi, std::vector<std::string> addresses, std::vector<size_t> digipeated_indices, int count);
 bool try_parse_addresses(const std::vector<std::string>& addresses, internal_vector_t<address>& result);
+bool try_parse_addresses(const std::vector<std::string>& addresses, std::array<address, 8>& result, size_t& result_size);
 
 routing_result test_packet_routing_iteration(const packet& p, router_settings digi, std::vector<std::string> addresses, std::vector<size_t> digipeated_indices, int count)
 {
@@ -116,6 +117,22 @@ bool try_parse_addresses(const std::vector<std::string>& addresses, internal_vec
         s.index = index;
         index++;
         result.push_back(s);
+    }
+    return true;
+}
+
+bool try_parse_addresses(const std::vector<std::string>& addresses, std::array<address, 8>& result, size_t& result_size)
+{
+    result_size = 0;
+    size_t index = 0;
+    for (const auto& a : addresses)
+    {
+        if (result_size >= 8) break;
+        address s;
+        try_parse_address(a, s);
+        s.index = index;
+        index++;
+        result[result_size++] = s;
     }
     return true;
 }
@@ -219,6 +236,181 @@ TEST(address, to_string)
     s.text = "N0CALL-10";
     s.ssid = 10;
     EXPECT_TRUE(to_string(s) == "N0CALL-10-10"); // to_string preserves the text even if ssid is specified and results in an invalid address
+#else
+    EXPECT_TRUE(true);
+#endif
+}
+
+TEST(address, canonicalize)
+{
+#ifndef APRS_ROUTE_DISABLE_TESTS
+
+    // n and N both set, mark = false
+    {
+        address a1;
+        a1.text = "WIDE";
+        a1.n = 2;
+        a1.N = 1;
+        a1.mark = false;
+
+        address a2;
+        a2.text = "WIDE2";
+        a2.ssid = 1;
+
+        EXPECT_TRUE(canonicalize(a1) == a2);
+    }
+
+    // Already canonical (n == 0 && N == 0)
+    {
+        address a1;
+        a1.text = "RELAY";
+        a1.n = 0;
+        a1.N = 0;
+        a1.ssid = 3;
+        a1.mark = false;
+
+        address a2 = a1;
+
+        EXPECT_TRUE(canonicalize(a1) == a2);
+    }
+
+    // Has ssid > 0, should return unchanged
+    {
+        address a1;
+        a1.text = "WIDE1";
+        a1.n = 0;
+        a1.N = 0;
+        a1.ssid = 2;
+        a1.mark = false;
+
+        address a2 = a1;
+
+        EXPECT_TRUE(canonicalize(a1) == a2);
+    }
+
+    // Only n > 0, N == 0
+    {
+        address a1;
+        a1.text = "WIDE";
+        a1.n = 3;
+        a1.N = 0;
+        a1.ssid = 0;
+        a1.mark = false;
+
+        address a2;
+        a2.text = "WIDE3";
+        a2.n = 0;
+        a2.N = 0;
+        a2.ssid = 0;
+
+        EXPECT_TRUE(canonicalize(a1) == a2);
+    }
+
+    // Only N > 0, n == 0
+    {
+        address a1;
+        a1.text = "RELAY";
+        a1.n = 0;
+        a1.N = 5;
+        a1.ssid = 0;
+        a1.mark = false;
+
+        address a2;
+        a2.text = "RELAY";
+        a2.n = 0;
+        a2.N = 0;
+        a2.ssid = 5;
+
+        EXPECT_TRUE(canonicalize(a1) == a2);
+    }
+
+    // n > 0 with mark = true (insert before last character)
+    {
+        address a1;
+        a1.text = "WIDE*";
+        a1.n = 1;
+        a1.N = 1;
+        a1.mark = true;
+
+        address a2;
+        a2.text = "WIDE1*";
+        a2.n = 0;
+        a2.N = 0;
+        a2.ssid = 1;
+        a2.mark = true;
+
+        EXPECT_TRUE(canonicalize(a1) == a2);
+    }
+
+    // n > 0 with mark = true, N == 0
+    {
+        address a1;
+        a1.text = "WIDE*";
+        a1.n = 2;
+        a1.N = 0;
+        a1.ssid = 0;
+        a1.mark = true;
+
+        address a2;
+        a2.text = "WIDE2*";
+        a2.n = 0;
+        a2.N = 0;
+        a2.ssid = 0;
+        a2.mark = true;
+
+        EXPECT_TRUE(canonicalize(a1) == a2);
+    }
+
+    // Empty/minimal address, already canonical
+    {
+        address a1;
+        a1.text = "W1AW";
+        a1.n = 0;
+        a1.N = 0;
+        a1.ssid = 0;
+        a1.mark = false;
+
+        address a2 = a1;
+
+        EXPECT_TRUE(canonicalize(a1) == a2);
+    }
+
+    // Edge case: n = 9 (max single digit)
+    {
+        address a1;
+        a1.text = "TEST";
+        a1.n = 9;
+        a1.N = 7;
+        a1.ssid = 0;
+        a1.mark = false;
+
+        address a2;
+        a2.text = "TEST9";
+        a2.n = 0;
+        a2.N = 0;
+        a2.ssid = 7;
+
+        EXPECT_TRUE(canonicalize(a1) == a2);
+    }
+
+    // Edge case: n = 1 (min non-zero single digit)
+    {
+        address a1;
+        a1.text = "WIDE";
+        a1.n = 1;
+        a1.N = 1;
+        a1.ssid = 0;
+        a1.mark = false;
+
+        address a2;
+        a2.text = "WIDE1";
+        a2.n = 0;
+        a2.N = 0;
+        a2.ssid = 1;
+
+        EXPECT_TRUE(canonicalize(a1) == a2);
+    }
+
 #else
     EXPECT_TRUE(true);
 #endif
@@ -1899,9 +2091,10 @@ TEST(addresses, set_address_as_used)
 #ifndef APRS_ROUTE_DISABLE_TESTS
     packet p = { "N0CALL", "APRS", { "CALLA", "CALLB*", "CALLC", "CALLD", "CALLE", "CALLF" }, "data"};
 
-    internal_vector_t<address> segments;
-    try_parse_addresses(p.path, segments);
-    set_addresses_offset(p.from, p.to, segments);
+    std::array<address, 8> segments;
+    size_t segments_size;
+    try_parse_addresses(p.path, segments, segments_size);
+    set_addresses_offset(p.from, p.to, segments, segments_size);
 
     // N0CALL>APRS,CALLA,CALLB*,CALLC,CALLD,CALLE,CALLF:data
     //             ~~~~~ ~~~~~~ ~~~~~ ~~~~~ ~~~~~ ~~~~~
@@ -1926,7 +2119,7 @@ TEST(addresses, set_address_as_used)
     EXPECT_TRUE(segments[5].length == 5);
     EXPECT_TRUE(segments[5].mark == false);
 
-    set_address_as_used(segments, 4);
+    set_address_as_used(segments, segments_size, 4);
 
     // N0CALL>APRS,CALLA,CALLB,CALLC,CALLD,CALLE*,CALLF:data
     //             ~~~~~ ~~~~~ ~~~~~ ~~~~~ ~~~~~~ ~~~~~
@@ -1962,12 +2155,13 @@ TEST(diagnostic, push_address_unset_diagnostic)
     packet p = { "N0CALL", "APRS", { "CALLA*", "CALLB*", "CALLC", "WIDE2-2*", "CALLD*", "CALLE", "CALLF" }, "data"};
 
     // Initialize offsets
-    internal_vector_t<address> segments;
-    try_parse_addresses(p.path, segments);
-    set_addresses_offset(p.from, p.to, segments);
+    std::array<address, 8> segments;
+    size_t segments_size;
+    try_parse_addresses(p.path, segments, segments_size);
+    set_addresses_offset(p.from, p.to, segments, segments_size);
 
     internal_vector_t<routing_diagnostic> diag;
-    push_address_unset_diagnostic(segments, 5, true, diag);
+    push_address_unset_diagnostic(segments, segments_size, 5, true, diag);
 
     // N0CALL>APRS,CALLA*,CALLB*,CALLC,WIDE2-2*,CALLD*,CALLE,CALLF:data
     //             ~~~~~~
@@ -2017,11 +2211,12 @@ TEST(diagnostic, push_address_set_diagnostic)
 #ifndef APRS_ROUTE_DISABLE_TESTS
     packet p = { "N0CALL", "APRS", { "CALLA*", "CALLB*", "CALLC", "WIDE2-2*", "CALLD*", "CALLE", "CALLF" }, "data"};
 
-    internal_vector_t<address> segments;
-    try_parse_addresses(p.path, segments);
-    set_addresses_offset(p.from, p.to, segments);
+    std::array<address, 8> segments;
+    size_t segments_size;
+    try_parse_addresses(p.path, segments, segments_size);
+    set_addresses_offset(p.from, p.to, segments, segments_size);
 
-    set_address_as_used(segments, 5);
+    set_address_as_used(segments, segments_size, 5);
 
     // Input:
     //
@@ -2033,7 +2228,7 @@ TEST(diagnostic, push_address_set_diagnostic)
     //                                                  ~
 
     internal_vector_t<routing_diagnostic> diag;
-    push_address_set_diagnostic(segments, 5, true, diag);
+    push_address_set_diagnostic(segments, segments_size, 5, true, diag);
 
     // N0CALL>APRS,CALLA,CALLB,CALLC,WIDE2-2,CALLD,CALLE*,CALLF:data
     //                                             ~~~~~

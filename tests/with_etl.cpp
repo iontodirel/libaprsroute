@@ -120,7 +120,7 @@ TEST(router, try_route_packet_with_etl_vector)
     EXPECT_TRUE(routing_actions[0].end == 60);
     EXPECT_TRUE(routing_actions[0].type == aprs::router::routing_action::decrement);
     EXPECT_TRUE(routing_actions[0].address == "WIDE2");
-    EXPECT_TRUE(routing_actions[0].message == "Packet address decremented");
+    EXPECT_TRUE(to_string(routing_actions[0].message_type) == "Packet address decremented");
 
     EXPECT_TRUE(routing_actions[1].target == aprs::router::applies_to::path);
     EXPECT_TRUE(routing_actions[1].index == 0);
@@ -128,7 +128,7 @@ TEST(router, try_route_packet_with_etl_vector)
     EXPECT_TRUE(routing_actions[1].end == 26);
     EXPECT_TRUE(routing_actions[1].type == aprs::router::routing_action::unset);
     EXPECT_TRUE(routing_actions[1].address == "CALLA-10");
-    EXPECT_TRUE(routing_actions[1].message == "Packet address marked as 'unset'");
+    EXPECT_TRUE(to_string(routing_actions[1].message_type) == "Packet address marked as 'unset'");
 
     EXPECT_TRUE(routing_actions[2].target == aprs::router::applies_to::path);
     EXPECT_TRUE(routing_actions[2].index == 1);
@@ -136,7 +136,7 @@ TEST(router, try_route_packet_with_etl_vector)
     EXPECT_TRUE(routing_actions[2].end == 34);
     EXPECT_TRUE(routing_actions[2].type == aprs::router::routing_action::unset);
     EXPECT_TRUE(routing_actions[2].address == "CALLB-5");
-    EXPECT_TRUE(routing_actions[2].message == "Packet address marked as 'unset'");
+    EXPECT_TRUE(to_string(routing_actions[2].message_type) == "Packet address marked as 'unset'");
 
     EXPECT_TRUE(routing_actions[3].target == aprs::router::applies_to::path);
     EXPECT_TRUE(routing_actions[3].index == 2);
@@ -144,7 +144,7 @@ TEST(router, try_route_packet_with_etl_vector)
     EXPECT_TRUE(routing_actions[3].end == 43);
     EXPECT_TRUE(routing_actions[3].type == aprs::router::routing_action::unset);
     EXPECT_TRUE(routing_actions[3].address == "CALLC-15");
-    EXPECT_TRUE(routing_actions[3].message == "Packet address marked as 'unset'");
+    EXPECT_TRUE(to_string(routing_actions[3].message_type) == "Packet address marked as 'unset'");
 
     EXPECT_TRUE(routing_actions[4].target == aprs::router::applies_to::path);
     EXPECT_TRUE(routing_actions[4].index == 3);
@@ -152,7 +152,7 @@ TEST(router, try_route_packet_with_etl_vector)
     EXPECT_TRUE(routing_actions[4].end == 49);
     EXPECT_TRUE(routing_actions[4].type == aprs::router::routing_action::unset);
     EXPECT_TRUE(routing_actions[4].address == "WIDE1");
-    EXPECT_TRUE(routing_actions[4].message == "Packet address marked as 'unset'");
+    EXPECT_TRUE(to_string(routing_actions[4].message_type) == "Packet address marked as 'unset'");
 
     EXPECT_TRUE(routing_actions[5].target == aprs::router::applies_to::path);
     EXPECT_TRUE(routing_actions[5].index == 4);
@@ -160,7 +160,7 @@ TEST(router, try_route_packet_with_etl_vector)
     EXPECT_TRUE(routing_actions[5].end == 54);
     EXPECT_TRUE(routing_actions[5].type == aprs::router::routing_action::set);
     EXPECT_TRUE(routing_actions[5].address == "WIDE2");
-    EXPECT_TRUE(routing_actions[5].message == "Packet address marked as 'set'");
+    EXPECT_TRUE(to_string(routing_actions[5].message_type) == "Packet address marked as 'set'");
 
     EXPECT_TRUE(routing_actions[6].target == aprs::router::applies_to::path);
     EXPECT_TRUE(routing_actions[6].index == 4);
@@ -168,7 +168,7 @@ TEST(router, try_route_packet_with_etl_vector)
     EXPECT_TRUE(routing_actions[6].end == 53);
     EXPECT_TRUE(routing_actions[6].type == aprs::router::routing_action::insert);
     EXPECT_TRUE(routing_actions[6].address == "DIGI");
-    EXPECT_TRUE(routing_actions[6].message == "Packet address inserted");
+    EXPECT_TRUE(to_string(routing_actions[6].message_type) == "Packet address inserted");
 
     EXPECT_TRUE((std::vector<std::string>(routed_packet_path.begin(), routed_packet_path_out_end_it) == std::vector<std::string>{ "CALLA-10", "CALLB-5", "CALLC-15", "WIDE1", "DIGI", "WIDE2*" }));
 }
@@ -200,7 +200,7 @@ TEST(router, try_route_packet_output_iterator_stack)
     EXPECT_TRUE(routing_actions[0].end == 60);
     EXPECT_TRUE(routing_actions[0].type == aprs::router::routing_action::decrement);
     EXPECT_TRUE(routing_actions[0].address == "WIDE2");
-    EXPECT_TRUE(routing_actions[0].message == "Packet address decremented");
+    EXPECT_TRUE(to_string(routing_actions[0].message_type) == "Packet address decremented");
 
     EXPECT_TRUE(routing_actions[1].target == aprs::router::applies_to::path);
     EXPECT_TRUE(routing_actions[1].index == 0);
@@ -208,7 +208,7 @@ TEST(router, try_route_packet_output_iterator_stack)
     EXPECT_TRUE(routing_actions[1].end == 26);
     EXPECT_TRUE(routing_actions[1].type == aprs::router::routing_action::unset);
     EXPECT_TRUE(routing_actions[1].address == "CALLA-10");
-    EXPECT_TRUE(routing_actions[1].message == "Packet address marked as 'unset'");
+    EXPECT_TRUE(to_string(routing_actions[1].message_type) == "Packet address marked as 'unset'");
 
     EXPECT_TRUE(routing_actions[2].target == aprs::router::applies_to::path);
     EXPECT_TRUE(routing_actions[2].index == 1);
@@ -216,7 +216,7 @@ TEST(router, try_route_packet_output_iterator_stack)
     EXPECT_TRUE(routing_actions[2].end == 34);
     EXPECT_TRUE(routing_actions[2].type == aprs::router::routing_action::unset);
     EXPECT_TRUE(routing_actions[2].address == "CALLB-5");
-    EXPECT_TRUE(routing_actions[2].message == "Packet address marked as 'unset'");
+    EXPECT_TRUE(to_string(routing_actions[2].message_type) == "Packet address marked as 'unset'");
 
     EXPECT_TRUE(routing_actions[3].target == aprs::router::applies_to::path);
     EXPECT_TRUE(routing_actions[3].index == 2);
@@ -224,7 +224,7 @@ TEST(router, try_route_packet_output_iterator_stack)
     EXPECT_TRUE(routing_actions[3].end == 43);
     EXPECT_TRUE(routing_actions[3].type == aprs::router::routing_action::unset);
     EXPECT_TRUE(routing_actions[3].address == "CALLC-15");
-    EXPECT_TRUE(routing_actions[3].message == "Packet address marked as 'unset'");
+    EXPECT_TRUE(to_string(routing_actions[3].message_type) == "Packet address marked as 'unset'");
 
     EXPECT_TRUE(routing_actions[4].target == aprs::router::applies_to::path);
     EXPECT_TRUE(routing_actions[4].index == 3);
@@ -232,7 +232,7 @@ TEST(router, try_route_packet_output_iterator_stack)
     EXPECT_TRUE(routing_actions[4].end == 49);
     EXPECT_TRUE(routing_actions[4].type == aprs::router::routing_action::unset);
     EXPECT_TRUE(routing_actions[4].address == "WIDE1");
-    EXPECT_TRUE(routing_actions[4].message == "Packet address marked as 'unset'");
+    EXPECT_TRUE(to_string(routing_actions[4].message_type) == "Packet address marked as 'unset'");
 
     EXPECT_TRUE(routing_actions[5].target == aprs::router::applies_to::path);
     EXPECT_TRUE(routing_actions[5].index == 4);
@@ -240,7 +240,7 @@ TEST(router, try_route_packet_output_iterator_stack)
     EXPECT_TRUE(routing_actions[5].end == 54);
     EXPECT_TRUE(routing_actions[5].type == aprs::router::routing_action::set);
     EXPECT_TRUE(routing_actions[5].address == "WIDE2");
-    EXPECT_TRUE(routing_actions[5].message == "Packet address marked as 'set'");
+    EXPECT_TRUE(to_string(routing_actions[5].message_type) == "Packet address marked as 'set'");
 
     EXPECT_TRUE(routing_actions[6].target == aprs::router::applies_to::path);
     EXPECT_TRUE(routing_actions[6].index == 4);
@@ -248,7 +248,7 @@ TEST(router, try_route_packet_output_iterator_stack)
     EXPECT_TRUE(routing_actions[6].end == 53);
     EXPECT_TRUE(routing_actions[6].type == aprs::router::routing_action::insert);
     EXPECT_TRUE(routing_actions[6].address == "DIGI");
-    EXPECT_TRUE(routing_actions[6].message == "Packet address inserted");
+    EXPECT_TRUE(to_string(routing_actions[6].message_type) == "Packet address inserted");
 
     EXPECT_TRUE((std::vector<std::string>(std::begin(routed_packet_path), routed_packet_path_out_end_it) == std::vector<std::string>{ "CALLA-10", "CALLB-5", "CALLC-15", "WIDE1", "DIGI", "WIDE2*" }));
 }

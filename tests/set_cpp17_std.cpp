@@ -29,6 +29,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
+#include <gtest/gtest.h>
+
 #include "../aprsroute.hpp"
 
 #include <cstdio>
@@ -58,7 +60,7 @@
 
 using namespace aprs::router;
 
-int main()
+TEST(router, try_route_packet)
 {
     static_assert(correct_std, "C++17 is not enabled. Expected C++17.");
 
@@ -67,9 +69,13 @@ int main()
 
     packet p = "N0CALL>APRS,WIDE1-3:data";
 
-    try_route_packet(p, digi, result);
+    EXPECT_TRUE(try_route_packet(p, digi, result));
 
-    printf("%s\n", to_string(result).c_str());
+    EXPECT_TRUE(result.routed_packet == "N0CALL>APRS,DIGI*,WIDE1-2:data");
+}
 
-    return 0;
+int main(int argc, char** argv)
+{
+    ::testing::InitGoogleTest(&argc, argv);
+    return RUN_ALL_TESTS();
 }

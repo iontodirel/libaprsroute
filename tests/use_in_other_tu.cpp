@@ -1,19 +1,17 @@
 #include "use_in_tu.h"
 
-#include <cassert>
-
+TEST(router, try_route_packet_in_other_tu)
+{
 using namespace aprs::router;
 using namespace aprs::router::detail;
 
-void func()
-{
-    router_settings digi { "DIGI", { "WIDE1" } };
+    router_settings digi { "DIGI", {}, { "WIDE1" } };
     routing_result result;
 
     packet p = { "N0CALL", "APRS", { "WIDE1-3" }, "data" }; // N0CALL>APRS,WIDE1-3:data
 
     try_route_packet(p, digi, result);
 
-    assert(result.state == routing_state::routed);
-    assert(to_string(result.routed_packet) == "N0CALL>APRS,DIGI*,WIDE1-2:data");
+    EXPECT_TRUE(result.state == routing_state::routed);
+    EXPECT_TRUE(to_string(result.routed_packet) == "N0CALL>APRS,DIGI*,WIDE1-2:data");
 }

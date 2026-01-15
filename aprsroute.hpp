@@ -737,6 +737,7 @@ bool operator==(const address& lhs, const address& rhs);
 bool operator!=(const address& lhs, const address& rhs);
 internal_string_t<char> to_string(const struct address& address);
 bool equal_addresses_ignore_mark(const struct address& lhs, const struct address& rhs);
+address canonicalize(const struct address& address);
 q_construct parse_q_construct(std::string_view input);
 address_kind parse_address_kind(std::string_view text);
 bool try_parse_address(std::string_view address_string, address& result);
@@ -2864,6 +2865,44 @@ APRS_ROUTER_INLINE bool equal_addresses_ignore_mark(const struct address& lhs, c
     return false;
 }
 
+APRS_ROUTER_INLINE address canonicalize(const struct address& address)
+{
+    // Canonicalize an address by removing n-N information and preserving only the ssid.
+
+    assert(address.n == 0 || address.ssid == 0);
+    assert(address.N == 0 || address.ssid == 0);
+
+    struct address result = address;
+
+    if ((result.n == 0 && result.N == 0) ||
+        result.ssid > 0)
+    {
+        // Already canonical
+        return result;
+    }
+
+    if (result.n > 0)
+    {
+        if (result.mark)
+        {
+            result.text.insert(result.text.end() - 1, char('0' + result.n));
+        }
+        else
+        {
+            result.text.insert(result.text.end(), char('0' + result.n));
+        }
+        result.n = 0;
+    }
+
+    if (result.N > 0)
+    {
+        result.ssid = result.N;
+        result.N = 0;
+    }
+
+    return result;
+}
+
 APRS_ROUTER_INLINE q_construct parse_q_construct(std::string_view text)
 {
     if (text.size() != 3 || text[0] != 'q' || text[1] != 'A')
@@ -4175,6 +4214,7 @@ APRS_ROUTER_INLINE bool has_packet_routing_ended(const std::array<address, 8>& p
     // then the packet routing has ended
 
     (void)packet_addresses;
+
     if (maybe_last_used_address_index)
     {
         return (packet_addresses_size == 0 || (maybe_last_used_address_index.value() == (packet_addresses_size - 1)));
