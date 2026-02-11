@@ -39,6 +39,7 @@
 #include <fstream>
 #include <sstream>
 #include <locale>
+#include <limits>
 #include <memory_resource>
 
 #ifdef _MSC_VER
@@ -170,6 +171,88 @@ TEST(number, try_parse_int)
 
     EXPECT_TRUE(try_parse_int("12345678901234567890", n) == false);
     EXPECT_TRUE(n == 0);
+
+    // leading/trailing whitespace
+    EXPECT_TRUE(try_parse_int(" 123", n) == false);
+    EXPECT_TRUE(n == 0);
+
+    EXPECT_TRUE(try_parse_int("123 ", n) == false);
+    EXPECT_TRUE(n == 0);
+
+    EXPECT_TRUE(try_parse_int(" 123 ", n) == false);
+    EXPECT_TRUE(n == 0);
+
+    // empty and whitespace-only strings
+    EXPECT_TRUE(try_parse_int("", n) == false);
+    EXPECT_TRUE(n == 0);
+
+    EXPECT_TRUE(try_parse_int(" ", n) == false);
+    EXPECT_TRUE(n == 0);
+
+    // positive sign prefix (not accepted by std::from_chars)
+    EXPECT_TRUE(try_parse_int("+1", n) == false);
+    EXPECT_TRUE(n == 0);
+
+    // negative values
+    EXPECT_TRUE(try_parse_int("-100", n));
+    EXPECT_TRUE(n == -100);
+
+    EXPECT_TRUE(try_parse_int("-0", n));
+    EXPECT_TRUE(n == 0);
+
+    // max and min int boundaries
+    EXPECT_TRUE(try_parse_int(std::to_string(std::numeric_limits<int>::max()), n));
+    EXPECT_TRUE(n == std::numeric_limits<int>::max());
+
+    EXPECT_TRUE(try_parse_int(std::to_string(std::numeric_limits<int>::min()), n));
+    EXPECT_TRUE(n == std::numeric_limits<int>::min());
+
+    // overflow beyond int range
+    EXPECT_TRUE(try_parse_int(std::to_string((long long)std::numeric_limits<int>::max() + 1), n) == false);
+    EXPECT_TRUE(n == 0);
+
+    EXPECT_TRUE(try_parse_int(std::to_string((long long)std::numeric_limits<int>::min() - 1), n) == false);
+    EXPECT_TRUE(n == 0);
+
+    // leading zeros
+    EXPECT_TRUE(try_parse_int("007", n));
+    EXPECT_TRUE(n == 7);
+
+    EXPECT_TRUE(try_parse_int("00", n));
+    EXPECT_TRUE(n == 0);
+
+    // special characters
+    EXPECT_TRUE(try_parse_int("-", n) == false);
+    EXPECT_TRUE(n == 0);
+
+    EXPECT_TRUE(try_parse_int("--1", n) == false);
+    EXPECT_TRUE(n == 0);
+
+    EXPECT_TRUE(try_parse_int("1e2", n) == false);
+    EXPECT_TRUE(n == 0);
+
+    EXPECT_TRUE(try_parse_int("0x1A", n) == false);
+    EXPECT_TRUE(n == 0);
+
+    // single digit
+    EXPECT_TRUE(try_parse_int("5", n));
+    EXPECT_TRUE(n == 5);
+
+    // mixed invalid inputs
+    EXPECT_TRUE(try_parse_int("abc123", n) == false);
+    EXPECT_TRUE(n == 0);
+
+    EXPECT_TRUE(try_parse_int("12 34", n) == false);
+    EXPECT_TRUE(n == 0);
+
+    EXPECT_TRUE(try_parse_int("1-2", n) == false);
+    EXPECT_TRUE(n == 0);
+
+    // value is reset to 0 on failure after a prior success
+    EXPECT_TRUE(try_parse_int("42", n));
+    EXPECT_TRUE(n == 42);
+    EXPECT_TRUE(try_parse_int("bad", n) == false);
+    EXPECT_TRUE(n == 0);
 #else 
     EXPECT_TRUE(true);
 #endif
@@ -182,7 +265,21 @@ TEST(address, parse_address_kind)
     EXPECT_TRUE(parse_address_kind("NOGATE") == address_kind::nogate);
     EXPECT_TRUE(parse_address_kind("RFONLY") == address_kind::rfonly);
     EXPECT_TRUE(parse_address_kind("TRACE") == address_kind::trace);
-    EXPECT_TRUE(parse_address_kind("ECHO") == address_kind::echo);
+    EXPECT_TRUE(parse_address_kind("WIDE") == address_kind::wide);
+    EXPECT_TRUE(parse_address_kind("RELAY") == address_kind::relay);
+    EXPECT_TRUE(parse_address_kind("GATE") == address_kind::gate);
+    EXPECT_TRUE(parse_address_kind("TEMP") == address_kind::temp);
+    EXPECT_TRUE(parse_address_kind("TCPIP") == address_kind::tcpip);
+    EXPECT_TRUE(parse_address_kind("TCPXX") == address_kind::tcpxx);
+    EXPECT_TRUE(parse_address_kind("IGATECALL") == address_kind::igatecall);
+    EXPECT_TRUE(parse_address_kind("OPNTRK") == address_kind::opntrk);
+    EXPECT_TRUE(parse_address_kind("OPNTRC") == address_kind::opntrc);
+
+    // invalid / unknown inputs
+    EXPECT_TRUE(parse_address_kind("") == address_kind::other);
+    EXPECT_TRUE(parse_address_kind("N0CALL") == address_kind::other);
+    EXPECT_TRUE(parse_address_kind("echo") == address_kind::other);
+    EXPECT_TRUE(parse_address_kind("WIDE1") == address_kind::other);
 #else 
     EXPECT_TRUE(true);
 #endif
@@ -195,6 +292,19 @@ TEST(address, parse_q_construct)
     EXPECT_TRUE(parse_q_construct("qAS") == q_construct::qAS);
     EXPECT_TRUE(parse_q_construct("qAZ") == q_construct::qAZ);
     EXPECT_TRUE(parse_q_construct("qAr") == q_construct::qAr);
+    EXPECT_TRUE(parse_q_construct("qAX") == q_construct::qAX);
+    EXPECT_TRUE(parse_q_construct("qAU") == q_construct::qAU);
+    EXPECT_TRUE(parse_q_construct("qAo") == q_construct::qAo);
+    EXPECT_TRUE(parse_q_construct("qAO") == q_construct::qAO);
+    EXPECT_TRUE(parse_q_construct("qAR") == q_construct::qAR);
+    EXPECT_TRUE(parse_q_construct("qAI") == q_construct::qAI);
+
+    // invalid / unknown inputs
+    EXPECT_TRUE(parse_q_construct("") == q_construct::none);
+    EXPECT_TRUE(parse_q_construct("qA") == q_construct::none);
+    EXPECT_TRUE(parse_q_construct("qACx") == q_construct::none);
+    EXPECT_TRUE(parse_q_construct("QAC") == q_construct::none);
+    EXPECT_TRUE(parse_q_construct("abc") == q_construct::none);
 #else 
     EXPECT_TRUE(true);
 #endif
@@ -937,6 +1047,54 @@ TEST(address, equal_addresses_ignore_mark)
         address a2{ "WIDE", 1, 0, 0 };
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
+
+    // Both marks true, should still be equal
+    {
+        address a1{ "CALL", 0, 0, 5, true };
+        address a2{ "CALL", 0, 0, 5, true };
+        EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
+    }
+
+    // Completely different callsigns, same n-N
+    {
+        address a1{ "TRACE", 1, 1, 0 };
+        address a2{ "RELAY", 1, 1, 0 };
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
+    }
+
+    // Same text, one with ssid, other with n-N that doesn't match
+    {
+        address a1{ "CALL", 0, 0, 3 };
+        address a2{ "CALL", 2, 1, 0 };
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
+    }
+
+    // Cross-representation: n-N with N=0 vs text with trailing digit and no ssid
+    // WIDE2 (n=2,N=0) == WIDE2 (text="WIDE2")
+    {
+        address a1{ "WIDE", 2, 0, 0 };
+        address a2{ "WIDE2", 0, 0, 0 };
+        EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
+    }
+
+    // Single-char text
+    {
+        address a1{ "A", 0, 0, 0 };
+        address a2{ "A", 0, 0, 0 };
+        EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
+    }
+    {
+        address a1{ "A", 0, 0, 0 };
+        address a2{ "B", 0, 0, 0 };
+        EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
+    }
+
+    // OPNTRK1-1 cross-representation
+    {
+        address a1{ "OPNTRK", 1, 1, 0 };
+        address a2{ "OPNTRK1", 0, 0, 1 };
+        EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
+    }
 #else
     EXPECT_TRUE(true);
 #endif
@@ -1080,6 +1238,96 @@ TEST(packet, try_decode_packet_ctor)
     EXPECT_TRUE(p.path[0] == "WIDE2-2");
 
     EXPECT_TRUE(p == "N0CALL>APRS,WIDE2-2:data");
+
+    // Multiple path elements
+    packet p2 = "FROM>TO,A,B*,C:hello";
+    EXPECT_TRUE(p2.from == "FROM");
+    EXPECT_TRUE(p2.to == "TO");
+    EXPECT_TRUE(p2.path.size() == 3);
+    EXPECT_TRUE(p2.path[0] == "A");
+    EXPECT_TRUE(p2.path[1] == "B*");
+    EXPECT_TRUE(p2.path[2] == "C");
+    EXPECT_TRUE(p2.data == "hello");
+
+    // No path
+    packet p3 = "SRC>DST:payload";
+    EXPECT_TRUE(p3.from == "SRC");
+    EXPECT_TRUE(p3.to == "DST");
+    EXPECT_TRUE(p3.path.empty());
+    EXPECT_TRUE(p3.data == "payload");
+
+    // Construct from std::string
+    std::string pkt_str = "AA>BB,CC:dd";
+    packet p4(pkt_str);
+    EXPECT_TRUE(p4.from == "AA");
+    EXPECT_TRUE(p4.to == "BB");
+    EXPECT_TRUE(p4.path.size() == 1);
+    EXPECT_TRUE(p4.path[0] == "CC");
+    EXPECT_TRUE(p4.data == "dd");
+
+    // Round-trip: to_string matches original
+    std::string original = "N0CALL>APRS,WIDE1-1,WIDE2-2:test data";
+    packet p5 = original.c_str();
+    EXPECT_TRUE(to_string(p5) == original);
+
+    // Data with special characters (colons)
+    packet p6 = "SRC>DST:data:with:colons";
+    EXPECT_TRUE(p6.from == "SRC");
+    EXPECT_TRUE(p6.to == "DST");
+    EXPECT_TRUE(p6.data == "data:with:colons");
+
+    // const char* and std::string ctors produce identical packets
+    const char* raw = "N0CALL>APRS,WIDE1-1,WIDE2-2:test";
+    std::string str_pkt(raw);
+    packet from_cstr(raw);
+    packet from_string(str_pkt);
+    EXPECT_TRUE(from_cstr == from_string);
+
+    // const char* ctor: full path
+    packet p7("A>B,C,D*,E,F:payload");
+    EXPECT_TRUE(p7.from == "A");
+    EXPECT_TRUE(p7.to == "B");
+    EXPECT_TRUE(p7.path.size() == 4);
+    EXPECT_TRUE(p7.path[0] == "C");
+    EXPECT_TRUE(p7.path[1] == "D*");
+    EXPECT_TRUE(p7.path[2] == "E");
+    EXPECT_TRUE(p7.path[3] == "F");
+    EXPECT_TRUE(p7.data == "payload");
+
+    // std::string ctor: no path
+    std::string no_path_str = "FROM>TO:data";
+    packet p8(no_path_str);
+    EXPECT_TRUE(p8.from == "FROM");
+    EXPECT_TRUE(p8.to == "TO");
+    EXPECT_TRUE(p8.path.empty());
+    EXPECT_TRUE(p8.data == "data");
+
+    // std::string ctor: empty data
+    std::string empty_data_str = "A>B,C:";
+    packet p9(empty_data_str);
+    EXPECT_TRUE(p9.from == "A");
+    EXPECT_TRUE(p9.to == "B");
+    EXPECT_TRUE(p9.path.size() == 1);
+    EXPECT_TRUE(p9.path[0] == "C");
+    EXPECT_TRUE(p9.data == "");
+    EXPECT_TRUE(to_string(p9) == empty_data_str);
+
+    // operator std::string conversion
+    packet p10("X>Y,Z:msg");
+    std::string converted = static_cast<std::string>(p10);
+    EXPECT_TRUE(converted == "X>Y,Z:msg");
+
+    // Invalid packet strings trigger assert (only in debug builds)
+#ifndef NDEBUG
+    // const char* ctor
+    EXPECT_DEATH(packet("invalid"), "");
+
+    // std::string ctor
+    EXPECT_DEATH(packet(std::string("also_invalid")), "");
+
+    // Missing colon
+    EXPECT_DEATH(packet("N0CALL>APRS"), "");
+#endif
 #else
     EXPECT_TRUE(true);
 #endif

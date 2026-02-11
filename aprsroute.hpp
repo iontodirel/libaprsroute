@@ -2944,9 +2944,9 @@ APRS_ROUTER_INLINE address_kind parse_address_kind(std::string_view text)
         { "OPNTRK", address_kind::opntrk },
         { "RELAY", address_kind::relay },
         { "RFONLY", address_kind::rfonly },
-        { "TEMP", address_kind::temp },
         { "TCPIP", address_kind::tcpip },
         { "TCPXX", address_kind::tcpxx },
+        { "TEMP", address_kind::temp },
         { "TRACE", address_kind::trace },
         { "WIDE", address_kind::wide }
     }};
