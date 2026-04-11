@@ -313,39 +313,28 @@ TEST(address, parse_q_construct)
 TEST(address, to_string)
 {
 #ifndef APRS_ROUTE_DISABLE_TESTS
-    address s;
-    s.text = "WIDE";
-    s.n = 2;
-    s.N = 1;
-    s.mark = false;
-    EXPECT_TRUE(to_string(s) == "WIDE2-1");
+    address s { {'W','I','D','E'}, 4, 2, 1 }; // WIDE2-1
+    EXPECT_TRUE(std::string(to_string(s)) == "WIDE2-1");
 
     s.mark = true;
-    EXPECT_TRUE(to_string(s) == "WIDE2-1*");
+    EXPECT_TRUE(std::string(to_string(s)) == "WIDE2-1*");
 
     s.mark = true;
     s.N = 0;
-    EXPECT_TRUE(to_string(s) == "WIDE2*");
+    EXPECT_TRUE(std::string(to_string(s)) == "WIDE2*");
 
     s.N = 0;
     s.n = 0;
-    EXPECT_TRUE(to_string(s) == "WIDE*");
+    EXPECT_TRUE(std::string(to_string(s)) == "WIDE*");
 
-    s = address {};
-    s.text = "N0CALL";
-    s.ssid = 10;
-    EXPECT_TRUE(to_string(s) == "N0CALL-10");
+    s = address { {'N','0','C','A','L','L'}, 6, 0, 0, 10 }; // N0CALL-10
+    EXPECT_TRUE(std::string(to_string(s)) == "N0CALL-10");
 
-    s = address {};
-    s.text = "N0CALL";
-    s.ssid = 10;
-    s.mark = true;
-    EXPECT_TRUE(to_string(s) == "N0CALL-10*");
+    s = address { {'N','0','C','A','L','L'}, 6, 0, 0, 10, true }; // N0CALL-10*
+    EXPECT_TRUE(std::string(to_string(s)) == "N0CALL-10*");
 
-    s = address {};
-    s.text = "N0CALL-10";
-    s.ssid = 10;
-    EXPECT_TRUE(to_string(s) == "N0CALL-10-10"); // to_string preserves the text even if ssid is specified and results in an invalid address
+    s = address { {'N','0','C','A','L','L','-','1','0'}, 9, 0, 0, 10 }; // N0CALL-10-10 (invalid but preserved)
+    EXPECT_TRUE(std::string(to_string(s)) == "N0CALL-10-10");// to_string preserves the text even if ssid is specified and results in an invalid address
 #else
     EXPECT_TRUE(true);
 #endif
@@ -357,167 +346,71 @@ TEST(address, canonicalize)
 
     // n and N both set, mark = false
     {
-        address a1;
-        a1.text = "WIDE";
-        a1.n = 2;
-        a1.N = 1;
-        a1.mark = false;
-
-        address a2;
-        a2.text = "WIDE2";
-        a2.ssid = 1;
-
+        address a1 { {'W','I','D','E'}, 4, 2, 1 }; // WIDE2-1
+        address a2 { {'W','I','D','E','2'}, 5, 0, 0, 1 }; // WIDE2-1
         EXPECT_TRUE(canonicalize(a1) == a2);
     }
 
     // Already canonical (n == 0 && N == 0)
     {
-        address a1;
-        a1.text = "RELAY";
-        a1.n = 0;
-        a1.N = 0;
-        a1.ssid = 3;
-        a1.mark = false;
-
+        address a1 { {'R','E','L','A','Y'}, 5, 0, 0, 3 }; // RELAY-3
         address a2 = a1;
-
         EXPECT_TRUE(canonicalize(a1) == a2);
     }
 
     // Has ssid > 0, should return unchanged
     {
-        address a1;
-        a1.text = "WIDE1";
-        a1.n = 0;
-        a1.N = 0;
-        a1.ssid = 2;
-        a1.mark = false;
-
+        address a1 { {'W','I','D','E','1'}, 5, 0, 0, 2 }; // WIDE1-2
         address a2 = a1;
-
         EXPECT_TRUE(canonicalize(a1) == a2);
     }
 
     // Only n > 0, N == 0
     {
-        address a1;
-        a1.text = "WIDE";
-        a1.n = 3;
-        a1.N = 0;
-        a1.ssid = 0;
-        a1.mark = false;
-
-        address a2;
-        a2.text = "WIDE3";
-        a2.n = 0;
-        a2.N = 0;
-        a2.ssid = 0;
-
+        address a1 { {'W','I','D','E'}, 4, 3 }; // WIDE3
+        address a2 { {'W','I','D','E','3'}, 5 }; // WIDE3
         EXPECT_TRUE(canonicalize(a1) == a2);
     }
 
     // Only N > 0, n == 0
     {
-        address a1;
-        a1.text = "RELAY";
-        a1.n = 0;
-        a1.N = 5;
-        a1.ssid = 0;
-        a1.mark = false;
-
-        address a2;
-        a2.text = "RELAY";
-        a2.n = 0;
-        a2.N = 0;
-        a2.ssid = 5;
-
+        address a1 { {'R','E','L','A','Y'}, 5, 0, 5 }; // RELAY-5 (N=5)
+        address a2 { {'R','E','L','A','Y'}, 5, 0, 0, 5 }; // RELAY-5 (ssid=5)
         EXPECT_TRUE(canonicalize(a1) == a2);
     }
 
     // n > 0 with mark = true (insert before last character)
     {
-        address a1;
-        a1.text = "WIDE*";
-        a1.n = 1;
-        a1.N = 1;
-        a1.mark = true;
-
-        address a2;
-        a2.text = "WIDE1*";
-        a2.n = 0;
-        a2.N = 0;
-        a2.ssid = 1;
-        a2.mark = true;
-
+        address a1 { {'W','I','D','E','*'}, 5, 1, 1, 0, true }; // WIDE1-1*
+        address a2 { {'W','I','D','E','1','*'}, 6, 0, 0, 1, true }; // WIDE1-1*
         EXPECT_TRUE(canonicalize(a1) == a2);
     }
 
     // n > 0 with mark = true, N == 0
     {
-        address a1;
-        a1.text = "WIDE*";
-        a1.n = 2;
-        a1.N = 0;
-        a1.ssid = 0;
-        a1.mark = true;
-
-        address a2;
-        a2.text = "WIDE2*";
-        a2.n = 0;
-        a2.N = 0;
-        a2.ssid = 0;
-        a2.mark = true;
-
+        address a1 { {'W','I','D','E','*'}, 5, 2, 0, 0, true }; // WIDE2*
+        address a2 { {'W','I','D','E','2','*'}, 6, 0, 0, 0, true }; // WIDE2*
         EXPECT_TRUE(canonicalize(a1) == a2);
     }
 
     // Empty/minimal address, already canonical
     {
-        address a1;
-        a1.text = "W1AW";
-        a1.n = 0;
-        a1.N = 0;
-        a1.ssid = 0;
-        a1.mark = false;
-
+        address a1 { {'W','1','A','W'}, 4 }; // W1AW
         address a2 = a1;
-
         EXPECT_TRUE(canonicalize(a1) == a2);
     }
 
     // Edge case: n = 9 (max single digit)
     {
-        address a1;
-        a1.text = "TEST";
-        a1.n = 9;
-        a1.N = 7;
-        a1.ssid = 0;
-        a1.mark = false;
-
-        address a2;
-        a2.text = "TEST9";
-        a2.n = 0;
-        a2.N = 0;
-        a2.ssid = 7;
-
+        address a1 { {'T','E','S','T'}, 4, 9, 7 }; // TEST9-7
+        address a2 { {'T','E','S','T','9'}, 5, 0, 0, 7 }; // TEST9-7
         EXPECT_TRUE(canonicalize(a1) == a2);
     }
 
     // Edge case: n = 1 (min non-zero single digit)
     {
-        address a1;
-        a1.text = "WIDE";
-        a1.n = 1;
-        a1.N = 1;
-        a1.ssid = 0;
-        a1.mark = false;
-
-        address a2;
-        a2.text = "WIDE1";
-        a2.n = 0;
-        a2.N = 0;
-        a2.ssid = 1;
-
+        address a1 { {'W','I','D','E'}, 4, 1, 1 }; // WIDE1-1
+        address a2 { {'W','I','D','E','1'}, 5, 0, 0, 1 }; // WIDE1-1
         EXPECT_TRUE(canonicalize(a1) == a2);
     }
 
@@ -554,7 +447,7 @@ TEST(address, try_parse_address)
     EXPECT_TRUE(s.mark == false);
     EXPECT_TRUE(s.n == 7);
     EXPECT_TRUE(s.N == 5);
-    EXPECT_TRUE(s.text == "WIDE");
+    EXPECT_TRUE(std::string_view(s.text.data(), s.text_size) == "WIDE");
     EXPECT_TRUE(s.kind == address_kind::wide);
 
     // -------------------------------------------------------------
@@ -566,7 +459,7 @@ TEST(address, try_parse_address)
     EXPECT_TRUE(s.mark == true);
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
-    EXPECT_TRUE(s.text == "WIDE");
+    EXPECT_TRUE(std::string_view(s.text.data(), s.text_size) == "WIDE");
     EXPECT_TRUE(s.kind == address_kind::wide);
 
     // -------------------------------------------------------------
@@ -578,7 +471,7 @@ TEST(address, try_parse_address)
     EXPECT_TRUE(s.mark == false);
     EXPECT_TRUE(s.n == 5);
     EXPECT_TRUE(s.N == 0);
-    EXPECT_TRUE(s.text == "WIDE");
+    EXPECT_TRUE(std::string_view(s.text.data(), s.text_size) == "WIDE");
     EXPECT_TRUE(s.kind == address_kind::wide);
 
     // -------------------------------------------------------------
@@ -590,7 +483,7 @@ TEST(address, try_parse_address)
     EXPECT_TRUE(s.mark == true);
     EXPECT_TRUE(s.n == 5);
     EXPECT_TRUE(s.N == 0);
-    EXPECT_TRUE(s.text == "WIDE");
+    EXPECT_TRUE(std::string_view(s.text.data(), s.text_size) == "WIDE");
     EXPECT_TRUE(s.kind == address_kind::wide);
 
     // -------------------------------------------------------------
@@ -602,7 +495,7 @@ TEST(address, try_parse_address)
     EXPECT_TRUE(s.mark == false);
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
-    EXPECT_TRUE(s.text == "qAR");
+    EXPECT_TRUE(std::string_view(s.text.data(), s.text_size) == "qAR");
     EXPECT_TRUE(s.q == q_construct::qAR);
     EXPECT_TRUE(s.kind == address_kind::q);
 
@@ -615,7 +508,7 @@ TEST(address, try_parse_address)
     EXPECT_TRUE(s.mark == true);
     EXPECT_TRUE(s.n == 7);
     EXPECT_TRUE(s.N == 7);
-    EXPECT_TRUE(s.text == "WIDE");
+    EXPECT_TRUE(std::string_view(s.text.data(), s.text_size) == "WIDE");
     EXPECT_TRUE(s.kind == address_kind::wide);
 
     // -------------------------------------------------------------
@@ -628,7 +521,7 @@ TEST(address, try_parse_address)
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
     EXPECT_TRUE(s.ssid == 10);
-    EXPECT_TRUE(s.text == "W7ION");
+    EXPECT_TRUE(std::string_view(s.text.data(), s.text_size) == "W7ION");
     EXPECT_TRUE(s.kind == address_kind::other);
 
     // -------------------------------------------------------------
@@ -641,7 +534,7 @@ TEST(address, try_parse_address)
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
     EXPECT_TRUE(s.ssid == 0);
-    EXPECT_TRUE(s.text == "W7ION-1d");
+    EXPECT_TRUE(std::string_view(s.text.data(), s.text_size) == "W7ION-1d");
     EXPECT_TRUE(s.kind == address_kind::other);
 
     // -------------------------------------------------------------
@@ -653,7 +546,7 @@ TEST(address, try_parse_address)
     EXPECT_TRUE(s.mark == false);
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
-    EXPECT_TRUE(s.text == "N0CALL");
+    EXPECT_TRUE(std::string_view(s.text.data(), s.text_size) == "N0CALL");
     EXPECT_TRUE(s.kind == address_kind::other);
 
     // -------------------------------------------------------------
@@ -666,7 +559,7 @@ TEST(address, try_parse_address)
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
     EXPECT_TRUE(s.ssid == 1);
-    EXPECT_TRUE(s.text == "WIDE"); // Entire text should be preserved if parsing n-N fails
+    EXPECT_TRUE(std::string_view(s.text.data(), s.text_size) == "WIDE"); // Entire text should be preserved if parsing n-N fails
     EXPECT_TRUE(s.kind == address_kind::other);
 
     path = "*WIDE"; // Leading mark with no valid segment
@@ -674,35 +567,35 @@ TEST(address, try_parse_address)
     EXPECT_TRUE(s.mark == false);
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
-    EXPECT_TRUE(s.text == "*WIDE");
+    EXPECT_TRUE(std::string_view(s.text.data(), s.text_size) == "*WIDE");
     EXPECT_TRUE(s.kind == address_kind::other);
 
     path = "WIDE0-4"; // 0 is not valid for the leading digit (1-7 is the valid range)
     EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
-    EXPECT_TRUE(s.text == "WIDE0-4");
+    EXPECT_TRUE(std::string_view(s.text.data(), s.text_size) == "WIDE0-4");
     EXPECT_TRUE(s.kind == address_kind::other);
 
     path = "WIDE8-4"; // 8 is not valid for the leading digit (1-7 is the valid range)
     EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
-    EXPECT_TRUE(s.text == "WIDE8-4");
+    EXPECT_TRUE(std::string_view(s.text.data(), s.text_size) == "WIDE8-4");
     EXPECT_TRUE(s.kind == address_kind::other);
 
     path = "WIDE2-0";
     EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.n == 2);
     EXPECT_TRUE(s.N == 0);
-    EXPECT_TRUE(s.text == "WIDE");
+    EXPECT_TRUE(std::string_view(s.text.data(), s.text_size) == "WIDE");
     EXPECT_TRUE(s.kind == address_kind::wide);
 
     path = "WIDE4-2-0";
     EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
-    EXPECT_TRUE(s.text == "WIDE4-2-0");
+    EXPECT_TRUE(std::string_view(s.text.data(), s.text_size) == "WIDE4-2-0");
     EXPECT_TRUE(s.kind == address_kind::other);
 
     path = "WIDE4-10";
@@ -710,7 +603,7 @@ TEST(address, try_parse_address)
     EXPECT_TRUE(s.n == 0);
     EXPECT_TRUE(s.N == 0);
     EXPECT_TRUE(s.ssid == 10);
-    EXPECT_TRUE(s.text == "WIDE4");
+    EXPECT_TRUE(std::string_view(s.text.data(), s.text_size) == "WIDE4");
     EXPECT_TRUE(s.kind == address_kind::other);
 
     path = "WID4-100*";
@@ -719,14 +612,14 @@ TEST(address, try_parse_address)
     EXPECT_TRUE(s.N == 0);
     EXPECT_TRUE(s.mark == true);
     EXPECT_TRUE(s.ssid == 0);
-    EXPECT_TRUE(s.text == "WID4-100"); // partial parsing of mark
+    EXPECT_TRUE(std::string_view(s.text.data(), s.text_size) == "WID4-100"); // partial parsing of mark
     EXPECT_TRUE(s.kind == address_kind::other);
 
     path = "WIDE14-1"; // Not really valid, but we don't care that it parses to 4-1
     EXPECT_TRUE(try_parse_address(path, s));
     EXPECT_TRUE(s.n == 4);
     EXPECT_TRUE(s.N == 1);
-    EXPECT_TRUE(s.text == "WIDE1");
+    EXPECT_TRUE(std::string_view(s.text.data(), s.text_size) == "WIDE1");
     EXPECT_TRUE(s.kind == address_kind::other);
 #else
     EXPECT_TRUE(true);
@@ -791,308 +684,367 @@ TEST(address, try_parse_address_with_ssid)
 #endif
 }
 
+TEST(address, try_parse_address_with_ssid_array)
+{
+#ifndef APRS_ROUTE_DISABLE_TESTS
+    std::string address;
+    std::array<char, 10> callsign = {};
+    size_t callsign_size = 0;
+    int ssid = 0;
+
+    address = "A0BCDE-12";
+    EXPECT_TRUE(try_parse_address(address, callsign, callsign_size, ssid));
+    EXPECT_TRUE(std::string_view(callsign.data(), callsign_size) == "A0BCDE");
+    EXPECT_TRUE(ssid == 12);
+
+    address = "A0BCDE-12*";
+    EXPECT_FALSE(try_parse_address(address, callsign, callsign_size, ssid));
+
+    address = "A0BCDE-12*";
+    EXPECT_TRUE(try_parse_address_with_used_flag(address, callsign, callsign_size, ssid));
+    EXPECT_TRUE(std::string_view(callsign.data(), callsign_size) == "A0BCDE");
+    EXPECT_TRUE(ssid == 12);
+
+    address = "N0CALL";
+    EXPECT_TRUE(try_parse_address(address, callsign, callsign_size, ssid));
+    EXPECT_TRUE(std::string_view(callsign.data(), callsign_size) == "N0CALL");
+    EXPECT_TRUE(ssid == 0);
+
+    address = "N0CALL-01";
+    EXPECT_FALSE(try_parse_address(address, callsign, callsign_size, ssid));
+
+    address = "N0CALL-";
+    EXPECT_FALSE(try_parse_address(address, callsign, callsign_size, ssid));
+
+    address = "N0CALL-0";
+    EXPECT_FALSE(try_parse_address(address, callsign, callsign_size, ssid));
+
+    address = "N0CALL-1";
+    EXPECT_TRUE(try_parse_address(address, callsign, callsign_size, ssid));
+    EXPECT_TRUE(std::string_view(callsign.data(), callsign_size) == "N0CALL");
+    EXPECT_TRUE(ssid == 1);
+
+    address = "N0CALL-100";
+    EXPECT_FALSE(try_parse_address(address, callsign, callsign_size, ssid));
+
+    address = "ABC-100";
+    EXPECT_FALSE(try_parse_address(address, callsign, callsign_size, ssid));
+
+    address = "N0CALL-dd";
+    EXPECT_FALSE(try_parse_address(address, callsign, callsign_size, ssid));
+
+    address = "N0CALL-WX";
+    EXPECT_FALSE(try_parse_address(address, callsign, callsign_size, ssid));
+
+    address = "N0CALL-20";
+    EXPECT_FALSE(try_parse_address(address, callsign, callsign_size, ssid));
+#else
+    EXPECT_TRUE(true);
+#endif
+}
+
 TEST(address, equal_addresses_ignore_mark)
 {
 #ifndef APRS_ROUTE_DISABLE_TESTS
     // Identical plain addresses
     {
-        address a1{ "WIDE", 0, 0, 0 };
-        address a2{ "WIDE", 0, 0, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4 }; // WIDE
+        address a2 = address { {'W', 'I', 'D', 'E'}, 4 }; // WIDE
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
 
     // Identical n-N addresses
     {
-        address a1{ "WIDE", 1, 1, 0 };
-        address a2{ "WIDE", 1, 1, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 1, 1 }; // WIDE1-1
+        address a2 = address { {'W', 'I', 'D', 'E'}, 4, 1, 1 }; // WIDE1-1
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
 
     // Mark field should be ignored
     {
-        address a1{ "WIDE", 1, 1, 0, true };
-        address a2{ "WIDE", 1, 1, 0, false };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 1, 1, 0, true }; // WIDE1-1*
+        address a2 = address { {'W', 'I', 'D', 'E'}, 4, 1, 1 }; // WIDE1-1
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
 
     // Different N values
     {
-        address a1{ "WIDE", 1, 2, 0 };
-        address a2{ "WIDE", 1, 1, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 1, 2 }; // WIDE1-2
+        address a2 = address { {'W', 'I', 'D', 'E'}, 4, 1, 1 }; // WIDE1-1
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
 
     // n-N vs ssid with same text (WIDE1-1 != WIDE-1)
     {
-        address a1{ "WIDE", 1, 1, 0 };
-        address a2{ "WIDE", 0, 0, 1 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 1, 1 }; // WIDE1-1
+        address a2 = address { {'W', 'I', 'D', 'E'}, 4, 0, 0, 1 }; // WIDE-1
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
 
     // WIDE1-1 != WIDE1
     {
-        address a1{ "WIDE", 1, 1, 0 };
-        address a2{ "WIDE", 1, 0, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 1, 1 }; // WIDE1-1
+        address a2 = address { {'W', 'I', 'D', 'E'}, 4, 1 }; // WIDE1
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
 
     // Identical ssid addresses
     {
-        address a1{ "WIDE", 0, 0, 1 };
-        address a2{ "WIDE", 0, 0, 1 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 0, 0, 1 }; // WIDE-1
+        address a2 = address { {'W', 'I', 'D', 'E'}, 4, 0, 0, 1 }; // WIDE-1
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
 
     // Different ssid values
     {
-        address a1{ "WIDE", 0, 0, 1 };
-        address a2{ "WIDE", 0, 0, 2 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 0, 0, 1 }; // WIDE-1
+        address a2 = address { {'W', 'I', 'D', 'E'}, 4, 0, 0, 2 }; // WIDE-2
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
 
     // Equivalent representations: WIDE1-1 == WIDE1-1
     {
-        address a1{ "WIDE", 1, 1, 0 };
-        address a2{ "WIDE1", 0, 0, 1 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 1, 1 }; // WIDE1-1
+        address a2 = address { {'W', 'I', 'D', 'E', '1'}, 5, 0, 0, 1 }; // WIDE1-1
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
 
     // Equivalent representations (reversed)
     {
-        address a1{ "WIDE1", 0, 0, 1 };
-        address a2{ "WIDE", 1, 1, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E', '1'}, 5, 0, 0, 1 }; // WIDE1-1
+        address a2 = address { {'W', 'I', 'D', 'E'}, 4, 1, 1 }; // WIDE1-1
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
 
     // Equivalent representations: WIDE1 == WIDE1
     {
-        address a1{ "WIDE1", 0, 0, 0 };
-        address a2{ "WIDE", 1, 0, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E', '1'}, 5 }; // WIDE1
+        address a2 = address { {'W', 'I', 'D', 'E'}, 4, 1 }; // WIDE1
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
 
     // Equivalent representations (reversed)
     {
-        address a1{ "WIDE", 1, 0, 0 };
-        address a2{ "WIDE1", 0, 0, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 1 }; // WIDE1
+        address a2 = address { {'W', 'I', 'D', 'E', '1'}, 5 }; // WIDE1
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
 
     // WIDE1-2 != WIDE1-1
     {
-        address a1{ "WIDE1", 0, 0, 2 };
-        address a2{ "WIDE", 1, 1, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E', '1'}, 5, 0, 0, 2 }; // WIDE1-2
+        address a2 = address { {'W', 'I', 'D', 'E'}, 4, 1, 1 }; // WIDE1-1
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
 
     // WIDE1 != WIDE1-1
     {
-        address a1{ "WIDE", 1, 0, 0 };
-        address a2{ "WIDE1", 0, 0, 1 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 1 }; // WIDE1
+        address a2 = address { {'W', 'I', 'D', 'E', '1'}, 5, 0, 0, 1 }; // WIDE1-1
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
 
     // WIDE1-3 != WIDE1
     {
-        address a1{ "WIDE", 1, 3, 0 };
-        address a2{ "WIDE1", 0, 0, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 1, 3 }; // WIDE1-3
+        address a2 = address { {'W', 'I', 'D', 'E', '1'}, 5 }; // WIDE1
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
 
     // Bug case: WIDE1 vs WIDE1-3
     {
-        address a1{ "WIDE1", 0, 0, 0 };
-        address a2{ "WIDE", 1, 3, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E', '1'}, 5 }; // WIDE1
+        address a2 = address { {'W', 'I', 'D', 'E'}, 4, 1, 3 }; // WIDE1-3
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
     {
-        address a1{ "WIDE", 1, 3, 0 };
-        address a2{ "WIDE1", 0, 0, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 1, 3 }; // WIDE1-3
+        address a2 = address { {'W', 'I', 'D', 'E', '1'}, 5 }; // WIDE1
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
 
     // Different callsigns
     {
-        address a1{ "WIDE", 1, 1, 0 };
-        address a2{ "RELAY", 1, 1, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 1, 1 }; // WIDE1-1
+        address a2 = address { {'R', 'E', 'L', 'A', 'Y'}, 5, 1, 1 }; // RELAY1-1
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
     {
-        address a1{ "CALL1", 0, 0, 0 };
-        address a2{ "CALL2", 0, 0, 0 };
+        address a1 = address { {'C', 'A', 'L', 'L', '1'}, 5 }; // CALL1
+        address a2 = address { {'C', 'A', 'L', 'L', '2'}, 5 }; // CALL2
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
     {
-        address a1{ "AB1CD", 0, 0, 5 };
-        address a2{ "AB1CD", 0, 0, 5 };
+        address a1 = address { {'A', 'B', '1', 'C', 'D'}, 5, 0, 0, 5 }; // AB1CD-5
+        address a2 = address { {'A', 'B', '1', 'C', 'D'}, 5, 0, 0, 5 }; // AB1CD-5
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
 
     // Text length differs by more than 1
     {
-        address a1{ "WID", 0, 0, 0 };
-        address a2{ "WIDE1", 0, 0, 0 };
+        address a1 = address { {'W', 'I', 'D'}, 3 }; // WID
+        address a2 = address { {'W', 'I', 'D', 'E', '1'}, 5 }; // WIDE1
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
     {
-        address a1{ "WIDE", 1, 1, 0 };
-        address a2{ "WIDE11", 0, 0, 1 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 1, 1 }; // WIDE1-1
+        address a2 = address { {'W', 'I', 'D', 'E', '1', '1'}, 6, 0, 0, 1 }; // WIDE11-1
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
 
     // Different n values
     {
-        address a1{ "WIDE", 1, 0, 0 };
-        address a2{ "WIDE", 2, 0, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 1 }; // WIDE1
+        address a2 = address { {'W', 'I', 'D', 'E'}, 4, 2 }; // WIDE2
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
     {
-        address a1{ "WIDE", 1, 1, 0 };
-        address a2{ "WIDE", 2, 1, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 1, 1 }; // WIDE1-1
+        address a2 = address { {'W', 'I', 'D', 'E'}, 4, 2, 1 }; // WIDE2-1
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
 
     // Mark field variations
     {
-        address a1{ "WIDE", 1, 1, 0, false };
-        address a2{ "WIDE", 1, 1, 0, true };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 1, 1 }; // WIDE1-1
+        address a2 = address { {'W', 'I', 'D', 'E'}, 4, 1, 1, 0, true }; // WIDE1-1*
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
     {
-        address a1{ "CALL", 0, 0, 7, true };
-        address a2{ "CALL", 0, 0, 7, true };
+        address a1 = address { {'C', 'A', 'L', 'L'}, 4, 0, 0, 7, true }; // CALL-7*
+        address a2 = address { {'C', 'A', 'L', 'L'}, 4, 0, 0, 7, true }; // CALL-7*
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
 
     // SSID boundary values
     {
-        address a1{ "CALL", 0, 0, 15 };
-        address a2{ "CALL", 0, 0, 15 };
+        address a1 = address { {'C', 'A', 'L', 'L'}, 4, 0, 0, 15 }; // CALL-15
+        address a2 = address { {'C', 'A', 'L', 'L'}, 4, 0, 0, 15 }; // CALL-15
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
     {
-        address a1{ "CALL", 0, 0, 14 };
-        address a2{ "CALL", 0, 0, 15 };
+        address a1 = address { {'C', 'A', 'L', 'L'}, 4, 0, 0, 14 }; // CALL-14
+        address a2 = address { {'C', 'A', 'L', 'L'}, 4, 0, 0, 15 }; // CALL-15
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
 
     // n-N boundary values
     {
-        address a1{ "WIDE", 7, 7, 0 };
-        address a2{ "WIDE", 7, 7, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 7, 7 }; // WIDE7-7
+        address a2 = address { {'W', 'I', 'D', 'E'}, 4, 7, 7 }; // WIDE7-7
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
     {
-        address a1{ "WIDE", 7, 6, 0 };
-        address a2{ "WIDE", 7, 7, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 7, 6 }; // WIDE7-6
+        address a2 = address { {'W', 'I', 'D', 'E'}, 4, 7, 7 }; // WIDE7-7
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
 
     // Multi-digit text (WIDE11-1)
     {
-        address a1{ "WIDE1", 1, 1, 0 };
-        address a2{ "WIDE11", 0, 0, 1 };
+        address a1 = address { {'W', 'I', 'D', 'E', '1'}, 5, 1, 1 }; // WIDE11-1
+        address a2 = address { {'W', 'I', 'D', 'E', '1', '1'}, 6, 0, 0, 1 }; // WIDE11-1
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
     {
-        address a1{ "WIDE11", 0, 0, 1 };
-        address a2{ "WIDE1", 1, 1, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E', '1', '1'}, 6, 0, 0, 1 }; // WIDE11-1
+        address a2 = address { {'W', 'I', 'D', 'E', '1'}, 5, 1, 1 }; // WIDE11-1
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
     {
-        address a1{ "WIDE2", 1, 1, 0 };
-        address a2{ "WIDE11", 0, 0, 1 };
+        address a1 = address { {'W', 'I', 'D', 'E', '2'}, 5, 1, 1 }; // WIDE21-1
+        address a2 = address { {'W', 'I', 'D', 'E', '1', '1'}, 6, 0, 0, 1 }; // WIDE11-1
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
 
     // Text ending in non-matching digit
     {
-        address a1{ "WIDE2", 0, 0, 0 };
-        address a2{ "WIDE", 1, 0, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E', '2'}, 5 }; // WIDE2
+        address a2 = address { {'W', 'I', 'D', 'E'}, 4, 1 }; // WIDE1
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
     {
-        address a1{ "WIDE", 2, 0, 0 };
-        address a2{ "WIDE1", 0, 0, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 2 }; // WIDE2
+        address a2 = address { {'W', 'I', 'D', 'E', '1'}, 5 }; // WIDE1
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
 
     // One has n-N, other has nothing
     {
-        address a1{ "WIDE", 1, 1, 0 };
-        address a2{ "WIDE", 0, 0, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 1, 1 }; // WIDE1-1
+        address a2 = address { {'W', 'I', 'D', 'E'}, 4 }; // WIDE
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
     {
-        address a1{ "WIDE", 0, 0, 0 };
-        address a2{ "WIDE", 1, 1, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4 }; // WIDE
+        address a2 = address { {'W', 'I', 'D', 'E'}, 4, 1, 1 }; // WIDE1-1
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
 
     // One has ssid, other has nothing
     {
-        address a1{ "WIDE", 0, 0, 5 };
-        address a2{ "WIDE", 0, 0, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 0, 0, 5 }; // WIDE-5
+        address a2 = address { {'W', 'I', 'D', 'E'}, 4 }; // WIDE
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
 
     // Prefix match but not equal
     {
-        address a1{ "WIDE", 0, 0, 0 };
-        address a2{ "WIDEX", 0, 0, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4 }; // WIDE
+        address a2 = address { {'W', 'I', 'D', 'E', 'X'}, 5 }; // WIDEX
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
     {
-        address a1{ "WIDEA", 0, 0, 0 };
-        address a2{ "WIDE", 1, 0, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E', 'A'}, 5 }; // WIDEA
+        address a2 = address { {'W', 'I', 'D', 'E'}, 4, 1 }; // WIDE1
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
 
     // Both marks true, should still be equal
     {
-        address a1{ "CALL", 0, 0, 5, true };
-        address a2{ "CALL", 0, 0, 5, true };
+        address a1 = address { {'C', 'A', 'L', 'L'}, 4, 0, 0, 5, true }; // CALL-5*
+        address a2 = address { {'C', 'A', 'L', 'L'}, 4, 0, 0, 5, true }; // CALL-5*
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
 
     // Completely different callsigns, same n-N
     {
-        address a1{ "TRACE", 1, 1, 0 };
-        address a2{ "RELAY", 1, 1, 0 };
+        address a1 = address { {'T', 'R', 'A', 'C', 'E'}, 5, 1, 1 }; // TRACE1-1
+        address a2 = address { {'R', 'E', 'L', 'A', 'Y'}, 5, 1, 1 }; // RELAY1-1
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
 
     // Same text, one with ssid, other with n-N that doesn't match
     {
-        address a1{ "CALL", 0, 0, 3 };
-        address a2{ "CALL", 2, 1, 0 };
+        address a1 = address { {'C', 'A', 'L', 'L'}, 4, 0, 0, 3 }; // CALL-3
+        address a2 = address { {'C', 'A', 'L', 'L'}, 4, 2, 1 }; // CALL2-1
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
 
     // Cross-representation: n-N with N=0 vs text with trailing digit and no ssid
     // WIDE2 (n=2,N=0) == WIDE2 (text="WIDE2")
     {
-        address a1{ "WIDE", 2, 0, 0 };
-        address a2{ "WIDE2", 0, 0, 0 };
+        address a1 = address { {'W', 'I', 'D', 'E'}, 4, 2 }; // WIDE2
+        address a2 = address { {'W', 'I', 'D', 'E', '2'}, 5 }; // WIDE2
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
 
     // Single-char text
     {
-        address a1{ "A", 0, 0, 0 };
-        address a2{ "A", 0, 0, 0 };
+        address a1 = address { {'A'}, 1 }; // A
+        address a2 = address { {'A'}, 1 }; // A
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
     {
-        address a1{ "A", 0, 0, 0 };
-        address a2{ "B", 0, 0, 0 };
+        address a1 = address { {'A'}, 1 }; // A
+        address a2 = address { {'B'}, 1 }; // B
         EXPECT_TRUE(!equal_addresses_ignore_mark(a1, a2));
     }
 
     // OPNTRK1-1 cross-representation
     {
-        address a1{ "OPNTRK", 1, 1, 0 };
-        address a2{ "OPNTRK1", 0, 0, 1 };
+        address a1 = address { {'O', 'P', 'N', 'T', 'R', 'K'}, 6, 1, 1 }; // OPNTRK1-1
+        address a2 = address { {'O', 'P', 'N', 'T', 'R', 'K', '1'}, 7, 0, 0, 1 }; // OPNTRK1-1
         EXPECT_TRUE(equal_addresses_ignore_mark(a1, a2));
     }
 #else
@@ -2284,7 +2236,7 @@ TEST(router, try_route_packet_flat_api_with_iterators)
     aprs::router::routing_state routing_state;
     std::vector<routing_diagnostic> routing_actions;
 
-    auto [routed_packet_path_out, routing_actions_out, result] = aprs::router::try_route_packet("W7ION-5", "T7SVVQ", packet_path.begin(), packet_path.end(), settings, std::back_inserter(routed_path), routing_state, std::back_inserter(routing_actions), nullptr);
+    auto [routed_packet_path_out, routing_actions_out, result] = aprs::router::try_route_packet("W7ION-5", "T7SVVQ", packet_path.begin(), packet_path.end(), settings, std::back_inserter(routed_path), routing_state, std::back_inserter(routing_actions));
 
     EXPECT_TRUE(result);
 

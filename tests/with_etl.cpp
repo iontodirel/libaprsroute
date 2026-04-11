@@ -68,7 +68,7 @@ TEST(router, try_route_packet)
     std::vector<std::string> routed_packet_path;
     routed_packet_path.reserve(8);
 
-    aprs::router::try_route_packet("N0CALL-10", "CALL-5", original_packet_path.begin(), original_packet_path.end(), settings, std::back_inserter(routed_packet_path), routing_state, std::back_inserter(routing_actions), nullptr);
+    aprs::router::try_route_packet("N0CALL-10", "CALL-5", original_packet_path.begin(), original_packet_path.end(), settings, std::back_inserter(routed_packet_path), routing_state, std::back_inserter(routing_actions));
 
     EXPECT_TRUE((routed_packet_path == std::vector<std::string>{ "CALLA-10", "CALLB-5", "CALLC-15", "WIDE1", "DIGI", "WIDE2*" }));
 }
@@ -86,7 +86,7 @@ TEST(router, try_route_packet_with_etl_string)
     std::vector<std::string> routed_packet_path;
     routed_packet_path.reserve(8);
 
-    aprs::router::try_route_packet("N0CALL-10", "CALL-5", original_packet_path.begin(), original_packet_path.end(), settings, std::back_inserter(routed_packet_path), routing_state, std::back_inserter(routing_actions), nullptr);
+    aprs::router::try_route_packet("N0CALL-10", "CALL-5", original_packet_path.begin(), original_packet_path.end(), settings, std::back_inserter(routed_packet_path), routing_state, std::back_inserter(routing_actions));
 
     EXPECT_TRUE((routed_packet_path == std::vector<std::string>{ "CALLA-10", "CALLB-5", "CALLC-15", "WIDE1", "DIGI", "WIDE2*" }));
 }
@@ -105,7 +105,7 @@ TEST(router, try_route_packet_with_etl_vector)
     etl::vector<std::string, 8> routed_packet_path;
     routed_packet_path.resize(8);
 
-    auto [routed_packet_path_out_end_it, routing_actions_out_end_it, result] = aprs::router::try_route_packet("N0CALL-10", "CALL-5", original_packet_path.begin(), original_packet_path.end(), settings, routed_packet_path.begin(), routing_state, routing_actions.begin(), nullptr);
+    auto [routed_packet_path_out_end_it, routing_actions_out_end_it, result] = aprs::router::try_route_packet("N0CALL-10", "CALL-5", original_packet_path.begin(), original_packet_path.end(), settings, routed_packet_path.begin(), routing_state, routing_actions.begin());
 
     size_t routed_size = std::distance(routed_packet_path.begin(), routed_packet_path_out_end_it);
     size_t actions_size = std::distance(routing_actions.begin(), routing_actions_out_end_it);
@@ -185,7 +185,7 @@ TEST(router, try_route_packet_output_iterator_stack)
 
     std::string routed_packet_path[8];
 
-    auto [routed_packet_path_out_end_it, routing_actions_out_end_it, result] = aprs::router::try_route_packet("N0CALL-10", "CALL-5", std::begin(original_packet_path), std::end(original_packet_path), settings, std::begin(routed_packet_path), routing_state, std::begin(routing_actions), nullptr);
+    auto [routed_packet_path_out_end_it, routing_actions_out_end_it, result] = aprs::router::try_route_packet("N0CALL-10", "CALL-5", std::begin(original_packet_path), std::end(original_packet_path), settings, std::begin(routed_packet_path), routing_state, std::begin(routing_actions));
 
     size_t routed_size = std::distance(std::begin(routed_packet_path), routed_packet_path_out_end_it);
     size_t actions_size = std::distance(std::begin(routing_actions), routing_actions_out_end_it);

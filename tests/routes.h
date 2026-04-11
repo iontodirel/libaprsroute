@@ -80,9 +80,12 @@ template <class Allocator>
 inline std::vector<std::string> to_vector_of_string(const std::vector<address, Allocator>& addresses)
 {
     std::vector<std::string> result;
-    for (const auto& p : addresses)
+    for (const auto& address : addresses)
     {
-        result.push_back(to_string(p));
+        std::array<char, 15> address_string = {};
+        size_t address_string_size = 0;
+        to_string(address, address_string, address_string_size);
+        result.push_back(std::string(address_string.data(), address_string_size));
     }
     return result;
 }

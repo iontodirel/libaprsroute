@@ -189,7 +189,13 @@ void init_router_addresses(const packet& p, const std::vector<std::string>& path
     state.packet_to_address = p.to;
 
     state.packet_path_size = std::min(p.path.size(), state.packet_path.size());
-    std::copy_n(p.path.begin(), state.packet_path_size, state.packet_path.begin());
+    for (size_t i = 0; i < state.packet_path_size; i++)
+    {
+        const auto& path_address = p.path[i];
+        size_t path_address_size = std::min(path_address.size(), size_t(10));
+        std::copy_n(path_address.data(), path_address_size, state.packet_path[i].begin());
+        state.packet_path_address_sizes[i] = path_address_size;
+    }
 
     state.settings = settings;
     init_addresses(state);
