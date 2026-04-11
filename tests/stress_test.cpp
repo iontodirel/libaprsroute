@@ -254,11 +254,8 @@ void run_address_equal_stress_test()
     volatile bool result = false;
 
     {
-        address a1;
-        array_assign(a1.text, a1.text_size, "WIDE1", "WIDE1" + 5);
-        address a2;
-        array_assign(a2.text, a2.text_size, "WIDE", "WIDE" + 4);
-        a2.n = 1;
+        address a1 { {'W','I','D','E','1'}, 5 }; // WIDE1
+        address a2 { {'W','I','D','E'}, 4, 1 };  // WIDE1
 
         auto start = std::chrono::high_resolution_clock::now();
 
@@ -266,11 +263,14 @@ void run_address_equal_stress_test()
         {
             address a1_copy = a1;
             a1_copy.mark = false;
-            std::array<char, 15> a1_string = {}, a2_string = {};
-            size_t a1_string_size = 0, a2_string_size = 0;
+            std::array<char, 15> a1_string = {};
+            std::array<char, 15> a2_string = {};
+            size_t a1_string_size = 0;
+            size_t a2_string_size = 0;
             to_string(a1_copy, a1_string, a1_string_size);
             to_string(a2, a2_string, a2_string_size);
-            result = (a1_string_size == a2_string_size && std::equal(a1_string.begin(), a1_string.begin() + a1_string_size, a2_string.begin()));
+            result = (a1_string_size == a2_string_size &&
+                std::equal(a1_string.begin(), a1_string.begin() + a1_string_size, a2_string.begin()));
             assert(result);
         }
 
@@ -284,11 +284,8 @@ void run_address_equal_stress_test()
     }
 
     {
-        address a1;
-        array_assign(a1.text, a1.text_size, "WIDE1", "WIDE1" + 5);
-        address a2;
-        array_assign(a2.text, a2.text_size, "WIDE", "WIDE" + 4);
-        a2.n = 1;
+        address a1 { {'W','I','D','E','1'}, 5 }; // WIDE1
+        address a2 { {'W','I','D','E'}, 4, 1 };  // WIDE1
 
         auto start = std::chrono::high_resolution_clock::now();
 
