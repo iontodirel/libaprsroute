@@ -53,7 +53,7 @@ FetchContent_MakeAvailable(googletest)
 FetchContent_Declare(json URL https://github.com/nlohmann/json/releases/download/v3.11.3/json.tar.xz)
 FetchContent_MakeAvailable(json)
 
-FetchContent_Declare(fmt GIT_REPOSITORY https://github.com/fmtlib/fmt.git GIT_TAG master)
+FetchContent_Declare(fmt GIT_REPOSITORY https://github.com/fmtlib/fmt.git GIT_TAG main)
 FetchContent_MakeAvailable(fmt)
 
 FetchContent_Declare(etl GIT_REPOSITORY https://github.com/ETLCPP/etl GIT_TAG 20.43.4)
