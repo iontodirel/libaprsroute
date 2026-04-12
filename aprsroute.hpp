@@ -57,15 +57,17 @@
 #include <array>
 #include <algorithm>
 #include <charconv>
-#if APRS_ROUTER_USE_PMR
-#include <memory_resource>
-#endif
 #include <cctype>
 #include <utility>
 #include <tuple>
 #include <type_traits>
 #include <cstring>
 #include <cstdint>
+
+// Header not needed if PMR support is disabled
+#if APRS_ROUTER_USE_PMR
+#include <memory_resource>
+#endif
 
 // This header only library can be compiled in a TU and shared between TUs
 // to minimize compilation time, by defining the APRS_ROUTER_PUBLIC_FORWARD_DECLARATIONS_ONLY preprocessor directive.
@@ -754,14 +756,15 @@ address canonicalize(const struct address& address);
 q_construct parse_q_construct(std::string_view input);
 address_kind parse_address_kind(std::string_view text);
 bool try_parse_address(std::string_view address_string, address& result);
-bool try_parse_n_N_address(std::string_view address_string, struct address& address);
-bool try_parse_address_with_ssid(std::string_view address_string, struct address& address);
-bool try_parse_address(std::string_view address, std::array<char, 10>& address_no_ssid, size_t& address_no_ssid_size, int& ssid);
-bool try_parse_address_with_used_flag(std::string_view address, std::array<char, 10>& address_no_ssid, size_t& address_no_ssid_size, int& ssid);
-bool try_parse_address_with_used_flag(std::string_view address, std::array<char, 10>& address_no_ssid, size_t& address_no_ssid_size, int& ssid, bool& mark);
 bool try_parse_address(std::string_view address, internal_string_t<char>& address_no_ssid, int& ssid);
+bool try_parse_address(std::string_view address, std::array<char, 10>& address_no_ssid, size_t& address_no_ssid_size, int& ssid);
+bool try_parse_n_N_address(std::string_view address_string, struct address& address);
+bool try_parse_n_N_address(std::string_view address_string, std::array<char, 10>& address_text, size_t& address_text_size, int& n, int& N, bool& mark, size_t& length, address_kind& kind);
+bool try_parse_address_with_ssid(std::string_view address_string, struct address& address);
 bool try_parse_address_with_used_flag(std::string_view address, internal_string_t<char>& address_no_ssid, int& ssid);
 bool try_parse_address_with_used_flag(std::string_view address, internal_string_t<char>& address_no_ssid, int& ssid, bool& mark);
+bool try_parse_address_with_used_flag(std::string_view address, std::array<char, 10>& address_no_ssid, size_t& address_no_ssid_size, int& ssid);
+bool try_parse_address_with_used_flag(std::string_view address, std::array<char, 10>& address_no_ssid, size_t& address_no_ssid_size, int& ssid, bool& mark);
 bool try_parse_int(std::string_view str, int& result);
 
 void init_addresses(route_state& state);
@@ -805,7 +808,7 @@ template<typename T, size_t Size> void array_erase(std::array<T, Size>& array, s
 template<typename T, size_t Size> void array_erase_n(std::array<T, Size>& array, size_t& size, size_t start_index, size_t count);
 template<typename T, size_t Size, typename U> void array_insert(std::array<T, Size>& array, size_t& size, size_t index, U&& value);
 template<typename T, size_t Size, typename U> void array_push_back(std::array<T, Size>& array, size_t& size, U&& value);
-template<size_t EntrySize, size_t Size, class InputIterator> void array_push_back(std::array<std::array<char, EntrySize>, Size>& array, size_t& size, std::array<size_t, Size>& entry_sizes, InputIterator first, InputIterator last);
+template<size_t Extent, size_t Size, class InputIterator> void array_push_back(std::array<std::array<char, Extent>, Size>& array, size_t& size, std::array<size_t, Size>& extents, InputIterator first, InputIterator last);
 template<size_t Size, class InputIterator> void array_assign(std::array<char, Size>& array, size_t& size, InputIterator first, InputIterator last);
 
 APRS_ROUTER_NAMESPACE_END
@@ -1264,6 +1267,7 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
 #endif // APRS_ROUTER_PUBLIC_FORWARD_DECLARATIONS_ONLY
 
 #if APRS_ROUTER_USE_PMR
+
 template<class InputIterator, class OutputIterator1, class OutputIterator2>
 APRS_ROUTER_INLINE_NO_DISABLE std::tuple<OutputIterator1, OutputIterator2, bool> try_route_packet(std::string_view original_packet_from, std::string_view original_packet_to, InputIterator original_packet_path_begin, InputIterator original_packet_path_end, const router_settings& settings, OutputIterator1 routed_packet_path_out, enum routing_state& routing_state, OutputIterator2 routing_actions_out, std::pmr::memory_resource* memory_resource)
 {
@@ -1272,11 +1276,11 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
     assert(memory_resource != nullptr);
 
     route_state state(memory_resource);
-
     state.memory_resource = memory_resource;
 
     return try_route_packet(original_packet_from, original_packet_to, original_packet_path_begin, original_packet_path_end, settings, routed_packet_path_out, routing_state, routing_actions_out, state);
 }
+
 #endif // APRS_ROUTER_USE_PMR
 
 template<class InputIterator, class OutputIterator1, class OutputIterator2>
@@ -1305,20 +1309,22 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
         using value_type = typename std::iterator_traits<InputIterator>::value_type;
         if constexpr (has_data_and_size<value_type>::value)
         {
-            assert(it->size() <= 10);
-            if (it->size() <= 10)
+            if (it->size() > 10)
             {
-                array_push_back(state.packet_path, state.packet_path_size, state.packet_path_address_sizes, it->data(), it->data() + it->size());
+                routing_state = routing_state::not_routed;
+                return { routed_packet_path_out, routing_actions_out, false };
             }
+            array_push_back(state.packet_path, state.packet_path_size, state.packet_path_address_sizes, it->data(), it->data() + it->size());
         }
         else
         {
             size_t address_size = std::strlen(*it);
-            assert(address_size <= 10);
-            if (address_size <= 10)
+            if (address_size > 10)
             {
-                array_push_back(state.packet_path, state.packet_path_size, state.packet_path_address_sizes, *it, *it + address_size);
+                routing_state = routing_state::not_routed;
+                return { routed_packet_path_out, routing_actions_out, false };
             }
+            array_push_back(state.packet_path, state.packet_path_size, state.packet_path_address_sizes, *it, *it + address_size);
         }
     }
 
@@ -2296,7 +2302,7 @@ APRS_ROUTER_INLINE_NO_DISABLE std::tuple<OutputIterator1, OutputIterator2, bool>
 
             // Always expect std::string for the routed path output iterator
             // This is to make the interface simpler to use
-            // Addresses should always use the small string optimization
+            // Addresses should always use the small string optimization (SSO)
             *routed_packet_path_out++ = std::string(routed_address.data(), routed_address_size);
         }
     }
@@ -2321,8 +2327,10 @@ APRS_ROUTER_INLINE bool create_routed_routing(route_state& state, std::array<std
         const auto& address = state.packet_addresses[i];
         if (address.text_size != 0)
         {
-            auto routed_address = to_string(address);
-            array_push_back(routed_packet_path, routed_packet_path_size, routed_packet_path_address_sizes, routed_address.begin(), routed_address.end());
+            std::array<char, 15> routed_address = {};
+            size_t routed_address_size = 0;
+            to_string(address, routed_address, routed_address_size);
+            array_push_back(routed_packet_path, routed_packet_path_size, routed_packet_path_address_sizes, routed_address.data(), routed_address.data() + routed_address_size);
         }
     }
 
@@ -2689,6 +2697,7 @@ APRS_ROUTER_INLINE routing_diagnostic_display_entry create_diagnostic_print_line
     entry.packet_string = to_string(routed_packet);
     entry.highlight_string.append(std::string(diag.start, ' '));
     entry.highlight_string.append(std::string(diag.end - diag.start, '~'));
+
     if (diag.type == routing_action::set)
     {
         entry.highlight_string.append("~");
@@ -3025,6 +3034,7 @@ APRS_ROUTER_INLINE bool try_parse_address(std::string_view address_string, struc
     std::string_view address_text = address_string;
 
     array_assign(address.text, address.text_size, address_text.begin(), address_text.end());
+
     address.mark = false;
     address.ssid = 0;
     address.length = address_text.size();
@@ -3045,6 +3055,7 @@ APRS_ROUTER_INLINE bool try_parse_address(std::string_view address_string, struc
     {
         address.mark = true;
         address_text.remove_suffix(1); // remove the *
+
         array_assign(address.text, address.text_size, address_text.begin(), address_text.end()); // set the text to the address without the *
     }
 
@@ -3129,54 +3140,57 @@ APRS_ROUTER_INLINE bool try_parse_address(std::string_view address_string, struc
     return true;
 }
 
-APRS_ROUTER_INLINE bool try_parse_n_N_address(std::string_view address_string, struct address& address)
+APRS_ROUTER_INLINE bool try_parse_n_N_address(std::string_view address_string, std::array<char, 10>& address_text, size_t& address_text_size, int& n, int& N, bool& mark, size_t& length, address_kind& kind)
 {
     if (address_string.size() > 10)
     {
         return false;
     }
 
-    std::string_view address_text = address_string;
+    std::string_view text = address_string;
 
-    array_assign(address.text, address.text_size, address_text.begin(), address_text.end());
-    address.mark = false;
-    address.length = address_text.size();
-    address.n = 0;
-    address.N = 0;
-    address.kind = address_kind::other;
+    array_assign(address_text, address_text_size, text.begin(), text.end());
+
+    mark = false;
+    length = text.size();
+    n = 0;
+    N = 0;
+    kind = address_kind::other;
 
     // Check to see if the address is used (ending with *)
-    if (!address_text.empty() && address_text.back() == '*')
+    if (!text.empty() && text.back() == '*')
     {
-        address.mark = true;
-        address_text.remove_suffix(1); // remove the *
-        array_assign(address.text, address.text_size, address_text.begin(), address_text.end()); // set the text to the address without the *
+        mark = true;
+        text.remove_suffix(1); // remove the *
+
+        array_assign(address_text, address_text_size, text.begin(), text.end()); // set the text to the address without the *
     }
 
-    auto sep_position = address_text.find("-");
+    auto sep_position = text.find("-");
 
     // No separator found
     if (sep_position == std::string_view::npos)
     {
-        if (!address_text.empty() && isdigit(address_text.back()))
+        if (!text.empty() && isdigit(text.back()))
         {
-            address.n = address_text.back() - '0'; // get the last character as a number
-            address_text.remove_suffix(1); // remove the digit from the address text
+            n = text.back() - '0'; // get the last character as a number
+
+            text.remove_suffix(1); // remove the digit from the address text
 
             // Validate the n is in the range 1-7
-            if (address.n > 0 && address.n <= 7)
+            if (n > 0 && n <= 7)
             {
-                array_assign(address.text, address.text_size, address_text.begin(), address_text.end());
-                address.kind = parse_address_kind({address.text.data(), address.text_size});
+                array_assign(address_text, address_text_size, text.begin(), text.end());
+                kind = parse_address_kind({address_text.data(), address_text_size});
             }
             else
             {
-                address.n = 0;
+                n = 0;
             }
         }
         else
         {
-            address.kind = parse_address_kind({address.text.data(), address.text_size});
+            kind = parse_address_kind({address_text.data(), address_text_size});
         }
 
         return true;
@@ -3185,28 +3199,33 @@ APRS_ROUTER_INLINE bool try_parse_n_N_address(std::string_view address_string, s
     // Separator found, check if we have exactly one digit on both sides of the separator, ex WIDE1-1
     // If the address does not match the n-N format, we will treat it as a regular address ex address with SSID
     if (sep_position != std::string_view::npos &&
-        std::isdigit(static_cast<int>(address_text[sep_position - 1])) &&
-        (sep_position + 1) < address_text.size() && std::isdigit(static_cast<int>(address_text[sep_position + 1])) &&
-        (sep_position + 2 == address_text.size()))
+        std::isdigit(static_cast<int>(text[sep_position - 1])) &&
+        (sep_position + 1) < text.size() && std::isdigit(static_cast<int>(text[sep_position + 1])) &&
+        (sep_position + 2 == text.size()))
     {
-        address.n = address_text[sep_position - 1] - '0';
-        address.N = address_text[sep_position + 1] - '0';
+        n = text[sep_position - 1] - '0';
+        N = text[sep_position + 1] - '0';
 
-        if (address.N >= 0 && address.N <= 7 && address.n > 0 && address.n <= 7)
+        if (N >= 0 && N <= 7 && n > 0 && n <= 7)
         {
-            array_assign(address.text, address.text_size, address_text.data(), address_text.data() + sep_position - 1); // remove the separator and both digits from the address text
-            address.kind = parse_address_kind({address.text.data(), address.text_size});
+            array_assign(address_text, address_text_size, text.data(), text.data() + sep_position - 1); // remove the separator and both digits from the address text
+            kind = parse_address_kind({address_text.data(), address_text_size});
         }
         else
         {
-            address.n = 0;
-            address.N = 0;
+            n = 0;
+            N = 0;
         }
 
         return true;
     }
 
     return false;
+}
+
+APRS_ROUTER_INLINE bool try_parse_n_N_address(std::string_view address_string, struct address& address)
+{
+    return try_parse_n_N_address(address_string, address.text, address.text_size, address.n, address.N, address.mark, address.length, address.kind);
 }
 
 APRS_ROUTER_INLINE bool try_parse_address_with_ssid(std::string_view address_string, struct address& address)
@@ -3314,6 +3333,7 @@ APRS_ROUTER_INLINE bool try_parse_address(std::string_view address, std::array<c
     for (size_t i = 0; i < address_no_ssid_size; i++)
     {
         char c = address_no_ssid[i];
+
         // The address has to be alphanumeric and uppercase, or a digit
         if ((!std::isalnum(static_cast<unsigned char>(c)) || !std::isdigit(static_cast<unsigned char>(c))) &&
             !std::isupper(static_cast<unsigned char>(c)))
@@ -3354,8 +3374,11 @@ APRS_ROUTER_INLINE bool try_parse_address(std::string_view address, internal_str
 {
     std::array<char, 10> address_no_ssid_result = {};
     size_t address_no_ssid_result_size = 0;
+
     bool result = try_parse_address(address, address_no_ssid_result, address_no_ssid_result_size, ssid);
+
     address_no_ssid.assign(address_no_ssid_result.data(), address_no_ssid_result_size);
+
     return result;
 }
 
@@ -3363,8 +3386,11 @@ APRS_ROUTER_INLINE bool try_parse_address_with_used_flag(std::string_view addres
 {
     std::array<char, 10> address_no_ssid_result = {};
     size_t address_no_ssid_result_size = 0;
+
     bool result = try_parse_address_with_used_flag(address, address_no_ssid_result, address_no_ssid_result_size, ssid);
+
     address_no_ssid.assign(address_no_ssid_result.data(), address_no_ssid_result_size);
+
     return result;
 }
 
@@ -3372,8 +3398,11 @@ APRS_ROUTER_INLINE bool try_parse_address_with_used_flag(std::string_view addres
 {
     std::array<char, 10> address_no_ssid_result = {};
     size_t address_no_ssid_result_size = 0;
+
     bool result = try_parse_address_with_used_flag(address, address_no_ssid_result, address_no_ssid_result_size, ssid, mark);
+
     address_no_ssid.assign(address_no_ssid_result.data(), address_no_ssid_result_size);
+
     return result;
 }
 
@@ -4411,14 +4440,19 @@ APRS_ROUTER_INLINE void array_push_back(std::array<T, Size>& array, size_t& size
     size++;
 }
 
-template<size_t EntrySize, size_t Size, class InputIterator>
-APRS_ROUTER_INLINE void array_push_back(std::array<std::array<char, EntrySize>, Size>& array, size_t& size, std::array<size_t, Size>& entry_sizes, InputIterator first, InputIterator last)
+template<size_t Extent, size_t Size, class InputIterator>
+APRS_ROUTER_INLINE void array_push_back(std::array<std::array<char, Extent>, Size>& array, size_t& size, std::array<size_t, Size>& extents, InputIterator first, InputIterator last)
 {
     assert(size < Size);
+
     size_t data_size = static_cast<size_t>(std::distance(first, last));
-    assert(data_size <= EntrySize);
+
+    assert(data_size <= Extent);
+
     std::copy(first, last, array[size].begin());
-    entry_sizes[size] = data_size;
+
+    extents[size] = data_size;
+
     size++;
 }
 
@@ -4426,7 +4460,9 @@ template<size_t Size, class InputIterator>
 APRS_ROUTER_INLINE void array_assign(std::array<char, Size>& array, size_t& size, InputIterator first, InputIterator last)
 {
     size = static_cast<size_t>(std::distance(first, last));
+
     assert(size <= Size);
+
     std::copy(first, last, array.begin());
 }
 
