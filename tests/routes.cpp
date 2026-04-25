@@ -183,8 +183,27 @@ void init_router_addresses(const packet& p, const std::vector<std::string>& path
     try_parse_addresses(path, router_addresses);
 
     route_state state;
-    state.router_n_N_addresses = get_router_n_N_addresses(router_addresses);
-    state.router_explicit_addresses = get_router_explicit_addresses(router_addresses);
+
+    auto n_N_addresses = get_router_n_N_addresses(router_addresses);
+    state.router_n_N_addresses_size = 0;
+    for (const auto& n_N_address : n_N_addresses)
+    {
+        if (state.router_n_N_addresses_size < state.router_n_N_addresses.size())
+        {
+            state.router_n_N_addresses[state.router_n_N_addresses_size++] = n_N_address;
+        }
+    }
+
+    auto explicit_addresses = get_router_explicit_addresses(router_addresses);
+    state.router_explicit_addresses_size = 0;
+    for (const auto& explicit_address : explicit_addresses)
+    {
+        if (state.router_explicit_addresses_size < state.router_explicit_addresses.size())
+        {
+            state.router_explicit_addresses[state.router_explicit_addresses_size++] = explicit_address;
+        }
+    }
+
     state.packet_from_address = p.from;
     state.packet_to_address = p.to;
 
@@ -198,8 +217,8 @@ void init_router_addresses(const packet& p, const std::vector<std::string>& path
     state.settings = settings;
     init_addresses(state);
 
-    settings.explicit_addresses = to_vector_of_string(state.router_explicit_addresses);
-    settings.n_N_addresses = to_vector_of_string(state.router_n_N_addresses);
+    settings.explicit_addresses = to_vector_of_string(state.router_explicit_addresses, state.router_explicit_addresses_size);
+    settings.n_N_addresses = to_vector_of_string(state.router_n_N_addresses, state.router_n_N_addresses_size);
 }
 
 std::string to_string(routing_option o)

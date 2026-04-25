@@ -90,6 +90,20 @@ inline std::vector<std::string> to_vector_of_string(const std::vector<address, A
     return result;
 }
 
+template <size_t N>
+inline std::vector<std::string> to_vector_of_string(const std::array<address, N>& addresses, size_t addresses_size)
+{
+    std::vector<std::string> result;
+    for (size_t i = 0; i < addresses_size; i++)
+    {
+        std::array<char, 15> address_string = {};
+        size_t address_string_size = 0;
+        to_string(addresses[i], address_string, address_string_size);
+        result.push_back(std::string(address_string.data(), address_string_size));
+    }
+    return result;
+}
+
 // **************************************************************** //
 //                                                                  //
 //                                                                  //
