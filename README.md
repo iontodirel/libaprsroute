@@ -256,13 +256,15 @@ The tests were configured with `APRSROUTE_USE_STACK_ALLOCATOR2` in the stress ha
 
 | Platform     | Hardware                     | Throughput  | Routing time  | Routing memory (heap)      |
 |--------------|------------------------------|-------------|---------------|----------------------------|
-| Windows MSVC | Intel i9-14900HX, 97GB RAM   | 1.4M pkts/s | 0.68 μs       | 0 bytes, 0 allocations     |
-| WSL GCC      | Intel i9-14900HX, 97GB RAM   | 1.9M pkts/s | 0.53 μs       | 0 bytes, 0 allocations     |
-| WSL Clang    | Intel i9-14900HX, 97GB RAM   | 1.7M pkts/s | 0.58 μs       | 0 bytes, 0 allocations     |
+| Windows MSVC | Intel i9-14900HX, 97GB RAM   | 2.35M pkts/s| 0.43 μs       | 0 bytes, 0 allocations     |
+| WSL GCC      | Intel i9-14900HX, 97GB RAM   | 2.83M pkts/s| 0.35 μs       | 0 bytes, 0 allocations     |
+| WSL Clang    | Intel i9-14900HX, 97GB RAM   | 2.79M pkts/s| 0.36 μs       | 0 bytes, 0 allocations     |
 | Linux GCC    | Intel Celeron N5095, 8GB RAM | 693K pkts/s | 1.44 μs       | 0 bytes, 0 allocations     |
 | Linux Clang  | Intel Celeron N5095, 8GB RAM | 677K pkts/s | 1.48 μs       | 0 bytes, 0 allocations     |
-| Linux GCC    | Intel i7-8700, 32GB RAM      | 1M pkts/s   | 0.9 μs        | 0 bytes, 0 allocations     |
-| Linux Clang  | Intel i7-8700, 32GB RAM      | 1M pkts/s   | 0.9 μs        | 0 bytes, 0 allocations     |
+| Linux GCC    | Intel i7-8700, 32GB RAM      | 2.27M pkts/s| 0.44 μs       | 0 bytes, 0 allocations     |
+| Linux Clang  | Intel i7-8700, 32GB RAM      | 2.10M pkts/s| 0.48 μs       | 0 bytes, 0 allocations     |
+| Linux GCC    | Intel i5-7Y57, 8GB RAM       | 1.04M pkts/s| 0.96 μs       | 0 bytes, 0 allocations     |
+| Linux Clang  | Intel i5-7Y57, 8GB RAM       | 962K pkts/s | 1.04 μs       | 0 bytes, 0 allocations     |
 | RISCV GCC    | ESP32 C6, 512KB RAM          | 6K pkts/s   | 165 μs        | 0 bytes, 0 allocations     |
 | ARM GCC      | Pico 2 W, 520KB RAM          | 4.1K pkts/s | 242 μs        | 0 bytes, 0 allocations     |
 | ARM GCC      | Teensy 4.1, 1024KB RAM       | 44K pkts/s  | 22 μs         | 0 bytes, 0 allocations     |
