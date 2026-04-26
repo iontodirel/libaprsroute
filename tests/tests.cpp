@@ -54,6 +54,8 @@
 #pragma warning(pop)
 #endif
 
+#include <etl/string.h>
+
 #include "../aprsroute.hpp"
 
 // Enable only the auto testing if defined. This will run the auto tests only.
@@ -2439,6 +2441,126 @@ TEST(diagnostic, push_address_set_diagnostic)
     EXPECT_TRUE(diag[0].index == 5);
     EXPECT_TRUE(diag[0].address == "CALLE");
 
+#else
+    EXPECT_TRUE(true);
+#endif
+}
+
+TEST(router, try_route_packet_output_value_type)
+{
+#ifndef APRS_ROUTE_DISABLE_TESTS
+    // Exercises every branch of the if constexpr dispatch in
+    // create_routed_routing by varying the output iterator's value_type:
+    // 
+    //   1. void                   - back_inserter into vector<std::string>
+    //   2. std::string            - array<std::string, N>
+    //   3. is_std_array_of_char_v - array<array<char, N>, M> + parallel sizes
+    //   4. generic fallback       - array<etl::string<N>, M>
+
+    const std::string_view packet_from = "N0CALL-10";
+    const std::string_view packet_to = "CALL-5";
+    const std::string_view router_address = "DIGI";
+    const std::array<std::string_view, 5> packet_path{ "CALLA-10*", "CALLB-5*", "CALLC-15*", "WIDE1*", "WIDE2-1" };
+    const std::array<std::string_view, 6> expected{ "CALLA-10", "CALLB-5", "CALLC-15", "WIDE1", router_address, "WIDE2*" };
+    const std::array<std::string_view, 0> explicit_addresses{};
+    const std::array<std::string_view, 2> n_N_addresses{ "WIDE1-1", "WIDE2-1" };
+
+    {
+        std::vector<std::string> routed_packet_path;
+        routed_packet_path.reserve(8);
+        aprs::router::routing_state routing_state;
+        aprs::router::route_state state;
+        auto [path_end, sizes_end, result] = aprs::router::try_route_packet(packet_from, packet_to, packet_path.begin(), packet_path.end(), router_address, explicit_addresses.begin(), explicit_addresses.end(), n_N_addresses.begin(), n_N_addresses.end(), aprs::router::routing_option::none, std::back_inserter(routed_packet_path), aprs::router::detail::discard_output_iterator{}, routing_state, state);
+        (void)path_end;
+        (void)sizes_end;
+        (void)result;
+        ASSERT_EQ(routed_packet_path.size(), expected.size());
+        for (size_t i = 0; i < expected.size(); ++i)
+        {
+            EXPECT_EQ(routed_packet_path[i], expected[i]);
+        }
+    }
+
+    {
+        std::array<std::string, 8> routed_packet_path{};
+        std::array<size_t, 8> routed_packet_path_address_sizes{};
+        aprs::router::routing_state routing_state;
+        aprs::router::route_state state;
+        auto [path_end, sizes_end, result] = aprs::router::try_route_packet(packet_from, packet_to, packet_path.begin(), packet_path.end(), router_address, explicit_addresses.begin(), explicit_addresses.end(), n_N_addresses.begin(), n_N_addresses.end(), aprs::router::routing_option::none, routed_packet_path.begin(), routed_packet_path_address_sizes.begin(), routing_state, state);
+        (void)sizes_end;
+        (void)result;
+        size_t routed_path_size = static_cast<size_t>(std::distance(routed_packet_path.begin(), path_end));
+        ASSERT_EQ(routed_path_size, expected.size());
+        for (size_t i = 0; i < routed_path_size; ++i)
+        {
+            EXPECT_EQ(routed_packet_path[i], expected[i]);
+        }
+    }
+
+    {
+        std::array<std::array<char, 10>, 8> routed_packet_path{};
+        std::array<size_t, 8> routed_packet_path_address_sizes{};
+        aprs::router::routing_state routing_state;
+        aprs::router::route_state state;
+        auto [path_end, sizes_end, result] = aprs::router::try_route_packet(packet_from, packet_to, packet_path.begin(), packet_path.end(), router_address, explicit_addresses.begin(), explicit_addresses.end(), n_N_addresses.begin(), n_N_addresses.end(), aprs::router::routing_option::none, routed_packet_path.begin(), routed_packet_path_address_sizes.begin(), routing_state, state);
+        (void)result;
+        size_t routed_path_size = static_cast<size_t>(std::distance(routed_packet_path.begin(), path_end));
+        size_t routed_sizes_size = static_cast<size_t>(std::distance(routed_packet_path_address_sizes.begin(), sizes_end));
+        ASSERT_EQ(routed_path_size, expected.size());
+        ASSERT_EQ(routed_sizes_size, routed_path_size);
+        for (size_t i = 0; i < routed_path_size; ++i)
+        {
+            EXPECT_EQ(std::string_view(routed_packet_path[i].data(), routed_packet_path_address_sizes[i]), expected[i]);
+        }
+    }
+
+    {
+        std::array<etl::string<10>, 8> routed_packet_path{};
+        std::array<size_t, 8> routed_packet_path_address_sizes{};
+        aprs::router::routing_state routing_state;
+        aprs::router::route_state state;
+        auto [path_end, sizes_end, result] = aprs::router::try_route_packet(packet_from, packet_to, packet_path.begin(), packet_path.end(), router_address, explicit_addresses.begin(), explicit_addresses.end(), n_N_addresses.begin(), n_N_addresses.end(), aprs::router::routing_option::none, routed_packet_path.begin(), routed_packet_path_address_sizes.begin(), routing_state, state);
+        (void)sizes_end;
+        (void)result;
+        size_t routed_path_size = static_cast<size_t>(std::distance(routed_packet_path.begin(), path_end));
+        ASSERT_EQ(routed_path_size, expected.size());
+        for (size_t i = 0; i < routed_path_size; ++i)
+        {
+            EXPECT_EQ(std::string_view(routed_packet_path[i].data(), routed_packet_path[i].size()), expected[i]);
+        }
+    }
+#else
+    EXPECT_TRUE(true);
+#endif
+}
+
+TEST(router, try_route_packet_fixed_capacity_buffers_sample)
+{
+#ifndef APRS_ROUTE_DISABLE_TESTS
+    const std::string_view packet_from = "N0CALL-10";
+    const std::string_view packet_to = "CALL-5";
+    const std::string_view router_address = "DIGI";
+    const std::array<std::string_view, 5> packet_path{ "CALLA-10*", "CALLB-5*", "CALLC-15*", "WIDE1*", "WIDE2-1" };
+    const std::array<std::string_view, 6> expected{ "CALLA-10", "CALLB-5", "CALLC-15", "WIDE1", "DIGI", "WIDE2*" };
+    const std::array<std::string_view, 0> explicit_addresses{};
+    const std::array<std::string_view, 2> n_N_addresses{ "WIDE1-1", "WIDE2-1" };
+
+    std::array<std::array<char, 10>, 8> routed_packet_path{};
+    std::array<size_t, 8> routed_packet_path_address_sizes{};
+    aprs::router::routing_state routing_state;
+    aprs::router::route_state state;
+
+    auto [path_end, sizes_end, result] = aprs::router::try_route_packet(packet_from, packet_to, packet_path.begin(), packet_path.end(), router_address, explicit_addresses.begin(), explicit_addresses.end(), n_N_addresses.begin(), n_N_addresses.end(), aprs::router::routing_option::none, routed_packet_path.begin(), routed_packet_path_address_sizes.begin(), routing_state, state);
+    (void)result;
+
+    size_t routed_path_size = static_cast<size_t>(std::distance(routed_packet_path.begin(), path_end));
+    size_t routed_sizes_size = static_cast<size_t>(std::distance(routed_packet_path_address_sizes.begin(), sizes_end));
+    ASSERT_EQ(routed_path_size, expected.size());
+    ASSERT_EQ(routed_sizes_size, routed_path_size);
+    for (size_t i = 0; i < routed_path_size; ++i)
+    {
+        EXPECT_EQ(std::string_view(routed_packet_path[i].data(), routed_packet_path_address_sizes[i]), expected[i]);
+    }
 #else
     EXPECT_TRUE(true);
 #endif

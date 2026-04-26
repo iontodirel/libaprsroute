@@ -214,7 +214,9 @@ void init_router_addresses(const packet& p, const std::vector<std::string>& path
         array_push_back(state.packet_path, state.packet_path_size, state.packet_path_address_sizes, path_address.data(), path_address.data() + std::min(path_address.size(), size_t(10)));
     }
 
-    state.settings = settings;
+    state.router_address_string = settings.address;
+    state.options = settings.options;
+    state.enable_diagnostics = settings.enable_diagnostics;
     init_addresses(state);
 
     settings.explicit_addresses = to_vector_of_string(state.router_explicit_addresses, state.router_explicit_addresses_size);

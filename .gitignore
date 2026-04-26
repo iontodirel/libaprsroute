@@ -10,3 +10,4 @@ examples/digipeater/out/*
 examples/dot_net_basic/.vs/*
 examples/dot_net_basic/DotNetRouter/obj/*
 *UpgradeLog.htm
+no_heap_test/*
