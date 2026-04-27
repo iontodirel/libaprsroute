@@ -2566,6 +2566,137 @@ TEST(router, try_route_packet_fixed_capacity_buffers_sample)
 #endif
 }
 
+TEST(readme, examples)
+{
+#ifndef APRS_ROUTE_DISABLE_TESTS
+    // example 1 - decoding a packet
+    {
+        packet p;
+        try_decode_packet("N0CALL>APRS,WIDE2-2:data", p);
+
+        EXPECT_EQ(p.from, "N0CALL");
+        EXPECT_EQ(p.to, "APRS");
+        EXPECT_EQ(p.data, "data");
+        ASSERT_EQ(p.path.size(), 1u);
+        EXPECT_EQ(p.path[0], "WIDE2-2");
+    }
+
+    // example 2 - decoding a packet using constructors
+    {
+        packet p = "N0CALL>APRS,WIDE2-2:data";
+        EXPECT_EQ(to_string(p), "N0CALL>APRS,WIDE2-2:data");
+    }
+
+    // example 3 - routing a packet
+    {
+        router_settings digi { "DIGI", {}, { "WIDE1" } };
+        routing_result result;
+
+        packet p = "N0CALL>APRS,WIDE1-3:data";
+
+        try_route_packet(p, digi, result);
+
+        EXPECT_EQ(result.state, routing_state::routed);
+        EXPECT_EQ(to_string(result.routed_packet), "N0CALL>APRS,DIGI*,WIDE1-2:data");
+    }
+
+    // example 4 - routing diagnostics
+    {
+        router_settings digi { "DIGI", {}, { "WIDE1", "WIDE2" }, routing_option::none, true };
+        routing_result result;
+
+        packet p = { "N0CALL", "APRS", { "WIDE1-2" }, "data" };
+
+        try_route_packet(p, digi, result);
+
+        ASSERT_EQ(result.actions.size(), 3u);
+
+        EXPECT_EQ(result.actions[0].address, "WIDE1-1");
+        EXPECT_EQ(result.actions[0].target, applies_to::path);
+        EXPECT_EQ(result.actions[0].type, routing_action::decrement);
+        EXPECT_EQ(result.actions[0].start, 12u);
+        EXPECT_EQ(result.actions[0].end, 19u);
+        EXPECT_EQ(result.actions[0].index, 0u);
+
+        EXPECT_EQ(result.actions[1].address, "DIGI");
+        EXPECT_EQ(result.actions[1].target, applies_to::path);
+        EXPECT_EQ(result.actions[1].type, routing_action::insert);
+        EXPECT_EQ(result.actions[1].start, 12u);
+        EXPECT_EQ(result.actions[1].end, 16u);
+        EXPECT_EQ(result.actions[1].index, 0u);
+
+        EXPECT_EQ(result.actions[2].address, "DIGI");
+        EXPECT_EQ(result.actions[2].target, applies_to::path);
+        EXPECT_EQ(result.actions[2].type, routing_action::set);
+        EXPECT_EQ(result.actions[2].start, 12u);
+        EXPECT_EQ(result.actions[2].end, 16u);
+        EXPECT_EQ(result.actions[2].index, 0u);
+    }
+
+    // example 5 - print routing diagnostics using to_string
+    {
+        router_settings digi { "DIGI", {}, { "WIDE1", "WIDE2" }, routing_option::none, true };
+        routing_result result;
+
+        packet p = { "N0CALL", "APRS", { "WIDE1-2" }, "data" };
+
+        try_route_packet(p, digi, result);
+
+        std::string diag_string = to_string(result);
+
+        EXPECT_FALSE(diag_string.empty());
+    }
+
+    // example 6 - print routing diagnostics using format
+    {
+        router_settings digi { "DIGI", {}, { "WIDE1", "WIDE2" }, routing_option::none, true };
+        routing_result result;
+
+        packet p = { "N0CALL", "APRS", { "WIDE1-2" }, "data" };
+
+        try_route_packet(p, digi, result);
+
+        routing_diagnostic_display diag = format(result);
+
+        EXPECT_FALSE(diag.entries.empty());
+        for (auto& e : diag.entries)
+        {
+            EXPECT_FALSE(e.message.empty());
+            EXPECT_FALSE(e.packet_string.empty());
+            EXPECT_FALSE(e.highlight_string.empty());
+        }
+    }
+
+    // example 7 - parsing a WIDE generic address
+    {
+        address s;
+        std::string path = "WIDE2-1*";
+
+        try_parse_address(path, s);
+
+        EXPECT_TRUE(s.mark);
+        EXPECT_EQ(s.n, 2);
+        EXPECT_EQ(s.N, 1);
+        EXPECT_EQ(std::string_view(s.text.data(), s.text_size), "WIDE");
+        EXPECT_EQ(s.kind, address_kind::wide);
+    }
+
+    // example 8 - parsing a callsign
+    {
+        address s;
+        std::string path = "N0CALL-10*";
+
+        try_parse_address(path, s);
+
+        EXPECT_TRUE(s.mark);
+        EXPECT_EQ(s.ssid, 10);
+        EXPECT_EQ(std::string_view(s.text.data(), s.text_size), "N0CALL");
+    }
+#else
+    EXPECT_TRUE(true);
+#endif
+}
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
