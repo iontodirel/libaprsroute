@@ -111,6 +111,10 @@ add_executable(aprsroute_with_etl_test "with_etl.cpp" "../aprsroute.hpp")
 set_property(TARGET aprsroute_with_etl_test PROPERTY CXX_STANDARD 20)
 target_link_libraries(aprsroute_with_etl_test PRIVATE etl::etl GTest::gtest_main gtest gtest_main)
 
+add_executable(aprsroute_no_heap_test "no_heap_test.cpp" "../aprsroute.hpp")
+set_property(TARGET aprsroute_no_heap_test PROPERTY CXX_STANDARD 20)
+target_link_libraries(aprsroute_no_heap_test PRIVATE GTest::gtest gtest)
+
 add_definitions(-DINPUT_TEST_FILE="${INPUT_TEST_FILE}")
 
 if(MSVC)
@@ -129,3 +133,4 @@ gtest_discover_tests(aprsroute_with_etl_test)
 gtest_discover_tests(aprsroute_set_cpp17_std)
 gtest_discover_tests(aprsroute_without_pmr_build_test)
 gtest_discover_tests(aprsroute_use_in_tu)
+gtest_discover_tests(aprsroute_no_heap_test)
