@@ -1634,8 +1634,7 @@ APRS_ROUTER_INLINE bool try_explicit_route(route_state& state)
 
     if (!maybe_router_address_index)
     {
-        // We did not find router's address
-        // or a explicit router address in the packet path
+        // We did not find router's address or a explicit router address in the packet path
         return false;
     }
 
@@ -1821,6 +1820,9 @@ APRS_ROUTER_INLINE bool try_preempt_explicit_route(route_state& state)
 
 APRS_ROUTER_INLINE bool try_preempt_transform_explicit_route(route_state& state)
 {
+    // We cannot reach here if the router's address is not found
+    assert(state.maybe_router_address_index.has_value());
+
     const bool enable_diagnostics = state.enable_diagnostics;
     const routing_option options = state.options;
     const size_t router_address_index = state.maybe_router_address_index.value();
