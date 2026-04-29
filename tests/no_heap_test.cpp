@@ -66,8 +66,6 @@ void operator delete[](void* allocated_pointer, size_t) noexcept { std::free(all
 
 TEST(no_heap, try_route_packet_low_level_overload_one_million_packets)
 {
-    tracking_enabled = true;
-
     constexpr size_t packet_count = 1'000'000;
 
     const std::string_view packet_from = "N0CALL-10";
@@ -84,6 +82,12 @@ TEST(no_heap, try_route_packet_low_level_overload_one_million_packets)
 
     aprs::router::routing_state routing_state;
     aprs::router::route_state   reusable_route_state;
+
+    // Track only routing calls; route_state ctor allocates a 16-byte
+    // _Container_proxy under MSVC iterator-debug (Debug builds).
+    allocation_count = 0;
+    allocation_bytes = 0;
+    tracking_enabled = true;
 
     for (size_t iteration = 0; iteration < packet_count; ++iteration)
     {
@@ -120,8 +124,6 @@ TEST(no_heap, try_route_packet_low_level_overload_one_million_packets)
 
 TEST(no_heap, init_router_then_no_init_overload_one_million_packets)
 {
-    tracking_enabled = true;
-
     constexpr size_t packet_count = 1'000'000;
 
     const std::string_view packet_from = "N0CALL-10";
@@ -140,6 +142,12 @@ TEST(no_heap, init_router_then_no_init_overload_one_million_packets)
     aprs::router::route_state   reusable_route_state;
 
     aprs::router::init_router(router_address, explicit_addresses.begin(), explicit_addresses.end(), n_N_addresses.begin(), n_N_addresses.end(), aprs::router::routing_option::none, false, reusable_route_state);
+
+    // Track only routing calls; route_state ctor allocates a 16-byte
+    // _Container_proxy under MSVC iterator-debug (Debug builds).
+    allocation_count = 0;
+    allocation_bytes = 0;
+    tracking_enabled = true;
 
     for (size_t iteration = 0; iteration < packet_count; ++iteration)
     {

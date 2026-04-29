@@ -1472,21 +1472,21 @@ TEST(router, preempt_front_with_explicit_ssid_diag)
 
     EXPECT_TRUE(result.actions.size() == 3);
 
-    EXPECT_TRUE(result.actions[0].address == "DIGI2-3");
+    EXPECT_TRUE(std::string_view(result.actions[0].address.data(), result.actions[0].address_size) == "DIGI2-3");
     EXPECT_TRUE(result.actions[0].target == applies_to::path);
     EXPECT_TRUE(result.actions[0].type == routing_action::remove);
     EXPECT_TRUE(result.actions[0].start == 52);
     EXPECT_TRUE(result.actions[0].end == 59);
     EXPECT_TRUE(result.actions[0].index == 5);
 
-    EXPECT_TRUE(result.actions[1].address == "DIGI2-3");
+    EXPECT_TRUE(std::string_view(result.actions[1].address.data(), result.actions[1].address_size) == "DIGI2-3");
     EXPECT_TRUE(result.actions[1].target == applies_to::path);
     EXPECT_TRUE(result.actions[1].type == routing_action::insert);
     EXPECT_TRUE(result.actions[1].start == 12);
     EXPECT_TRUE(result.actions[1].end == 19);
     EXPECT_TRUE(result.actions[1].index == 0);
 
-    EXPECT_TRUE(result.actions[2].address == "DIGI2-3");
+    EXPECT_TRUE(std::string_view(result.actions[2].address.data(), result.actions[2].address_size) == "DIGI2-3");
     EXPECT_TRUE(result.actions[2].target == applies_to::path);
     EXPECT_TRUE(result.actions[2].type == routing_action::set);
     EXPECT_TRUE(result.actions[2].start == 12);
@@ -1577,14 +1577,14 @@ TEST(router, substitute_explicit_address_with_ssid_diagnostic)
 
     EXPECT_TRUE(result.actions.size() == 2);
 
-    EXPECT_TRUE(result.actions[0].address == "DIGI-7");
+    EXPECT_TRUE(std::string_view(result.actions[0].address.data(), result.actions[0].address_size) == "DIGI-7");
     EXPECT_TRUE(result.actions[0].target == applies_to::path);
     EXPECT_TRUE(result.actions[0].type == routing_action::replace);
     EXPECT_TRUE(result.actions[0].start == 12);
     EXPECT_TRUE(result.actions[0].end == 18);
     EXPECT_TRUE(result.actions[0].index == 0);
 
-    EXPECT_TRUE(result.actions[1].address == "DIGI-7");
+    EXPECT_TRUE(std::string_view(result.actions[1].address.data(), result.actions[1].address_size) == "DIGI-7");
     EXPECT_TRUE(result.actions[1].target == applies_to::path);
     EXPECT_TRUE(result.actions[1].type == routing_action::set);
     EXPECT_TRUE(result.actions[1].start == 12);
@@ -1634,7 +1634,7 @@ TEST(router, try_route_packet_enable_diagnostics)
 
     const routing_diagnostic& diag = result.actions[0];
 
-    EXPECT_TRUE(diag.address == "DIGI");
+    EXPECT_TRUE(std::string_view(diag.address.data(), diag.address_size) == "DIGI");
     EXPECT_TRUE(diag.target == applies_to::path);
     EXPECT_TRUE(diag.type == routing_action::warn);
     EXPECT_TRUE(diag.start == 23);
@@ -1656,7 +1656,7 @@ TEST(router, try_route_packet_enable_diagnostics)
 
     EXPECT_TRUE(result.actions.size() == 1);
 
-    EXPECT_TRUE(result.actions[0].address == "DIGI");
+    EXPECT_TRUE(std::string_view(result.actions[0].address.data(), result.actions[0].address_size) == "DIGI");
     EXPECT_TRUE(result.actions[0].target == applies_to::path);
     EXPECT_TRUE(result.actions[0].type == routing_action::warn);
     EXPECT_TRUE(result.actions[0].start == 17);
@@ -1685,14 +1685,14 @@ TEST(router, try_route_packet_enable_diagnostics)
 
     EXPECT_TRUE(result.actions.size() == 2);
 
-    EXPECT_TRUE(result.actions[0].address == "DIGI");
+    EXPECT_TRUE(std::string_view(result.actions[0].address.data(), result.actions[0].address_size) == "DIGI");
     EXPECT_TRUE(result.actions[0].target == applies_to::path);
     EXPECT_TRUE(result.actions[0].type == routing_action::replace);
     EXPECT_TRUE(result.actions[0].start == 12);
     EXPECT_TRUE(result.actions[0].end == 13);
     EXPECT_TRUE(result.actions[0].index == 0);
 
-    EXPECT_TRUE(result.actions[1].address == "DIGI");
+    EXPECT_TRUE(std::string_view(result.actions[1].address.data(), result.actions[1].address_size) == "DIGI");
     EXPECT_TRUE(result.actions[1].target == applies_to::path);
     EXPECT_TRUE(result.actions[1].type == routing_action::set);
     EXPECT_TRUE(result.actions[1].start == 12);
@@ -1720,21 +1720,21 @@ TEST(router, try_route_packet_enable_diagnostics)
 
     EXPECT_TRUE(result.actions.size() == 3);
 
-    EXPECT_TRUE(result.actions[0].address == "DIGI");
+    EXPECT_TRUE(std::string_view(result.actions[0].address.data(), result.actions[0].address_size) == "DIGI");
     EXPECT_TRUE(result.actions[0].target == applies_to::path);
     EXPECT_TRUE(result.actions[0].type == routing_action::replace);
     EXPECT_TRUE(result.actions[0].start == 19);
     EXPECT_TRUE(result.actions[0].end == 20);
     EXPECT_TRUE(result.actions[0].index == 3);
 
-    EXPECT_TRUE(result.actions[1].address == "C");
+    EXPECT_TRUE(std::string_view(result.actions[1].address.data(), result.actions[1].address_size) == "C");
     EXPECT_TRUE(result.actions[1].target == applies_to::path);
     EXPECT_TRUE(result.actions[1].type == routing_action::unset);
     EXPECT_TRUE(result.actions[1].start == 16);
     EXPECT_TRUE(result.actions[1].end == 18);
     EXPECT_TRUE(result.actions[1].index == 2);
 
-    EXPECT_TRUE(result.actions[2].address == "DIGI");
+    EXPECT_TRUE(std::string_view(result.actions[2].address.data(), result.actions[2].address_size) == "DIGI");
     EXPECT_TRUE(result.actions[2].target == applies_to::path);
     EXPECT_TRUE(result.actions[2].type == routing_action::set);
     EXPECT_TRUE(result.actions[2].start == 18);
@@ -1755,7 +1755,7 @@ TEST(router, try_route_packet_enable_diagnostics)
 
     EXPECT_TRUE(result.actions.size() == 1);
 
-    EXPECT_TRUE(result.actions[0].address == "A");
+    EXPECT_TRUE(std::string_view(result.actions[0].address.data(), result.actions[0].address_size) == "A");
     EXPECT_TRUE(result.actions[0].target == applies_to::path);
     EXPECT_TRUE(result.actions[0].type == routing_action::set);
     EXPECT_TRUE(result.actions[0].start == 12);
@@ -1784,21 +1784,21 @@ TEST(router, try_route_packet_enable_diagnostics)
 
     EXPECT_TRUE(result.actions.size() == 3);
 
-    EXPECT_TRUE(result.actions[0].address == "ABCDE");
+    EXPECT_TRUE(std::string_view(result.actions[0].address.data(), result.actions[0].address_size) == "ABCDE");
     EXPECT_TRUE(result.actions[0].target == applies_to::path);
     EXPECT_TRUE(result.actions[0].type == routing_action::remove);
     EXPECT_TRUE(result.actions[0].start == 24);
     EXPECT_TRUE(result.actions[0].end == 29);
     EXPECT_TRUE(result.actions[0].index == 3);
 
-    EXPECT_TRUE(result.actions[1].address == "ABCDE");
+    EXPECT_TRUE(std::string_view(result.actions[1].address.data(), result.actions[1].address_size) == "ABCDE");
     EXPECT_TRUE(result.actions[1].target == applies_to::path);
     EXPECT_TRUE(result.actions[1].type == routing_action::insert);
     EXPECT_TRUE(result.actions[1].start == 12);
     EXPECT_TRUE(result.actions[1].end == 17);
     EXPECT_TRUE(result.actions[1].index == 0);
 
-    EXPECT_TRUE(result.actions[2].address == "ABCDE");
+    EXPECT_TRUE(std::string_view(result.actions[2].address.data(), result.actions[2].address_size) == "ABCDE");
     EXPECT_TRUE(result.actions[2].target == applies_to::path);
     EXPECT_TRUE(result.actions[2].type == routing_action::set);
     EXPECT_TRUE(result.actions[2].start == 12);
@@ -1831,28 +1831,28 @@ TEST(router, try_route_packet_enable_diagnostics)
 
     EXPECT_TRUE(result.actions.size() == 4);
 
-    EXPECT_TRUE(result.actions[0].address == "CALLB");
+    EXPECT_TRUE(std::string_view(result.actions[0].address.data(), result.actions[0].address_size) == "CALLB");
     EXPECT_TRUE(result.actions[0].target == applies_to::path);
     EXPECT_TRUE(result.actions[0].type == routing_action::remove);
     EXPECT_TRUE(result.actions[0].start == 18);
     EXPECT_TRUE(result.actions[0].end == 23);
     EXPECT_TRUE(result.actions[0].index == 1);
 
-    EXPECT_TRUE(result.actions[1].address == "CALLB");
+    EXPECT_TRUE(std::string_view(result.actions[1].address.data(), result.actions[1].address_size) == "CALLB");
     EXPECT_TRUE(result.actions[1].target == applies_to::path);
     EXPECT_TRUE(result.actions[1].type == routing_action::insert);
     EXPECT_TRUE(result.actions[1].start == 12);
     EXPECT_TRUE(result.actions[1].end == 17);
     EXPECT_TRUE(result.actions[1].index == 0);
 
-    EXPECT_TRUE(result.actions[2].address == "DIGI");
+    EXPECT_TRUE(std::string_view(result.actions[2].address.data(), result.actions[2].address_size) == "DIGI");
     EXPECT_TRUE(result.actions[2].target == applies_to::path);
     EXPECT_TRUE(result.actions[2].type == routing_action::insert);
     EXPECT_TRUE(result.actions[2].start == 12);
     EXPECT_TRUE(result.actions[2].end == 16);
     EXPECT_TRUE(result.actions[2].index == 0);
 
-    EXPECT_TRUE(result.actions[3].address == "CALLB");
+    EXPECT_TRUE(std::string_view(result.actions[3].address.data(), result.actions[3].address_size) == "CALLB");
     EXPECT_TRUE(result.actions[3].target == applies_to::path);
     EXPECT_TRUE(result.actions[3].type == routing_action::set);
     EXPECT_TRUE(result.actions[3].start == 17);
@@ -1885,28 +1885,28 @@ TEST(router, try_route_packet_enable_diagnostics)
 
     EXPECT_TRUE(result.actions.size() == 4);
 
-    EXPECT_TRUE(result.actions[0].address == "CITYA");
+    EXPECT_TRUE(std::string_view(result.actions[0].address.data(), result.actions[0].address_size) == "CITYA");
     EXPECT_TRUE(result.actions[0].target == applies_to::path);
     EXPECT_TRUE(result.actions[0].type == routing_action::remove);
     EXPECT_TRUE(result.actions[0].start == 12);
     EXPECT_TRUE(result.actions[0].end == 18);
     EXPECT_TRUE(result.actions[0].index == 0);
 
-    EXPECT_TRUE(result.actions[1].address == "CITYB");
+    EXPECT_TRUE(std::string_view(result.actions[1].address.data(), result.actions[1].address_size) == "CITYB");
     EXPECT_TRUE(result.actions[1].target == applies_to::path);
     EXPECT_TRUE(result.actions[1].type == routing_action::remove);
     EXPECT_TRUE(result.actions[1].start == 12);
     EXPECT_TRUE(result.actions[1].end == 17);
     EXPECT_TRUE(result.actions[1].index == 0);
 
-    EXPECT_TRUE(result.actions[2].address == "CITYC");
+    EXPECT_TRUE(std::string_view(result.actions[2].address.data(), result.actions[2].address_size) == "CITYC");
     EXPECT_TRUE(result.actions[2].target == applies_to::path);
     EXPECT_TRUE(result.actions[2].type == routing_action::remove);
     EXPECT_TRUE(result.actions[2].start == 12);
     EXPECT_TRUE(result.actions[2].end == 17);
     EXPECT_TRUE(result.actions[2].index == 0);
 
-    EXPECT_TRUE(result.actions[3].address == "CITYD");
+    EXPECT_TRUE(std::string_view(result.actions[3].address.data(), result.actions[3].address_size) == "CITYD");
     EXPECT_TRUE(result.actions[3].target == applies_to::path);
     EXPECT_TRUE(result.actions[3].type == routing_action::set);
     EXPECT_TRUE(result.actions[3].start == 12);
@@ -1939,28 +1939,28 @@ TEST(router, try_route_packet_enable_diagnostics)
 
     EXPECT_TRUE(result.actions.size() == 4);
 
-    EXPECT_TRUE(result.actions[0].address == "DIGI");
+    EXPECT_TRUE(std::string_view(result.actions[0].address.data(), result.actions[0].address_size) == "DIGI");
     EXPECT_TRUE(result.actions[0].target == applies_to::path);
     EXPECT_TRUE(result.actions[0].type == routing_action::replace);
     EXPECT_TRUE(result.actions[0].start == 26);
     EXPECT_TRUE(result.actions[0].end == 33);
     EXPECT_TRUE(result.actions[0].index == 2);
 
-    EXPECT_TRUE(result.actions[1].address == "CALLA");
+    EXPECT_TRUE(std::string_view(result.actions[1].address.data(), result.actions[1].address_size) == "CALLA");
     EXPECT_TRUE(result.actions[1].target == applies_to::path);
     EXPECT_TRUE(result.actions[1].type == routing_action::unset);
     EXPECT_TRUE(result.actions[1].start == 12);
     EXPECT_TRUE(result.actions[1].end == 18);
     EXPECT_TRUE(result.actions[1].index == 0);
 
-    EXPECT_TRUE(result.actions[2].address == "CALLB");
+    EXPECT_TRUE(std::string_view(result.actions[2].address.data(), result.actions[2].address_size) == "CALLB");
     EXPECT_TRUE(result.actions[2].target == applies_to::path);
     EXPECT_TRUE(result.actions[2].type == routing_action::unset);
     EXPECT_TRUE(result.actions[2].start == 18);
     EXPECT_TRUE(result.actions[2].end == 24);
     EXPECT_TRUE(result.actions[2].index == 1);
 
-    EXPECT_TRUE(result.actions[3].address == "DIGI");
+    EXPECT_TRUE(std::string_view(result.actions[3].address.data(), result.actions[3].address_size) == "DIGI");
     EXPECT_TRUE(result.actions[3].target == applies_to::path);
     EXPECT_TRUE(result.actions[3].type == routing_action::set);
     EXPECT_TRUE(result.actions[3].start == 24);
@@ -1989,21 +1989,21 @@ TEST(router, try_route_packet_enable_diagnostics)
 
     EXPECT_TRUE(result.actions.size() == 3);
 
-    EXPECT_TRUE(result.actions[0].address == "WIDE1-1");
+    EXPECT_TRUE(std::string_view(result.actions[0].address.data(), result.actions[0].address_size) == "WIDE1-1");
     EXPECT_TRUE(result.actions[0].target == applies_to::path);
     EXPECT_TRUE(result.actions[0].type == routing_action::decrement);
     EXPECT_TRUE(result.actions[0].start == 12);
     EXPECT_TRUE(result.actions[0].end == 19);
     EXPECT_TRUE(result.actions[0].index == 0);
 
-    EXPECT_TRUE(result.actions[1].address == "DIGI");
+    EXPECT_TRUE(std::string_view(result.actions[1].address.data(), result.actions[1].address_size) == "DIGI");
     EXPECT_TRUE(result.actions[1].target == applies_to::path);
     EXPECT_TRUE(result.actions[1].type == routing_action::insert);
     EXPECT_TRUE(result.actions[1].start == 12);
     EXPECT_TRUE(result.actions[1].end == 16);
     EXPECT_TRUE(result.actions[1].index == 0);
 
-    EXPECT_TRUE(result.actions[2].address == "DIGI");
+    EXPECT_TRUE(std::string_view(result.actions[2].address.data(), result.actions[2].address_size) == "DIGI");
     EXPECT_TRUE(result.actions[2].target == applies_to::path);
     EXPECT_TRUE(result.actions[2].type == routing_action::set);
     EXPECT_TRUE(result.actions[2].start == 12);
@@ -2036,28 +2036,28 @@ TEST(router, try_route_packet_enable_diagnostics)
 
     EXPECT_TRUE(result.actions.size() == 4);
 
-    EXPECT_TRUE(result.actions[0].address == "WIDE2-1");
+    EXPECT_TRUE(std::string_view(result.actions[0].address.data(), result.actions[0].address_size) == "WIDE2-1");
     EXPECT_TRUE(result.actions[0].target == applies_to::path);
     EXPECT_TRUE(result.actions[0].type == routing_action::decrement);
     EXPECT_TRUE(result.actions[0].start == 24);
     EXPECT_TRUE(result.actions[0].end == 31);
     EXPECT_TRUE(result.actions[0].index == 2);
 
-    EXPECT_TRUE(result.actions[1].address == "DIGI");
+    EXPECT_TRUE(std::string_view(result.actions[1].address.data(), result.actions[1].address_size) == "DIGI");
     EXPECT_TRUE(result.actions[1].target == applies_to::path);
     EXPECT_TRUE(result.actions[1].type == routing_action::insert);
     EXPECT_TRUE(result.actions[1].start == 24);
     EXPECT_TRUE(result.actions[1].end == 28);
     EXPECT_TRUE(result.actions[1].index == 2);
 
-    EXPECT_TRUE(result.actions[2].address == "WIDE1");
+    EXPECT_TRUE(std::string_view(result.actions[2].address.data(), result.actions[2].address_size) == "WIDE1");
     EXPECT_TRUE(result.actions[2].target == applies_to::path);
     EXPECT_TRUE(result.actions[2].type == routing_action::unset);
     EXPECT_TRUE(result.actions[2].start == 17);
     EXPECT_TRUE(result.actions[2].end == 23);
     EXPECT_TRUE(result.actions[2].index == 1);
 
-    EXPECT_TRUE(result.actions[3].address == "DIGI");
+    EXPECT_TRUE(std::string_view(result.actions[3].address.data(), result.actions[3].address_size) == "DIGI");
     EXPECT_TRUE(result.actions[3].target == applies_to::path);
     EXPECT_TRUE(result.actions[3].type == routing_action::set);
     EXPECT_TRUE(result.actions[3].start == 23);
@@ -2090,28 +2090,28 @@ TEST(router, try_route_packet_enable_diagnostics)
 
     EXPECT_TRUE(result.actions.size() == 4);
 
-    EXPECT_TRUE(result.actions[0].address == "WIDE3-2");
+    EXPECT_TRUE(std::string_view(result.actions[0].address.data(), result.actions[0].address_size) == "WIDE3-2");
     EXPECT_TRUE(result.actions[0].target == applies_to::path);
     EXPECT_TRUE(result.actions[0].type == routing_action::decrement);
     EXPECT_TRUE(result.actions[0].start == 49);
     EXPECT_TRUE(result.actions[0].end == 56);
     EXPECT_TRUE(result.actions[0].index == 6);
 
-    EXPECT_TRUE(result.actions[1].address == "DIGI");
+    EXPECT_TRUE(std::string_view(result.actions[1].address.data(), result.actions[1].address_size) == "DIGI");
     EXPECT_TRUE(result.actions[1].target == applies_to::path);
     EXPECT_TRUE(result.actions[1].type == routing_action::insert);
     EXPECT_TRUE(result.actions[1].start == 49);
     EXPECT_TRUE(result.actions[1].end == 53);
     EXPECT_TRUE(result.actions[1].index == 6);
 
-    EXPECT_TRUE(result.actions[2].address == "CALL6");
+    EXPECT_TRUE(std::string_view(result.actions[2].address.data(), result.actions[2].address_size) == "CALL6");
     EXPECT_TRUE(result.actions[2].target == applies_to::path);
     EXPECT_TRUE(result.actions[2].type == routing_action::unset);
     EXPECT_TRUE(result.actions[2].start == 42);
     EXPECT_TRUE(result.actions[2].end == 48);
     EXPECT_TRUE(result.actions[2].index == 5);
 
-    EXPECT_TRUE(result.actions[3].address == "DIGI");
+    EXPECT_TRUE(std::string_view(result.actions[3].address.data(), result.actions[3].address_size) == "DIGI");
     EXPECT_TRUE(result.actions[3].target == applies_to::path);
     EXPECT_TRUE(result.actions[3].type == routing_action::set);
     EXPECT_TRUE(result.actions[3].start == 48);
@@ -2144,28 +2144,28 @@ TEST(router, try_route_packet_enable_diagnostics)
 
     EXPECT_TRUE(result.actions.size() == 4);
 
-    EXPECT_TRUE(result.actions[0].address == "WIDE1");
+    EXPECT_TRUE(std::string_view(result.actions[0].address.data(), result.actions[0].address_size) == "WIDE1");
     EXPECT_TRUE(result.actions[0].target == applies_to::path);
     EXPECT_TRUE(result.actions[0].type == routing_action::decrement);
     EXPECT_TRUE(result.actions[0].start == 13);
     EXPECT_TRUE(result.actions[0].end == 20);
     EXPECT_TRUE(result.actions[0].index == 1);
 
-    EXPECT_TRUE(result.actions[1].address == "DIGI");
+    EXPECT_TRUE(std::string_view(result.actions[1].address.data(), result.actions[1].address_size) == "DIGI");
     EXPECT_TRUE(result.actions[1].target == applies_to::path);
     EXPECT_TRUE(result.actions[1].type == routing_action::replace);
     EXPECT_TRUE(result.actions[1].start == 13);
     EXPECT_TRUE(result.actions[1].end == 18);
     EXPECT_TRUE(result.actions[1].index == 1);
 
-    EXPECT_TRUE(result.actions[2].address == "DIGI");
+    EXPECT_TRUE(std::string_view(result.actions[2].address.data(), result.actions[2].address_size) == "DIGI");
     EXPECT_TRUE(result.actions[2].target == applies_to::path);
     EXPECT_TRUE(result.actions[2].type == routing_action::set);
     EXPECT_TRUE(result.actions[2].start == 13);
     EXPECT_TRUE(result.actions[2].end == 17);
     EXPECT_TRUE(result.actions[2].index == 1);
 
-    EXPECT_TRUE(result.actions[3].address == "");
+    EXPECT_TRUE(std::string_view(result.actions[3].address.data(), result.actions[3].address_size) == "");
     EXPECT_TRUE(result.actions[3].target == applies_to::path);
     EXPECT_TRUE(result.actions[3].type == routing_action::remove);
     EXPECT_TRUE(result.actions[3].start == 12);
@@ -2386,22 +2386,22 @@ TEST(diagnostic, push_address_unset_diagnostic)
     EXPECT_TRUE(diag[0].start == 12);
     EXPECT_TRUE(diag[0].end == 18);
     EXPECT_TRUE(diag[0].index == 0);
-    EXPECT_TRUE(diag[0].address == "CALLA");
+    EXPECT_TRUE(std::string_view(diag[0].address.data(), diag[0].address_size) == "CALLA");
 
     EXPECT_TRUE(diag[1].start == 18);
     EXPECT_TRUE(diag[1].end == 24);
     EXPECT_TRUE(diag[1].index == 1);
-    EXPECT_TRUE(diag[1].address == "CALLB");
+    EXPECT_TRUE(std::string_view(diag[1].address.data(), diag[1].address_size) == "CALLB");
 
     EXPECT_TRUE(diag[2].start == 30);
     EXPECT_TRUE(diag[2].end == 38);
     EXPECT_TRUE(diag[2].index == 3);
-    EXPECT_TRUE(diag[2].address == "WIDE2-2");
+    EXPECT_TRUE(std::string_view(diag[2].address.data(), diag[2].address_size) == "WIDE2-2");
 
     EXPECT_TRUE(diag[3].start == 38);
     EXPECT_TRUE(diag[3].end == 44);
     EXPECT_TRUE(diag[3].index == 4);
-    EXPECT_TRUE(diag[3].address == "CALLD");
+    EXPECT_TRUE(std::string_view(diag[3].address.data(), diag[3].address_size) == "CALLD");
 
 #else
     EXPECT_TRUE(true);
@@ -2439,7 +2439,7 @@ TEST(diagnostic, push_address_set_diagnostic)
     EXPECT_TRUE(diag[0].start == 44);
     EXPECT_TRUE(diag[0].end == 49);
     EXPECT_TRUE(diag[0].index == 5);
-    EXPECT_TRUE(diag[0].address == "CALLE");
+    EXPECT_TRUE(std::string_view(diag[0].address.data(), diag[0].address_size) == "CALLE");
 
 #else
     EXPECT_TRUE(true);
@@ -2611,21 +2611,21 @@ TEST(readme, examples)
 
         ASSERT_EQ(result.actions.size(), 3u);
 
-        EXPECT_EQ(result.actions[0].address, "WIDE1-1");
+        EXPECT_EQ(std::string_view(result.actions[0].address.data(), result.actions[0].address_size), "WIDE1-1");
         EXPECT_EQ(result.actions[0].target, applies_to::path);
         EXPECT_EQ(result.actions[0].type, routing_action::decrement);
         EXPECT_EQ(result.actions[0].start, 12u);
         EXPECT_EQ(result.actions[0].end, 19u);
         EXPECT_EQ(result.actions[0].index, 0u);
 
-        EXPECT_EQ(result.actions[1].address, "DIGI");
+        EXPECT_EQ(std::string_view(result.actions[1].address.data(), result.actions[1].address_size), "DIGI");
         EXPECT_EQ(result.actions[1].target, applies_to::path);
         EXPECT_EQ(result.actions[1].type, routing_action::insert);
         EXPECT_EQ(result.actions[1].start, 12u);
         EXPECT_EQ(result.actions[1].end, 16u);
         EXPECT_EQ(result.actions[1].index, 0u);
 
-        EXPECT_EQ(result.actions[2].address, "DIGI");
+        EXPECT_EQ(std::string_view(result.actions[2].address.data(), result.actions[2].address_size), "DIGI");
         EXPECT_EQ(result.actions[2].target, applies_to::path);
         EXPECT_EQ(result.actions[2].type, routing_action::set);
         EXPECT_EQ(result.actions[2].start, 12u);

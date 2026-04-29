@@ -525,7 +525,8 @@ struct routing_diagnostic
     size_t start = 0; // Address index within the packet string
     size_t end = 0;   // Address index within the packet string
     routing_action type = routing_action::none;
-    std::string address;
+    std::array<char, 15> address = {};
+    size_t address_size = 0;
     enum message_type message_type = message_type::none;
 };
 
@@ -1257,7 +1258,7 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
         }
         else if (a.type == routing_action::insert)
         {
-            routed_packet.path.insert(routed_packet.path.begin() + a.index, a.address);
+            routed_packet.path.emplace(routed_packet.path.begin() + a.index, a.address.data(), a.address_size);
             diag_format.entries.push_back(create_diagnostic_print_line(a, routed_packet));
         }
         else if (a.type == routing_action::set)
@@ -1268,12 +1269,11 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
         else if (a.type == routing_action::unset)
         {
             diag_format.entries.push_back(create_diagnostic_print_line(a, routed_packet));
-            routed_packet.path[a.index] = a.address;
+            routed_packet.path[a.index].assign(a.address.data(), a.address_size);
         }
-        else if (a.type == routing_action::replace ||
-                 a.type == routing_action::decrement)
+        else if (a.type == routing_action::replace || a.type == routing_action::decrement)
         {
-            routed_packet.path[a.index] = a.address;
+            routed_packet.path[a.index].assign(a.address.data(), a.address_size);
             diag_format.entries.push_back(create_diagnostic_print_line(a, routed_packet));
         }
     }
@@ -2293,7 +2293,7 @@ APRS_ROUTER_INLINE bool try_route_packet_by_index(const struct routing_result& r
         }
         else if (a.type == routing_action::insert)
         {
-            result.path.insert(result.path.begin() + a.index, a.address);
+            result.path.emplace(result.path.begin() + a.index, a.address.data(), a.address_size);
         }
         else if (a.type == routing_action::set)
         {
@@ -2302,7 +2302,7 @@ APRS_ROUTER_INLINE bool try_route_packet_by_index(const struct routing_result& r
         else if (a.type == routing_action::unset || a.type == routing_action::replace ||
             a.type == routing_action::decrement)
         {
-            result.path[a.index] = a.address;
+            result.path[a.index].assign(a.address.data(), a.address_size);
         }
         else
         {
@@ -2345,7 +2345,7 @@ APRS_ROUTER_INLINE bool try_route_packet_by_start_end(const struct routing_resul
         }
         else if (a.type == routing_action::insert)
         {
-            routed_packet.insert(start, a.address);
+            routed_packet.insert(start, a.address.data(), a.address_size);
             if (routed_packet[end + 1] != ',' || a.index == 0)
             {
                 routed_packet.insert(end, ",");
@@ -2359,7 +2359,7 @@ APRS_ROUTER_INLINE bool try_route_packet_by_start_end(const struct routing_resul
             a.type == routing_action::decrement)
         {
             routed_packet.erase(start, count);
-            routed_packet.insert(start, a.address);
+            routed_packet.insert(start, a.address.data(), a.address_size);
         }
         else
         {
@@ -2542,7 +2542,7 @@ APRS_ROUTER_INLINE bool push_routing_ended_diagnostic(const address& address, bo
         diag.target = applies_to::path;
         diag.type = routing_action::warn;
         diag.message_type = message_type::routing_ended;
-        diag.address.assign(address.text.begin(), address.text.begin() + address.text_size);
+        array_assign(diag.address, diag.address_size, address.text.begin(), address.text.begin() + address.text_size);
         diag.start = address.offset;
         diag.end = diag.start + address.length;
         diag.index = address.index;
@@ -2563,7 +2563,7 @@ APRS_ROUTER_INLINE bool push_routed_by_us_diagnostic(const std::array<address, 8
         diag.target = applies_to::path;
         diag.type = routing_action::warn;
         diag.message_type = message_type::already_routed;
-        diag.address.assign(address.text.begin(), address.text.begin() + address.text_size);
+        array_assign(diag.address, diag.address_size, address.text.begin(), address.text.begin() + address.text_size);
         diag.start = address.offset;
         diag.end = diag.start + address.length;
         diag.index = address.index;
@@ -2586,16 +2586,15 @@ APRS_ROUTER_INLINE bool push_address_set_diagnostic(const std::array<address, 8>
         diag.target = applies_to::path;
         diag.type = routing_action::set;
         diag.message_type = message_type::address_set;
-        internal_string_t<char> address_text = to_string(address);
-        diag.address.assign(address_text.begin(), address_text.end());
+        to_string(address, diag.address, diag.address_size);
         diag.start = address.offset;
         diag.end = diag.start + address.length;
         diag.index = set_address_index;
 
-        if (address.mark && !diag.address.empty())
+        if (address.mark && diag.address_size > 0)
         {
             // Remove the '*' marker
-            diag.address.pop_back();
+            diag.address_size--;
             diag.end--;
         }
 
@@ -2629,16 +2628,15 @@ APRS_ROUTER_INLINE bool push_address_unset_diagnostic(const std::array<address, 
                 diag.target = applies_to::path;
                 diag.type = routing_action::unset;
                 diag.message_type = message_type::address_unset;
-                internal_string_t<char> address_text = to_string(address);
-                diag.address.assign(address_text.begin(), address_text.end());
+                to_string(address, diag.address, diag.address_size);
                 diag.start = offset;
                 diag.end = diag.start + length;
                 diag.index = i;
 
-                if (address.mark && !diag.address.empty())
+                if (address.mark && diag.address_size > 0)
                 {
                     // Remove the '*' marker
-                    diag.address.pop_back();
+                    diag.address_size--;
                 }
 
                 d.push_back(diag);
@@ -2670,7 +2668,7 @@ APRS_ROUTER_INLINE bool push_address_replaced_diagnostic(const std::array<addres
         diag.target = applies_to::path;
         diag.type = routing_action::replace;
         diag.message_type = message_type::address_replaced;
-        diag.address = new_address;
+        array_assign(diag.address, diag.address_size, new_address.begin(), new_address.end());
         diag.start = address.offset;
         diag.end = diag.start + address.length;
         diag.index = set_address_index;
@@ -2689,8 +2687,7 @@ APRS_ROUTER_INLINE bool push_address_decremented_diagnostic(address& address, bo
         diag.target = applies_to::path;
         diag.type = routing_action::decrement;
         diag.message_type = message_type::address_decremented;
-        internal_string_t<char> address_text = to_string(address);
-        diag.address.assign(address_text.begin(), address_text.end());
+        to_string(address, diag.address, diag.address_size);
         diag.start = address.offset;
         diag.end = diag.start + address.length;
         diag.index = address.index;
@@ -2720,7 +2717,7 @@ APRS_ROUTER_INLINE bool push_address_inserted_diagnostic(const std::array<addres
         diag.target = applies_to::path;
         diag.type = routing_action::insert;
         diag.message_type = message_type::address_inserted;
-        diag.address.assign(address.text.begin(), address.text.begin() + address.text_size);
+        array_assign(diag.address, diag.address_size, address.text.begin(), address.text.begin() + address.text_size);
         diag.start = address.offset;
         diag.end = diag.start + address.text_size;
         diag.index = insert_address_index;
@@ -2743,7 +2740,7 @@ APRS_ROUTER_INLINE bool push_address_removed_diagnostic(const std::array<address
         diag.target = applies_to::path;
         diag.type = routing_action::remove;
         diag.message_type = message_type::address_removed;
-        diag.address.assign(address.text.begin(), address.text.begin() + address.text_size);
+        array_assign(diag.address, diag.address_size, address.text.begin(), address.text.begin() + address.text_size);
         diag.start = address.offset;
         diag.end = diag.start + address.text_size;
         diag.index = remove_address_index;
@@ -2767,8 +2764,7 @@ APRS_ROUTER_INLINE bool create_address_move_diagnostic(const std::array<address,
         remove_diag.target = applies_to::path;
         remove_diag.type = routing_action::remove;
         remove_diag.message_type = message_type::address_removed;
-        internal_string_t<char> removed_address_text = to_string(removed_address);
-        remove_diag.address.assign(removed_address_text.begin(), removed_address_text.end());
+        to_string(removed_address, remove_diag.address, remove_diag.address_size);
         remove_diag.start = removed_address.offset;
         remove_diag.end = remove_diag.start + removed_address.length;
         remove_diag.index = from_index;
@@ -2782,8 +2778,7 @@ APRS_ROUTER_INLINE bool create_address_move_diagnostic(const std::array<address,
         insert_diag.target = applies_to::path;
         insert_diag.type = routing_action::insert;
         insert_diag.message_type = message_type::address_inserted;
-        internal_string_t<char> inserted_address_text = to_string(removed_address);
-        insert_diag.address.assign(inserted_address_text.begin(), inserted_address_text.end());
+        to_string(removed_address, insert_diag.address, insert_diag.address_size);
         insert_diag.start = inserted_address.offset;
         insert_diag.end = insert_diag.start + removed_address.length;
         insert_diag.index = to_index;
@@ -2817,7 +2812,7 @@ APRS_ROUTER_INLINE bool create_truncate_address_range_diagnostic(const std::arra
         diag.target = applies_to::path;
         diag.type = routing_action::remove;
         diag.message_type = message_type::address_removed;
-        diag.address.assign(address.text.begin(), address.text.begin() + address.text_size);
+        array_assign(diag.address, diag.address_size, address.text.begin(), address.text.begin() + address.text_size);
         diag.start = initial_offset;
         diag.end = diag.start + address.length;
         diag.index = from_index;
