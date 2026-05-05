@@ -88,13 +88,6 @@ add_executable (aprsroute_use_in_tu "use_in_tu.h" "use_in_tu.cpp" "use_in_other_
 target_link_libraries(aprsroute_use_in_tu GTest::gtest_main gtest gtest_main)
 set_property(TARGET aprsroute_use_in_tu PROPERTY CXX_STANDARD 20)
 
-add_executable(aprsroute_without_pmr_build_test "without_pmr.cpp" "../aprsroute.hpp")
-target_link_libraries(aprsroute_without_pmr_build_test GTest::gtest_main gtest gtest_main)
-set_property(TARGET aprsroute_without_pmr_build_test PROPERTY CXX_STANDARD 20)
-
-add_executable(aprsroute_with_pmr_build_test "with_pmr.cpp" "../aprsroute.hpp")
-set_property(TARGET aprsroute_with_pmr_build_test PROPERTY CXX_STANDARD 20)
-
 add_executable(aprsroute_set_cpp17_std "set_cpp17_std.cpp" "../aprsroute.hpp")
 target_link_libraries(aprsroute_set_cpp17_std GTest::gtest_main gtest gtest_main)
 set_property(TARGET aprsroute_set_cpp17_std PROPERTY CXX_STANDARD 17)
@@ -131,6 +124,5 @@ gtest_discover_tests(aprsroute_external_packet_test)
 gtest_discover_tests(aprsroute_external_custom_packet_test)
 gtest_discover_tests(aprsroute_with_etl_test)
 gtest_discover_tests(aprsroute_set_cpp17_std)
-gtest_discover_tests(aprsroute_without_pmr_build_test)
 gtest_discover_tests(aprsroute_use_in_tu)
 gtest_discover_tests(aprsroute_no_heap_test)

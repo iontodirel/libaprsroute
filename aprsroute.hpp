@@ -64,11 +64,6 @@
 #include <cstring>
 #include <cstdint>
 
-// Header not needed if PMR support is disabled
-#if APRS_ROUTER_USE_PMR
-#include <memory_resource>
-#endif
-
 // This header only library can be compiled in a TU and shared between TUs
 // to minimize compilation time, by defining the APRS_ROUTER_PUBLIC_FORWARD_DECLARATIONS_ONLY preprocessor directive.
 //
@@ -143,40 +138,14 @@
 #define APRS_ROUTER_MAX_ROUTER_ADDRESSES 16
 #endif
 
-// Configure the library whether it should use PMR and PMR data structures or not.
-#ifndef APRS_ROUTER_USE_PMR
-#define APRS_ROUTER_USE_PMR 0
-#endif
-
-// Container and memory configuration.
-//
-// The library can used with custom allocators via standard C++17 PMR support.
-// This allows the containers to be allocated on the heap or on the stack.
-// However, a PMR allocator and supporting containers incure a small performance penalty.
-// To this end, the library can be configured to use standard C++17 containers
-// or PMR containers. The default is to not use PMR containers.
-//
-// The PMR support can only be enabled for the internal vector type.
-// The internal string type always uses the allocator specified by the internal_string_t type alias.
-// This is because the string type is usually enabled for the small string optimization.
-
 APRS_ROUTER_NAMESPACE_BEGIN
 
 APRS_ROUTER_DETAIL_NAMESPACE_BEGIN
 
 #ifndef APRS_ROUTER_DEFINE_CUSTOM_TYPES
 
-#if APRS_ROUTER_USE_PMR
-
-template<class T>
-using internal_vector_t = std::pmr::vector<T>;
-
-#else // !APRS_ROUTER_USE_PMR
-
 template<class T>
 using internal_vector_t = std::vector<T>;
-
-#endif // APRS_ROUTER_USE_PMR
 
 template<class T>
 using internal_string_t = std::basic_string<T>;
@@ -595,11 +564,6 @@ void init_router(std::string_view router_address, InputIterator1 router_explicit
 bool try_route_packet(const struct APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& packet, const router_settings& settings, routing_result& result);
 bool try_route_packet(std::string_view original_packet_from, std::string_view original_packet_to, const std::vector<std::string>& original_packet_path, const router_settings& settings, std::vector<std::string>& routed_packet_path, enum routing_state& routing_state, std::vector<routing_diagnostic>& routing_actions);
 
-#if APRS_ROUTER_USE_PMR
-template<class InputIterator, class OutputIterator1, class OutputIterator2>
-std::tuple<OutputIterator1, OutputIterator2, bool> try_route_packet(std::string_view original_packet_from, std::string_view original_packet_to, InputIterator original_packet_path_begin, InputIterator original_packet_path_end, const router_settings& settings, OutputIterator1 routed_packet_path_out, enum routing_state& routing_state, OutputIterator2 routing_actions_out, std::pmr::memory_resource* memory_resource = std::pmr::get_default_resource());
-#endif
-
 template<class InputIterator, class OutputIterator1, class OutputIterator2>
 std::tuple<OutputIterator1, OutputIterator2, bool> try_route_packet(std::string_view original_packet_from, std::string_view original_packet_to, InputIterator original_packet_path_begin, InputIterator original_packet_path_end, const router_settings& settings, OutputIterator1 routed_packet_path_out, enum routing_state& routing_state, OutputIterator2 routing_actions_out);
 
@@ -717,13 +681,6 @@ struct route_state
 {
     static constexpr size_t router_addresses_max = APRS_ROUTER_MAX_ROUTER_ADDRESSES;
 
-#if APRS_ROUTER_USE_PMR
-    explicit route_state(std::pmr::memory_resource* memory_resource = std::pmr::get_default_resource()) : actions(memory_resource), memory_resource(memory_resource)
-    {
-        assert(memory_resource != nullptr);
-    }
-#endif
-
     std::string_view packet_from_address;
     std::string_view packet_to_address;
     std::array<std::array<char, 10>, 8> packet_path = {};
@@ -742,12 +699,8 @@ struct route_state
     size_t router_n_N_addresses_size = 0;
     std::array<APRS_ROUTER_APRS_DETAIL_NAMESPACE_REFERENCE address, router_addresses_max> router_explicit_addresses = {};
     size_t router_explicit_addresses_size = 0;
-    APRS_ROUTER_APRS_DETAIL_NAMESPACE_REFERENCE internal_vector_t<routing_diagnostic> actions;
     bool is_path_based_routing = false;
     size_t unused_address_index = 0;
-#if APRS_ROUTER_USE_PMR
-    std::pmr::memory_resource* memory_resource = std::pmr::get_default_resource();
-#endif
     bool initialized = false;
 };
 
@@ -765,18 +718,18 @@ APRS_ROUTER_NAMESPACE_BEGIN
 
 APRS_ROUTER_DETAIL_NAMESPACE_BEGIN
 
-bool try_explicit_or_n_N_route(route_state& state, routing_state& result);
+template <class OutputIterator> std::pair<OutputIterator, bool> try_explicit_or_n_N_route(route_state& state, routing_state& result, OutputIterator routing_actions_out);
 bool is_explicit_routing(bool is_routing_self, std::optional<size_t> maybe_router_address_index, routing_option options);
 bool is_explicit_routing(bool is_routing_self, const route_state& state);
-bool try_explicit_route(route_state& state);
-bool try_explicit_basic_route(route_state& state, size_t set_address_index);
-bool try_preempt_explicit_route(route_state& state);
-bool try_preempt_transform_explicit_route(route_state& state);
-bool try_n_N_route(route_state& state);
-bool try_n_N_route_no_trap(route_state& state, size_t packet_n_N_address_index);
-bool try_complete_n_N_route(route_state& state, address& n_N_address, bool substitute_zero_hops);
-bool try_insert_n_N_route(route_state& state, size_t& packet_n_N_address_index);
-bool try_trap_n_N_route(route_state& state, address& packet_n_N_address, const address& router_n_N_address);
+template <class OutputIterator> std::pair<OutputIterator, bool> try_explicit_route(route_state& state, OutputIterator routing_actions_out);
+template <class OutputIterator> std::pair<OutputIterator, bool> try_explicit_basic_route(route_state& state, size_t set_address_index, OutputIterator routing_actions_out);
+template <class OutputIterator> std::pair<OutputIterator, bool> try_preempt_explicit_route(route_state& state, OutputIterator routing_actions_out);
+template <class OutputIterator> std::pair<OutputIterator, bool> try_preempt_transform_explicit_route(route_state& state, OutputIterator routing_actions_out);
+template <class OutputIterator> std::pair<OutputIterator, bool> try_n_N_route(route_state& state, OutputIterator routing_actions_out);
+template <class OutputIterator> std::pair<OutputIterator, bool> try_n_N_route_no_trap(route_state& state, size_t packet_n_N_address_index, OutputIterator routing_actions_out);
+template <class OutputIterator> std::pair<OutputIterator, bool> try_complete_n_N_route(route_state& state, address& n_N_address, bool substitute_zero_hops, OutputIterator routing_actions_out);
+template <class OutputIterator> std::pair<OutputIterator, bool> try_insert_n_N_route(route_state& state, size_t& packet_n_N_address_index, OutputIterator routing_actions_out);
+template <class OutputIterator> std::pair<OutputIterator, bool> try_trap_n_N_route(route_state& state, address& packet_n_N_address, const address& router_n_N_address, OutputIterator routing_actions_out);
 
 bool try_route_packet_by_index(const struct routing_result& routing_result, APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& result);
 bool try_route_packet_by_start_end(const struct routing_result& routing_result, APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& result);
@@ -790,16 +743,16 @@ template <class OutputIterator1, class OutputIterator2, class OutputIterator3> s
 bool create_routed_routing(route_state& state, std::array<std::array<char, 15>, 8>& routed_packet_path, size_t& routed_packet_path_size, std::array<size_t, 8>& routed_packet_path_address_sizes, internal_vector_t<routing_diagnostic>& routing_actions);
 bool create_routed_routing(route_state& state, std::array<std::array<char, 15>, 8>& routed_packet_path, size_t& routed_packet_path_size, std::array<size_t, 8>& routed_packet_path_address_sizes);
 
-bool push_routing_ended_diagnostic(const address& address, bool enable_diagnostics, internal_vector_t<routing_diagnostic>& d);
-bool push_routed_by_us_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, std::optional<size_t> maybe_last_used_address_index, bool enable_diagnostics, internal_vector_t<routing_diagnostic>& d);
-bool push_address_set_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t set_address_index, bool enable_diagnostics, internal_vector_t<routing_diagnostic>& d);
-bool push_address_unset_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, std::optional<size_t> maybe_set_address_index, bool enable_diagnostics, internal_vector_t<routing_diagnostic>& d);
-bool push_address_replaced_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t set_address_index, std::string_view new_address, bool enable_diagnostics, internal_vector_t<routing_diagnostic>& d);
-bool push_address_decremented_diagnostic(address& address, bool enable_diagnostics, internal_vector_t<routing_diagnostic>& d);
-bool push_address_inserted_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t insert_address_index, bool enable_diagnostics, internal_vector_t<routing_diagnostic>& d);
-bool push_address_removed_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t remove_address_index, bool enable_diagnostics, internal_vector_t<routing_diagnostic>& d);
-bool create_address_move_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t from_index, size_t to_index, bool enable_diagnostics, internal_vector_t<routing_diagnostic>& d);
-bool create_truncate_address_range_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t from_index, size_t to_index, bool enable_diagnostics, internal_vector_t<routing_diagnostic>& d);
+template <class OutputIterator> OutputIterator push_routing_ended_diagnostic(const address& address, bool enable_diagnostics, OutputIterator routing_actions_out);
+template <class OutputIterator> OutputIterator push_routed_by_us_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, std::optional<size_t> maybe_last_used_address_index, bool enable_diagnostics, OutputIterator routing_actions_out);
+template <class OutputIterator> OutputIterator push_address_set_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t set_address_index, bool enable_diagnostics, OutputIterator routing_actions_out);
+template <class OutputIterator> OutputIterator push_address_unset_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, std::optional<size_t> maybe_set_address_index, bool enable_diagnostics, OutputIterator routing_actions_out);
+template <class OutputIterator> OutputIterator push_address_replaced_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t set_address_index, std::string_view new_address, bool enable_diagnostics, OutputIterator routing_actions_out);
+template <class OutputIterator> OutputIterator push_address_decremented_diagnostic(address& address, bool enable_diagnostics, OutputIterator routing_actions_out);
+template <class OutputIterator> OutputIterator push_address_inserted_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t insert_address_index, bool enable_diagnostics, OutputIterator routing_actions_out);
+template <class OutputIterator> OutputIterator push_address_removed_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t remove_address_index, bool enable_diagnostics, OutputIterator routing_actions_out);
+template <class OutputIterator> OutputIterator create_address_move_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t from_index, size_t to_index, bool enable_diagnostics, OutputIterator routing_actions_out);
+template <class OutputIterator> OutputIterator create_truncate_address_range_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t from_index, size_t to_index, bool enable_diagnostics, OutputIterator routing_actions_out);
 
 std::string create_display_name_diagnostic(const routing_diagnostic_display_entry& line);
 routing_diagnostic_display_entry create_diagnostic_print_line(const routing_diagnostic& diag, const APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& routed_packet);
@@ -839,8 +792,8 @@ bool try_insert_address(std::array<address, 8>& packet_addresses, size_t& packet
 void replace_address_with_router_address(struct address& address, const struct address& router_address);
 bool try_move_address_to_position(std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t from_index, size_t to_index);
 bool try_truncate_address_range(std::array<address, 8>& packet_addresses, size_t& packet_addresses_size, size_t from_index, size_t to_index);
-bool try_truncate_empty_addresses(route_state& state);
-bool try_substitute_complete_n_N_address(route_state& state, size_t packet_n_N_address_index);
+template <class OutputIterator> std::pair<OutputIterator, bool> try_truncate_empty_addresses(route_state& state, OutputIterator routing_actions_out);
+template <class OutputIterator> std::pair<OutputIterator, bool> try_substitute_complete_n_N_address(route_state& state, size_t packet_n_N_address_index, OutputIterator routing_actions_out);
 bool try_decrement_n_N_address(address& s);
 bool try_decrement_n_N_address(route_state& state, address& s);
 
@@ -1337,23 +1290,6 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
 
 #endif // APRS_ROUTER_PUBLIC_FORWARD_DECLARATIONS_ONLY
 
-#if APRS_ROUTER_USE_PMR
-
-template<class InputIterator, class OutputIterator1, class OutputIterator2>
-APRS_ROUTER_INLINE_NO_DISABLE std::tuple<OutputIterator1, OutputIterator2, bool> try_route_packet(std::string_view original_packet_from, std::string_view original_packet_to, InputIterator original_packet_path_begin, InputIterator original_packet_path_end, const router_settings& settings, OutputIterator1 routed_packet_path_out, enum routing_state& routing_state, OutputIterator2 routing_actions_out, std::pmr::memory_resource* memory_resource)
-{
-APRS_ROUTER_DETAIL_NAMESPACE_USE
-
-    assert(memory_resource != nullptr);
-
-    route_state state(memory_resource);
-    state.memory_resource = memory_resource;
-
-    return try_route_packet(original_packet_from, original_packet_to, original_packet_path_begin, original_packet_path_end, settings, routed_packet_path_out, routing_state, routing_actions_out, state);
-}
-
-#endif // APRS_ROUTER_USE_PMR
-
 template<class InputIterator, class OutputIterator1, class OutputIterator2>
 APRS_ROUTER_INLINE_NO_DISABLE std::tuple<OutputIterator1, OutputIterator2, bool> try_route_packet(std::string_view original_packet_from, std::string_view original_packet_to, InputIterator original_packet_path_begin, InputIterator original_packet_path_end, const router_settings& settings, OutputIterator1 routed_packet_path_out, enum routing_state& routing_state, OutputIterator2 routing_actions_out)
 {
@@ -1465,16 +1401,18 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
     //                                                     ~~~~~
     if (has_packet_routing_ended(state))
     {
-        auto [routing_actions_out_updated, result] = create_routing_ended_routing(state, routing_state, routing_actions_out);
-        return { routed_packet_path_out, routed_packet_path_address_sizes_out, routing_actions_out_updated, result };
+        bool result;
+        std::tie(routing_actions_out, result) = create_routing_ended_routing(state, routing_state, routing_actions_out);
+        return { routed_packet_path_out, routed_packet_path_address_sizes_out, routing_actions_out, result };
     }
 
     // Packet has already been routing by us: N0CALL>APRS,CALL,DIGI*,WIDE1-1,WIDE2-2:data
     //                                                         ~~~~~
     if (has_packet_been_routed_by_us(state))
     {
-        auto [routing_actions_out_updated, result] = create_routed_by_us_routing(state, routing_state, routing_actions_out);
-        return { routed_packet_path_out, routed_packet_path_address_sizes_out, routing_actions_out_updated, result };
+        bool result;
+        std::tie(routing_actions_out, result) = create_routed_by_us_routing(state, routing_state, routing_actions_out);
+        return { routed_packet_path_out, routed_packet_path_address_sizes_out, routing_actions_out, result };
     }
 
     // Packet has been sent to us: N0CALL>DIGI,CALL,WIDE1-1,WIDE2-2:data
@@ -1485,7 +1423,9 @@ APRS_ROUTER_DETAIL_NAMESPACE_USE
         return { routed_packet_path_out, routed_packet_path_address_sizes_out, routing_actions_out, false };
     }
 
-    if (try_explicit_or_n_N_route(state, routing_state))
+    bool result;
+    std::tie(routing_actions_out, result) = try_explicit_or_n_N_route(state, routing_state, routing_actions_out);
+    if (result)
     {
         return create_routed_routing(state, routed_packet_path_out, routed_packet_path_address_sizes_out, routing_actions_out);
     }
@@ -1552,7 +1492,8 @@ APRS_ROUTER_DETAIL_NAMESPACE_BEGIN
 //                                                                  //
 // **************************************************************** //
 
-APRS_ROUTER_INLINE bool try_explicit_or_n_N_route(route_state& state, enum routing_state& routing_state)
+template <class OutputIterator>
+APRS_ROUTER_INLINE_NO_DISABLE std::pair<OutputIterator, bool> try_explicit_or_n_N_route(route_state& state, enum routing_state& routing_state, OutputIterator routing_actions_out)
 {
     routing_state = routing_state::not_routed;
 
@@ -1562,15 +1503,17 @@ APRS_ROUTER_INLINE bool try_explicit_or_n_N_route(route_state& state, enum routi
 
     if (is_explicit_routing(is_routing_self, state))
     {
-        if (try_explicit_route(state))
+        bool result;
+        std::tie(routing_actions_out, result) = try_explicit_route(state, routing_actions_out);
+        if (result)
         {
             routing_state = routing_state::routed;
-            return true;
+            return { routing_actions_out, true };
         }
         else
         {
             routing_state = routing_state::not_routed;
-            return false;
+            return { routing_actions_out, false };
         }
     }
 
@@ -1578,16 +1521,18 @@ APRS_ROUTER_INLINE bool try_explicit_or_n_N_route(route_state& state, enum routi
     if (is_routing_self)
     {
         routing_state = routing_state::cannot_route_self;
-        return false;
+        return { routing_actions_out, false };
     }
 
-    if (try_n_N_route(state))
+    bool result;
+    std::tie(routing_actions_out, result) = try_n_N_route(state, routing_actions_out);
+    if (result)
     {
         routing_state = routing_state::routed;
-        return true;
+        return { routing_actions_out, true };
     }
 
-    return false;
+    return { routing_actions_out, false };
 }
 
 APRS_ROUTER_INLINE bool is_explicit_routing(bool is_routing_self, std::optional<size_t> maybe_router_address_index, routing_option options)
@@ -1614,7 +1559,8 @@ APRS_ROUTER_INLINE bool is_explicit_routing(bool is_routing_self, const route_st
     return is_explicit_routing(is_routing_self, state.maybe_router_address_index, state.options);
 }
 
-APRS_ROUTER_INLINE bool try_explicit_route(route_state& state)
+template <class OutputIterator>
+APRS_ROUTER_INLINE_NO_DISABLE std::pair<OutputIterator, bool> try_explicit_route(route_state& state, OutputIterator routing_actions_out)
 {
     // If explicitly routing a packet through the router
     // find the router's address in the packet and mark it as used (*)
@@ -1635,7 +1581,7 @@ APRS_ROUTER_INLINE bool try_explicit_route(route_state& state)
     if (!maybe_router_address_index)
     {
         // We did not find router's address or a explicit router address in the packet path
-        return false;
+        return { routing_actions_out, false };
     }
 
     size_t router_address_index = maybe_router_address_index.value();
@@ -1667,21 +1613,21 @@ APRS_ROUTER_INLINE bool try_explicit_route(route_state& state)
     // If preempt_drop mode is enabled, different processing of the packet is required
     if (!have_other_unused_addresses_ahead && !preempt_drop)
     {
-        try_explicit_basic_route(state, router_address_index);
-        return true;
-    }
-    else
-    {
-        if (try_preempt_explicit_route(state))
-        {
-            return true;
-        }
+        return try_explicit_basic_route(state, router_address_index, routing_actions_out);
     }
 
-    return false;
+    bool result;
+    std::tie(routing_actions_out, result) = try_preempt_explicit_route(state, routing_actions_out);
+    if (result)
+    {
+        return { routing_actions_out, true };
+    }
+
+    return { routing_actions_out, false };
 }
 
-APRS_ROUTER_INLINE bool try_explicit_basic_route(route_state& state, size_t set_address_index)
+template <class OutputIterator>
+APRS_ROUTER_INLINE_NO_DISABLE std::pair<OutputIterator, bool> try_explicit_basic_route(route_state& state, size_t set_address_index, OutputIterator routing_actions_out)
 {
     // Route a packet using non-preemptive explicit routing.
     //
@@ -1763,8 +1709,6 @@ APRS_ROUTER_INLINE bool try_explicit_basic_route(route_state& state, size_t set_
     const std::string_view router_address_string = state.router_address_string;
     const routing_option options = state.options;
     const bool enable_diagnostics = state.enable_diagnostics;
-    internal_vector_t<routing_diagnostic>& actions = state.actions;
-
     assert(set_address_index < packet_addresses_size);
     assert(unused_address_index < packet_addresses_size);
 
@@ -1772,53 +1716,56 @@ APRS_ROUTER_INLINE bool try_explicit_basic_route(route_state& state, size_t set_
 
     if (substitute_explicit_address)
     {
-        push_address_replaced_diagnostic(packet_addresses, packet_addresses_size, set_address_index, router_address_string, enable_diagnostics, actions);
+        routing_actions_out = push_address_replaced_diagnostic(packet_addresses, packet_addresses_size, set_address_index, router_address_string, enable_diagnostics, routing_actions_out);
         replace_address_with_router_address(packet_addresses[set_address_index], router_address);
-        push_address_unset_diagnostic(packet_addresses, packet_addresses_size, set_address_index, enable_diagnostics, actions);
+        routing_actions_out = push_address_unset_diagnostic(packet_addresses, packet_addresses_size, set_address_index, enable_diagnostics, routing_actions_out);
         set_address_as_used(packet_addresses, packet_addresses_size, set_address_index);
-        push_address_set_diagnostic(packet_addresses, packet_addresses_size, set_address_index, enable_diagnostics, actions);
-        return true;
+        routing_actions_out = push_address_set_diagnostic(packet_addresses, packet_addresses_size, set_address_index, enable_diagnostics, routing_actions_out);
+        return { routing_actions_out, true };
     }
 
     if (is_path_based_routing)
     {
         if (try_insert_address(packet_addresses, packet_addresses_size, unused_address_index, router_address_string))
         {
-            push_address_unset_diagnostic(packet_addresses, packet_addresses_size, set_address_index, enable_diagnostics, actions);
+            routing_actions_out = push_address_unset_diagnostic(packet_addresses, packet_addresses_size, set_address_index, enable_diagnostics, routing_actions_out);
             set_address_as_used(packet_addresses, packet_addresses_size, set_address_index + 1);
-            push_address_inserted_diagnostic(packet_addresses, packet_addresses_size, unused_address_index, enable_diagnostics, actions);
-            push_address_set_diagnostic(packet_addresses, packet_addresses_size, set_address_index + 1, enable_diagnostics, actions);
+            routing_actions_out = push_address_inserted_diagnostic(packet_addresses, packet_addresses_size, unused_address_index, enable_diagnostics, routing_actions_out);
+            routing_actions_out = push_address_set_diagnostic(packet_addresses, packet_addresses_size, set_address_index + 1, enable_diagnostics, routing_actions_out);
         }
         else
         {
-            push_address_replaced_diagnostic(packet_addresses, packet_addresses_size, set_address_index, router_address_string, enable_diagnostics, actions);
+            routing_actions_out = push_address_replaced_diagnostic(packet_addresses, packet_addresses_size, set_address_index, router_address_string, enable_diagnostics, routing_actions_out);
             replace_address_with_router_address(packet_addresses[set_address_index], router_address);
-            push_address_unset_diagnostic(packet_addresses, packet_addresses_size, set_address_index, enable_diagnostics, actions);
+            routing_actions_out = push_address_unset_diagnostic(packet_addresses, packet_addresses_size, set_address_index, enable_diagnostics, routing_actions_out);
             set_address_as_used(packet_addresses, packet_addresses_size, set_address_index);
-            push_address_set_diagnostic(packet_addresses, packet_addresses_size, set_address_index, enable_diagnostics, actions);
+            routing_actions_out = push_address_set_diagnostic(packet_addresses, packet_addresses_size, set_address_index, enable_diagnostics, routing_actions_out);
         }
     }
     else
     {
-        push_address_unset_diagnostic(packet_addresses, packet_addresses_size, set_address_index, enable_diagnostics, actions);
+        routing_actions_out = push_address_unset_diagnostic(packet_addresses, packet_addresses_size, set_address_index, enable_diagnostics, routing_actions_out);
         set_address_as_used(packet_addresses, packet_addresses_size, set_address_index);
-        push_address_set_diagnostic(packet_addresses, packet_addresses_size, set_address_index, enable_diagnostics, actions);
+        routing_actions_out = push_address_set_diagnostic(packet_addresses, packet_addresses_size, set_address_index, enable_diagnostics, routing_actions_out);
     }
 
-    return true;
+    return { routing_actions_out, true };
 }
 
-APRS_ROUTER_INLINE bool try_preempt_explicit_route(route_state& state)
+template <class OutputIterator>
+APRS_ROUTER_INLINE_NO_DISABLE std::pair<OutputIterator, bool> try_preempt_explicit_route(route_state& state, OutputIterator routing_actions_out)
 {
-    if (try_preempt_transform_explicit_route(state))
+    bool result;
+    std::tie(routing_actions_out, result) = try_preempt_transform_explicit_route(state, routing_actions_out);
+    if (result)
     {
-        try_explicit_basic_route(state, state.unused_address_index);
-        return true;
+        return try_explicit_basic_route(state, state.unused_address_index, routing_actions_out);
     }
-    return false;
+    return { routing_actions_out, false };
 }
 
-APRS_ROUTER_INLINE bool try_preempt_transform_explicit_route(route_state& state)
+template <class OutputIterator>
+APRS_ROUTER_INLINE_NO_DISABLE std::pair<OutputIterator, bool> try_preempt_transform_explicit_route(route_state& state, OutputIterator routing_actions_out)
 {
     // We cannot reach here if the router's address is not found
     assert(state.maybe_router_address_index.has_value());
@@ -1829,10 +1776,6 @@ APRS_ROUTER_INLINE bool try_preempt_transform_explicit_route(route_state& state)
     std::array<address, 8>& packet_addresses = state.packet_addresses;
     size_t& packet_addresses_size = state.packet_addresses_size;
     size_t& unused_address_index = state.unused_address_index;
-    internal_vector_t<routing_diagnostic>& actions = state.actions;
-#if APRS_ROUTER_USE_PMR
-    std::pmr::memory_resource* memory_resource = state.memory_resource;
-#endif
 
     assert(router_address_index < packet_addresses_size);
     assert(unused_address_index < packet_addresses_size);
@@ -1840,51 +1783,39 @@ APRS_ROUTER_INLINE bool try_preempt_transform_explicit_route(route_state& state)
     if (enum_has_flag(options, routing_option::preempt_front))
     {
         // Diagnostics are calculated before the move.
-        // Store diagnostics in a temporary vector, and if the move is not successful
+        // Store diagnostics in a temporary array, and if the move is not successful
         // then we will not add the diagnostics to the actions.
-#if APRS_ROUTER_USE_PMR
-        internal_vector_t<routing_diagnostic> temp_d(memory_resource);
-#else
-        internal_vector_t<routing_diagnostic> temp_d;
-#endif
-        create_address_move_diagnostic(packet_addresses, packet_addresses_size, router_address_index, unused_address_index, enable_diagnostics, temp_d);
+        std::array<routing_diagnostic, 8> routing_actions_temp{};
+        auto routing_actions_temp_end = create_address_move_diagnostic(packet_addresses, packet_addresses_size, router_address_index, unused_address_index, enable_diagnostics, routing_actions_temp.begin());
         if (try_move_address_to_position(packet_addresses, packet_addresses_size, router_address_index, unused_address_index))
         {
-            std::copy(temp_d.begin(), temp_d.end(), std::back_inserter(actions));
+            routing_actions_out = std::copy(routing_actions_temp.begin(), routing_actions_temp_end, routing_actions_out);
         }
-        return true;
+        return { routing_actions_out, true };
     }
     else if (enum_has_flag(options, routing_option::preempt_truncate))
     {
         // Diagnostics are calculated before the move.
-        // Store diagnostics in a temporary vector, and if the move is not successful
+        // Store diagnostics in a temporary array, and if the move is not successful
         // then we will not add the diagnostics to the actions.
-#if APRS_ROUTER_USE_PMR
-        internal_vector_t<routing_diagnostic> temp_d(memory_resource);
-#else
-        internal_vector_t<routing_diagnostic> temp_d;
-#endif
-        create_truncate_address_range_diagnostic(packet_addresses, packet_addresses_size, unused_address_index, router_address_index, enable_diagnostics, temp_d);
+        std::array<routing_diagnostic, 8> routing_actions_temp{};
+        auto routing_actions_temp_end = create_truncate_address_range_diagnostic(packet_addresses, packet_addresses_size, unused_address_index, router_address_index, enable_diagnostics, routing_actions_temp.begin());
         if (try_truncate_address_range(packet_addresses, packet_addresses_size, unused_address_index, router_address_index))
         {
-            std::copy(temp_d.begin(), temp_d.end(), std::back_inserter(actions));
+            routing_actions_out = std::copy(routing_actions_temp.begin(), routing_actions_temp_end, routing_actions_out);
         }
-        return true;
+        return { routing_actions_out, true };
     }
     else if (enum_has_flag(options, routing_option::preempt_drop))
     {
         // Diagnostics are calculated before the move.
-        // Store diagnostics in a temporary vector, and if the move is not successful
+        // Store diagnostics in a temporary array, and if the move is not successful
         // then we will not add the diagnostics to the actions.
-#if APRS_ROUTER_USE_PMR
-        internal_vector_t<routing_diagnostic> temp_d(memory_resource);
-#else
-        internal_vector_t<routing_diagnostic> temp_d;
-#endif
-        create_truncate_address_range_diagnostic(packet_addresses, packet_addresses_size, 0, router_address_index, enable_diagnostics, temp_d);
+        std::array<routing_diagnostic, 8> routing_actions_temp{};
+        auto routing_actions_temp_end = create_truncate_address_range_diagnostic(packet_addresses, packet_addresses_size, 0, router_address_index, enable_diagnostics, routing_actions_temp.begin());
         if (try_truncate_address_range(packet_addresses, packet_addresses_size, 0, router_address_index))
         {
-            std::copy(temp_d.begin(), temp_d.end(), std::back_inserter(actions));
+            routing_actions_out = std::copy(routing_actions_temp.begin(), routing_actions_temp_end, routing_actions_out);
         }
 
         // Reset the unused address index to 0 as we are dropping all the addresses
@@ -1905,7 +1836,7 @@ APRS_ROUTER_INLINE bool try_preempt_transform_explicit_route(route_state& state)
 
         unused_address_index = 0;
 
-        return true;
+        return { routing_actions_out, true };
     }
     else if (enum_has_flag(options, routing_option::preempt_mark))
     {
@@ -1926,13 +1857,14 @@ APRS_ROUTER_INLINE bool try_preempt_transform_explicit_route(route_state& state)
 
         unused_address_index = router_address_index;
 
-        return true;
+        return { routing_actions_out, true };
     }
 
-    return false;
+    return { routing_actions_out, false };
 }
 
-APRS_ROUTER_INLINE bool try_n_N_route(route_state& state)
+template <class OutputIterator>
+APRS_ROUTER_INLINE_NO_DISABLE std::pair<OutputIterator, bool> try_n_N_route(route_state& state, OutputIterator routing_actions_out)
 {
     // n-N routing function. Routes a packet using the n-N routing algorithm.
     //
@@ -1974,7 +1906,7 @@ APRS_ROUTER_INLINE bool try_n_N_route(route_state& state)
 
     if (!unused_address_index_pair)
     {
-        return false;
+        return { routing_actions_out, false };
     }
 
     auto [address_n_N_index, router_n_N_index] = unused_address_index_pair.value();
@@ -1992,24 +1924,25 @@ APRS_ROUTER_INLINE bool try_n_N_route(route_state& state)
     {
         if (unused_address.text_size != 0)
         {
-            return false;
+            return { routing_actions_out, false };
         }
     }
 
     assert(address_n_N_index < packet_addresses_size);
     assert(router_n_N_index < router_n_N_addresses_size);
 
-    if (try_trap_n_N_route(state, packet_addresses[address_n_N_index], router_n_N_addresses[router_n_N_index]))
+    bool result;
+    std::tie(routing_actions_out, result) = try_trap_n_N_route(state, packet_addresses[address_n_N_index], router_n_N_addresses[router_n_N_index], routing_actions_out);
+    if (result)
     {
-        return true;
+        return { routing_actions_out, true };
     }
 
-    try_n_N_route_no_trap(state, address_n_N_index);
-
-    return true;
+    return try_n_N_route_no_trap(state, address_n_N_index, routing_actions_out);
 }
 
-APRS_ROUTER_INLINE bool try_n_N_route_no_trap(route_state& state, size_t packet_n_N_address_index)
+template <class OutputIterator>
+APRS_ROUTER_INLINE_NO_DISABLE std::pair<OutputIterator, bool> try_n_N_route_no_trap(route_state& state, size_t packet_n_N_address_index, OutputIterator routing_actions_out)
 {
     // Route an ADDRESSn-N address.
     //
@@ -2053,7 +1986,6 @@ APRS_ROUTER_INLINE bool try_n_N_route_no_trap(route_state& state, size_t packet_
     const size_t packet_addresses_size = state.packet_addresses_size;
     const routing_option options = state.options;
     const bool enable_diagnostics = state.enable_diagnostics;
-    internal_vector_t<routing_diagnostic>& actions = state.actions;
 
     assert(packet_n_N_address_index < packet_addresses_size);
 
@@ -2066,29 +1998,31 @@ APRS_ROUTER_INLINE bool try_n_N_route_no_trap(route_state& state, size_t packet_
 
     if (try_decrement_n_N_address(state, n_N_address))
     {
-        push_address_decremented_diagnostic(n_N_address, enable_diagnostics, actions);
+        routing_actions_out = push_address_decremented_diagnostic(n_N_address, enable_diagnostics, routing_actions_out);
     }
 
     // If we are in a position which will require us to insert more than 8 addresses
     // just return, the only thing we can do is increment the counter
 
-    if (try_complete_n_N_route(state, n_N_address, substitute_zero_hops))
+    bool result;
+    std::tie(routing_actions_out, result) = try_complete_n_N_route(state, n_N_address, substitute_zero_hops, routing_actions_out);
+    if (result)
     {
-        return true;
+        return { routing_actions_out, true };
     }
 
     if (substitute_zero_hops && !traceless_n_N && n_N_address.N == 0)
     {
-        try_substitute_complete_n_N_address(state, packet_n_N_address_index);
-        return true;
+        std::tie(routing_actions_out, result) = try_substitute_complete_n_N_address(state, packet_n_N_address_index, routing_actions_out);
+        (void)result;
+        return { routing_actions_out, true };
     }
 
-    try_insert_n_N_route(state, packet_n_N_address_index);
-
-    return true;
+    return try_insert_n_N_route(state, packet_n_N_address_index, routing_actions_out);
 }
 
-APRS_ROUTER_INLINE bool try_complete_n_N_route(route_state& state, address& n_N_address, bool substitute_zero_hops)
+template <class OutputIterator>
+APRS_ROUTER_INLINE_NO_DISABLE std::pair<OutputIterator, bool> try_complete_n_N_route(route_state& state, address& n_N_address, bool substitute_zero_hops, OutputIterator routing_actions_out)
 {
     // If we are in a position which will require us to insert more than 8 addresses
     // just return, the only thing we can do is increment the n-N counter
@@ -2108,7 +2042,6 @@ APRS_ROUTER_INLINE bool try_complete_n_N_route(route_state& state, address& n_N_
     std::array<address, 8>& packet_addresses = state.packet_addresses;
     const size_t packet_addresses_size = state.packet_addresses_size;
     const bool enable_diagnostics = state.enable_diagnostics;
-    internal_vector_t<routing_diagnostic>& actions = state.actions;
 
     if (packet_addresses_size >= 8)
     {
@@ -2117,10 +2050,11 @@ APRS_ROUTER_INLINE bool try_complete_n_N_route(route_state& state, address& n_N_
         // we also have more than 8 addresses, so just mark the completed address as "set"
         if (!substitute_zero_hops && n_N_address.N == 0)
         {
-            push_address_unset_diagnostic(packet_addresses, packet_addresses_size, n_N_address.index, enable_diagnostics, actions);
+            routing_actions_out = push_address_unset_diagnostic(packet_addresses, packet_addresses_size, n_N_address.index, enable_diagnostics, routing_actions_out);
             set_address_as_used(packet_addresses, packet_addresses_size, n_N_address);
-            push_address_set_diagnostic(packet_addresses, packet_addresses_size, n_N_address.index, enable_diagnostics, actions);
-            return true;
+            routing_actions_out = push_address_set_diagnostic(packet_addresses, packet_addresses_size, n_N_address.index, enable_diagnostics, routing_actions_out);
+
+            return { routing_actions_out, true };
         }
 
         // The n-N address has remaining hops, and we have more than 8 addresses
@@ -2128,14 +2062,15 @@ APRS_ROUTER_INLINE bool try_complete_n_N_route(route_state& state, address& n_N_
         // just exit as we are done
         if (!substitute_zero_hops || n_N_address.N > 0)
         {
-            return true;
+            return { routing_actions_out, true };
         }
     }
 
-    return false;
+    return { routing_actions_out, false };
 }
 
-APRS_ROUTER_INLINE bool try_insert_n_N_route(route_state& state, size_t& packet_n_N_address_index)
+template <class OutputIterator>
+APRS_ROUTER_INLINE_NO_DISABLE std::pair<OutputIterator, bool> try_insert_n_N_route(route_state& state, size_t& packet_n_N_address_index, OutputIterator routing_actions_out)
 {
     // Insert the router's address in front of the n-N address:
     //
@@ -2153,7 +2088,6 @@ APRS_ROUTER_INLINE bool try_insert_n_N_route(route_state& state, size_t& packet_
     size_t& packet_addresses_size = state.packet_addresses_size;
     const std::string_view router_address = state.router_address_string;
     const bool enable_diagnostics = state.enable_diagnostics;
-    internal_vector_t<routing_diagnostic>& actions = state.actions;
     const bool substitute_zero_hops = enum_has_flag(state.options, routing_option::substitute_complete_n_N_address);
     const bool traceless_n_N = enum_has_flag(state.options, routing_option::traceless_n_N_route);
 
@@ -2175,14 +2109,14 @@ APRS_ROUTER_INLINE bool try_insert_n_N_route(route_state& state, size_t& packet_
     }
     else
     {
-        push_address_unset_diagnostic(packet_addresses, packet_addresses_size, n_N_address.index, enable_diagnostics, actions);
+        routing_actions_out = push_address_unset_diagnostic(packet_addresses, packet_addresses_size, n_N_address.index, enable_diagnostics, routing_actions_out);
         set_address_as_used(packet_addresses, packet_addresses_size, n_N_address);
-        push_address_set_diagnostic(packet_addresses, packet_addresses_size, n_N_address.index, enable_diagnostics, actions);
+        routing_actions_out = push_address_set_diagnostic(packet_addresses, packet_addresses_size, n_N_address.index, enable_diagnostics, routing_actions_out);
     }
 
     if (traceless_n_N)
     {
-        return true;
+        return { routing_actions_out, true };
     }
 
     size_t initial_offset = packet_addresses[0].offset;
@@ -2192,21 +2126,22 @@ APRS_ROUTER_INLINE bool try_insert_n_N_route(route_state& state, size_t& packet_
     update_addresses_index(packet_addresses, packet_addresses_size);
     update_addresses_offset(packet_addresses, packet_addresses_size, initial_offset);
 
-    push_address_inserted_diagnostic(packet_addresses, packet_addresses_size, packet_n_N_address_index, enable_diagnostics, actions);
+    routing_actions_out = push_address_inserted_diagnostic(packet_addresses, packet_addresses_size, packet_n_N_address_index, enable_diagnostics, routing_actions_out);
 
     if (set_new_address_as_used)
     {
-        push_address_unset_diagnostic(packet_addresses, packet_addresses_size, std::nullopt, enable_diagnostics, actions);
+        routing_actions_out = push_address_unset_diagnostic(packet_addresses, packet_addresses_size, std::nullopt, enable_diagnostics, routing_actions_out);
         set_address_as_used(packet_addresses, packet_addresses_size, packet_n_N_address_index);
-        push_address_set_diagnostic(packet_addresses, packet_addresses_size, packet_n_N_address_index, enable_diagnostics, actions);
+        routing_actions_out = push_address_set_diagnostic(packet_addresses, packet_addresses_size, packet_n_N_address_index, enable_diagnostics, routing_actions_out);
     }
 
     packet_n_N_address_index++;
 
-    return true;
+    return { routing_actions_out, true };
 }
 
-APRS_ROUTER_INLINE bool try_trap_n_N_route(route_state& state, address& packet_n_N_address, const address& router_n_N_address)
+template <class OutputIterator>
+APRS_ROUTER_INLINE_NO_DISABLE std::pair<OutputIterator, bool> try_trap_n_N_route(route_state& state, address& packet_n_N_address, const address& router_n_N_address, OutputIterator routing_actions_out)
 {
     // Replace an excessive hop with the router's address
     // to stop the packet from harming the network
@@ -2236,7 +2171,6 @@ APRS_ROUTER_INLINE bool try_trap_n_N_route(route_state& state, address& packet_n
     const std::string_view router_address = state.router_address_string;
     const routing_option options = state.options;
     const bool enable_diagnostics = state.enable_diagnostics;
-    internal_vector_t<routing_diagnostic>& actions = state.actions;
 
     bool trap_limit_exceeding_n_N_address = enum_has_flag(options, routing_option::trap_limit_exceeding_n_N_address);
     bool traceless_n_N = enum_has_flag(options, routing_option::traceless_n_N_route);
@@ -2247,7 +2181,7 @@ APRS_ROUTER_INLINE bool try_trap_n_N_route(route_state& state, address& packet_n
         {
             if (!traceless_n_N)
             {
-                push_address_replaced_diagnostic(packet_addresses, packet_addresses_size, packet_n_N_address.index, router_address, enable_diagnostics, actions);
+                routing_actions_out = push_address_replaced_diagnostic(packet_addresses, packet_addresses_size, packet_n_N_address.index, router_address, enable_diagnostics, routing_actions_out);
 
                 array_assign(packet_n_N_address.text, packet_n_N_address.text_size, router_address.begin(), router_address.end());
                 packet_n_N_address.length = router_address.size();
@@ -2255,15 +2189,15 @@ APRS_ROUTER_INLINE bool try_trap_n_N_route(route_state& state, address& packet_n
                 packet_n_N_address.N = 0;
             }
 
-            push_address_unset_diagnostic(packet_addresses, packet_addresses_size, packet_n_N_address.index, enable_diagnostics, actions);
+            routing_actions_out = push_address_unset_diagnostic(packet_addresses, packet_addresses_size, packet_n_N_address.index, enable_diagnostics, routing_actions_out);
             set_address_as_used(packet_addresses, packet_addresses_size, packet_n_N_address);
-            push_address_set_diagnostic(packet_addresses, packet_addresses_size, packet_n_N_address.index, enable_diagnostics, actions);
+            routing_actions_out = push_address_set_diagnostic(packet_addresses, packet_addresses_size, packet_n_N_address.index, enable_diagnostics, routing_actions_out);
 
-            return true;
+            return { routing_actions_out, true };
         }
     }
 
-    return false;
+    return { routing_actions_out, false };
 }
 
 // **************************************************************** //
@@ -2398,22 +2332,14 @@ APRS_ROUTER_INLINE void init_routing_result(const struct APRS_ROUTER_PACKET_NAME
 template <class OutputIterator>
 APRS_ROUTER_INLINE_NO_DISABLE std::pair<OutputIterator, bool> create_routing_ended_routing(const route_state& state, enum routing_state& routing_state, OutputIterator routing_actions_out)
 {
-#if APRS_ROUTER_USE_PMR
-    internal_vector_t<routing_diagnostic> routing_actions(state.memory_resource);
-#else
-    internal_vector_t<routing_diagnostic> routing_actions;
-#endif
-    bool result = create_routing_ended_routing(state, routing_state, routing_actions);
-    for (auto& diag : routing_actions)
-    {
-        *routing_actions_out++ = std::move(diag);
-    }
-    return { routing_actions_out, result };
+    routing_actions_out = push_routing_ended_diagnostic(state.packet_addresses[state.packet_addresses_size - 1], state.enable_diagnostics, routing_actions_out);
+    routing_state = routing_state::not_routed;
+    return { routing_actions_out, false };
 }
 
 APRS_ROUTER_INLINE bool create_routing_ended_routing(const route_state& state, enum routing_state& routing_state, internal_vector_t<routing_diagnostic>& routing_actions)
 {
-    push_routing_ended_diagnostic(state.packet_addresses[state.packet_addresses_size - 1], state.enable_diagnostics, routing_actions);
+    push_routing_ended_diagnostic(state.packet_addresses[state.packet_addresses_size - 1], state.enable_diagnostics, std::back_inserter(routing_actions));
     routing_state = routing_state::not_routed;
     return false;
 }
@@ -2421,22 +2347,14 @@ APRS_ROUTER_INLINE bool create_routing_ended_routing(const route_state& state, e
 template <class OutputIterator>
 APRS_ROUTER_INLINE_NO_DISABLE std::pair<OutputIterator, bool> create_routed_by_us_routing(const route_state& state, enum routing_state& routing_state, OutputIterator routing_actions_out)
 {
-#if APRS_ROUTER_USE_PMR
-    internal_vector_t<routing_diagnostic> routing_actions(state.memory_resource);
-#else
-    internal_vector_t<routing_diagnostic> routing_actions;
-#endif
-    bool result = create_routed_by_us_routing(state, routing_state, routing_actions);
-    for (auto& diag : routing_actions)
-    {
-        *routing_actions_out++ = std::move(diag);
-    }
-    return { routing_actions_out, result };
+    routing_actions_out = push_routed_by_us_diagnostic(state.packet_addresses, state.packet_addresses_size, state.maybe_last_used_address_index, state.enable_diagnostics, routing_actions_out);
+    routing_state = routing_state::already_routed;
+    return { routing_actions_out, false };
 }
 
 APRS_ROUTER_INLINE bool create_routed_by_us_routing(const route_state& state, enum routing_state& routing_state, internal_vector_t<routing_diagnostic>& routing_actions)
 {
-    push_routed_by_us_diagnostic(state.packet_addresses, state.packet_addresses_size, state.maybe_last_used_address_index, state.enable_diagnostics, routing_actions);
+    push_routed_by_us_diagnostic(state.packet_addresses, state.packet_addresses_size, state.maybe_last_used_address_index, state.enable_diagnostics, std::back_inserter(routing_actions));
     routing_state = routing_state::already_routed;
     return false;
 }
@@ -2444,7 +2362,9 @@ APRS_ROUTER_INLINE bool create_routed_by_us_routing(const route_state& state, en
 template <class OutputIterator1, class OutputIterator2, class OutputIterator3>
 APRS_ROUTER_INLINE_NO_DISABLE std::tuple<OutputIterator1, OutputIterator2, OutputIterator3, bool> create_routed_routing(route_state& state, OutputIterator1 routed_packet_path_out, OutputIterator2 routed_packet_path_address_sizes_out, OutputIterator3 routing_actions_out)
 {
-    try_truncate_empty_addresses(state);
+    bool result;
+    std::tie(routing_actions_out, result) = try_truncate_empty_addresses(state, routing_actions_out);
+    (void)result;
 
     using value_type = typename std::iterator_traits<OutputIterator1>::value_type;
 
@@ -2487,36 +2407,16 @@ APRS_ROUTER_INLINE_NO_DISABLE std::tuple<OutputIterator1, OutputIterator2, Outpu
         }
     }
 
-    for (auto& diag : state.actions)
-    {
-        *routing_actions_out++ = std::move(diag);
-    }
-
     return { routed_packet_path_out, routed_packet_path_address_sizes_out, routing_actions_out, true };
 }
 
 APRS_ROUTER_INLINE bool create_routed_routing(route_state& state, std::array<std::array<char, 15>, 8>& routed_packet_path, size_t& routed_packet_path_size, std::array<size_t, 8>& routed_packet_path_address_sizes, internal_vector_t<routing_diagnostic>& routing_actions)
 {
-    try_truncate_empty_addresses(state);
-
-    // Clear the routed packet path
-    routed_packet_path_size = 0;
-
-    for (size_t i = 0; i < state.packet_addresses_size && routed_packet_path_size <= 8; i++)
-    {
-        const auto& address = state.packet_addresses[i];
-        if (address.text_size != 0)
-        {
-            std::array<char, 15> routed_address = {};
-            size_t routed_address_size = 0;
-            to_string(address, routed_address, routed_address_size);
-            array_push_back(routed_packet_path, routed_packet_path_size, routed_packet_path_address_sizes, routed_address.data(), routed_address.data() + routed_address_size);
-        }
-    }
-
-    routing_actions = state.actions;
-
-    return true;
+    auto [path_end, sizes_end, actions_end, result] = create_routed_routing(state, routed_packet_path.begin(), routed_packet_path_address_sizes.begin(), std::back_inserter(routing_actions));
+    (void)path_end;
+    (void)actions_end;
+    routed_packet_path_size = static_cast<size_t>(std::distance(routed_packet_path_address_sizes.begin(), sizes_end));
+    return result;
 }
 
 APRS_ROUTER_INLINE bool create_routed_routing(route_state& state, std::array<std::array<char, 15>, 8>& routed_packet_path, size_t& routed_packet_path_size, std::array<size_t, 8>& routed_packet_path_address_sizes)
@@ -2533,7 +2433,8 @@ APRS_ROUTER_INLINE bool create_routed_routing(route_state& state, std::array<std
 //                                                                  //
 // **************************************************************** //
 
-APRS_ROUTER_INLINE bool push_routing_ended_diagnostic(const address& address, bool enable_diagnostics, internal_vector_t<routing_diagnostic>& d)
+template <class OutputIterator>
+APRS_ROUTER_INLINE_NO_DISABLE OutputIterator push_routing_ended_diagnostic(const address& address, bool enable_diagnostics, OutputIterator routing_actions_out)
 {
     if (enable_diagnostics)
     {
@@ -2547,12 +2448,13 @@ APRS_ROUTER_INLINE bool push_routing_ended_diagnostic(const address& address, bo
         diag.end = diag.start + address.length;
         diag.index = address.index;
 
-        d.push_back(diag);
+        *routing_actions_out++ = diag;
     }
-    return true;
+    return routing_actions_out;
 }
 
-APRS_ROUTER_INLINE bool push_routed_by_us_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, std::optional<size_t> maybe_last_used_address_index, bool enable_diagnostics, internal_vector_t<routing_diagnostic>& d)
+template <class OutputIterator>
+APRS_ROUTER_INLINE_NO_DISABLE OutputIterator push_routed_by_us_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, std::optional<size_t> maybe_last_used_address_index, bool enable_diagnostics, OutputIterator routing_actions_out)
 {
     if (enable_diagnostics && maybe_last_used_address_index)
     {
@@ -2568,12 +2470,13 @@ APRS_ROUTER_INLINE bool push_routed_by_us_diagnostic(const std::array<address, 8
         diag.end = diag.start + address.length;
         diag.index = address.index;
 
-        d.push_back(diag);
+        *routing_actions_out++ = diag;
     }
-    return true;
+    return routing_actions_out;
 }
 
-APRS_ROUTER_INLINE bool push_address_set_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t set_address_index, bool enable_diagnostics, internal_vector_t<routing_diagnostic>& d)
+template <class OutputIterator>
+APRS_ROUTER_INLINE_NO_DISABLE OutputIterator push_address_set_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t set_address_index, bool enable_diagnostics, OutputIterator routing_actions_out)
 {
     assert(set_address_index < packet_addresses_size); (void)packet_addresses_size;
 
@@ -2598,12 +2501,13 @@ APRS_ROUTER_INLINE bool push_address_set_diagnostic(const std::array<address, 8>
             diag.end--;
         }
 
-        d.push_back(diag);
+        *routing_actions_out++ = diag;
     }
-    return true;
+    return routing_actions_out;
 }
 
-APRS_ROUTER_INLINE bool push_address_unset_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, std::optional<size_t> maybe_set_address_index, bool enable_diagnostics, internal_vector_t<routing_diagnostic>& d)
+template <class OutputIterator>
+APRS_ROUTER_INLINE_NO_DISABLE OutputIterator push_address_unset_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, std::optional<size_t> maybe_set_address_index, bool enable_diagnostics, OutputIterator routing_actions_out)
 {
     // Called before unsetting addresses, before calling 'set_address_as_used'
 
@@ -2639,7 +2543,7 @@ APRS_ROUTER_INLINE bool push_address_unset_diagnostic(const std::array<address, 
                     diag.address_size--;
                 }
 
-                d.push_back(diag);
+                *routing_actions_out++ = diag;
             }
 
             if (address.mark)
@@ -2652,10 +2556,11 @@ APRS_ROUTER_INLINE bool push_address_unset_diagnostic(const std::array<address, 
             i++;
         }
     }
-    return true;
+    return routing_actions_out;
 }
 
-APRS_ROUTER_INLINE bool push_address_replaced_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t set_address_index, std::string_view new_address, bool enable_diagnostics, internal_vector_t<routing_diagnostic>& d)
+template <class OutputIterator>
+APRS_ROUTER_INLINE_NO_DISABLE OutputIterator push_address_replaced_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t set_address_index, std::string_view new_address, bool enable_diagnostics, OutputIterator routing_actions_out)
 {
     assert(set_address_index < packet_addresses_size); (void)packet_addresses_size;
 
@@ -2673,12 +2578,13 @@ APRS_ROUTER_INLINE bool push_address_replaced_diagnostic(const std::array<addres
         diag.end = diag.start + address.length;
         diag.index = set_address_index;
 
-        d.push_back(diag);
+        *routing_actions_out++ = diag;
     }
-    return true;
+    return routing_actions_out;
 }
 
-APRS_ROUTER_INLINE bool push_address_decremented_diagnostic(address& address, bool enable_diagnostics, internal_vector_t<routing_diagnostic>& d)
+template <class OutputIterator>
+APRS_ROUTER_INLINE_NO_DISABLE OutputIterator push_address_decremented_diagnostic(address& address, bool enable_diagnostics, OutputIterator routing_actions_out)
 {
     if (enable_diagnostics)
     {
@@ -2699,12 +2605,13 @@ APRS_ROUTER_INLINE bool push_address_decremented_diagnostic(address& address, bo
             diag.end += 2;
         }
 
-        d.push_back(diag);
+        *routing_actions_out++ = diag;
     }
-    return true;
+    return routing_actions_out;
 }
 
-APRS_ROUTER_INLINE bool push_address_inserted_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t insert_address_index, bool enable_diagnostics, internal_vector_t<routing_diagnostic>& d)
+template <class OutputIterator>
+APRS_ROUTER_INLINE_NO_DISABLE OutputIterator push_address_inserted_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t insert_address_index, bool enable_diagnostics, OutputIterator routing_actions_out)
 {
     assert(insert_address_index < packet_addresses_size); (void)packet_addresses_size;
 
@@ -2722,12 +2629,13 @@ APRS_ROUTER_INLINE bool push_address_inserted_diagnostic(const std::array<addres
         diag.end = diag.start + address.text_size;
         diag.index = insert_address_index;
 
-        d.push_back(diag);
+        *routing_actions_out++ = diag;
     }
-    return true;
+    return routing_actions_out;
 }
 
-APRS_ROUTER_INLINE bool push_address_removed_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t remove_address_index, bool enable_diagnostics, internal_vector_t<routing_diagnostic>& d)
+template <class OutputIterator>
+APRS_ROUTER_INLINE_NO_DISABLE OutputIterator push_address_removed_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t remove_address_index, bool enable_diagnostics, OutputIterator routing_actions_out)
 {
     assert(remove_address_index < packet_addresses_size); (void)packet_addresses_size;
 
@@ -2745,12 +2653,13 @@ APRS_ROUTER_INLINE bool push_address_removed_diagnostic(const std::array<address
         diag.end = diag.start + address.text_size;
         diag.index = remove_address_index;
 
-        d.push_back(diag);
+        *routing_actions_out++ = diag;
     }
-    return true;
+    return routing_actions_out;
 }
 
-APRS_ROUTER_INLINE bool create_address_move_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t from_index, size_t to_index, bool enable_diagnostics, internal_vector_t<routing_diagnostic>& d)
+template <class OutputIterator>
+APRS_ROUTER_INLINE_NO_DISABLE OutputIterator create_address_move_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t from_index, size_t to_index, bool enable_diagnostics, OutputIterator routing_actions_out)
 {
     assert(from_index < packet_addresses_size);
     assert(to_index < packet_addresses_size); (void)packet_addresses_size;
@@ -2769,7 +2678,7 @@ APRS_ROUTER_INLINE bool create_address_move_diagnostic(const std::array<address,
         remove_diag.end = remove_diag.start + removed_address.length;
         remove_diag.index = from_index;
 
-        d.push_back(remove_diag);
+        *routing_actions_out++ = remove_diag;
 
         routing_diagnostic insert_diag;
 
@@ -2783,12 +2692,13 @@ APRS_ROUTER_INLINE bool create_address_move_diagnostic(const std::array<address,
         insert_diag.end = insert_diag.start + removed_address.length;
         insert_diag.index = to_index;
 
-        d.push_back(insert_diag);
+        *routing_actions_out++ = insert_diag;
     }
-    return true;
+    return routing_actions_out;
 }
 
-APRS_ROUTER_INLINE bool create_truncate_address_range_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t from_index, size_t to_index, bool enable_diagnostics, internal_vector_t<routing_diagnostic>& d)
+template <class OutputIterator>
+APRS_ROUTER_INLINE_NO_DISABLE OutputIterator create_truncate_address_range_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t from_index, size_t to_index, bool enable_diagnostics, OutputIterator routing_actions_out)
 {
     assert(from_index < packet_addresses_size);
     assert(to_index < packet_addresses_size);
@@ -2796,7 +2706,7 @@ APRS_ROUTER_INLINE bool create_truncate_address_range_diagnostic(const std::arra
 
     if (!enable_diagnostics)
     {
-        return false;
+        return routing_actions_out;
     }
 
     assert(from_index < packet_addresses_size);
@@ -2817,9 +2727,9 @@ APRS_ROUTER_INLINE bool create_truncate_address_range_diagnostic(const std::arra
         diag.end = diag.start + address.length;
         diag.index = from_index;
 
-        d.push_back(diag);
+        *routing_actions_out++ = diag;
     }
-    return true;
+    return routing_actions_out;
 }
 
 // **************************************************************** //
@@ -3710,8 +3620,6 @@ APRS_ROUTER_INLINE void init_addresses(route_state& state)
 
     size_t index = 0;
 
-    state.actions.clear();
-
     // Parse the packet addresses
     // Based on whether an address appears in the router's explicit or n-N addresses list
     // decide whether we use try_parse_address_with_ssid or try_parse_n_N_address to parse the packed address
@@ -4067,7 +3975,8 @@ APRS_ROUTER_INLINE bool try_truncate_address_range(std::array<address, 8>& packe
     return true;
 }
 
-APRS_ROUTER_INLINE bool try_truncate_empty_addresses(route_state& state)
+template <class OutputIterator>
+APRS_ROUTER_INLINE_NO_DISABLE std::pair<OutputIterator, bool> try_truncate_empty_addresses(route_state& state, OutputIterator routing_actions_out)
 {
     // Truncate all empty addresses in the packet path
     //
@@ -4078,7 +3987,6 @@ APRS_ROUTER_INLINE bool try_truncate_empty_addresses(route_state& state)
     std::array<address, 8>& packet_addresses = state.packet_addresses;
     size_t& packet_addresses_size = state.packet_addresses_size;
     const bool enable_diagnostics = state.enable_diagnostics;
-    internal_vector_t<routing_diagnostic>& actions = state.actions;
 
     auto begin = packet_addresses.begin();
 
@@ -4086,7 +3994,7 @@ APRS_ROUTER_INLINE bool try_truncate_empty_addresses(route_state& state)
     {
         if (packet_addresses[i].text_size == 0)
         {
-            push_address_removed_diagnostic(packet_addresses, packet_addresses_size, i, enable_diagnostics, actions);
+            routing_actions_out = push_address_removed_diagnostic(packet_addresses, packet_addresses_size, i, enable_diagnostics, routing_actions_out);
             array_erase(packet_addresses, packet_addresses_size, i);
         }
         else
@@ -4098,10 +4006,11 @@ APRS_ROUTER_INLINE bool try_truncate_empty_addresses(route_state& state)
     update_addresses_index(packet_addresses, packet_addresses_size);
     update_addresses_offset(packet_addresses, packet_addresses_size);
 
-    return true;
+    return { routing_actions_out, true };
 }
 
-APRS_ROUTER_INLINE bool try_substitute_complete_n_N_address(route_state& state, size_t packet_n_N_address_index)
+template <class OutputIterator>
+APRS_ROUTER_INLINE_NO_DISABLE std::pair<OutputIterator, bool> try_substitute_complete_n_N_address(route_state& state, size_t packet_n_N_address_index, OutputIterator routing_actions_out)
 {
     // If the last n-N hop has been exhausted, replace the hop with the router's address
     //
@@ -4114,7 +4023,6 @@ APRS_ROUTER_INLINE bool try_substitute_complete_n_N_address(route_state& state, 
     const size_t packet_addresses_size = state.packet_addresses_size;
     const std::string_view router_address = state.router_address_string;
     const bool enable_diagnostics = state.enable_diagnostics;
-    internal_vector_t<routing_diagnostic>& actions = state.actions;
 
     assert(packet_n_N_address_index < packet_addresses_size);
 
@@ -4122,22 +4030,20 @@ APRS_ROUTER_INLINE bool try_substitute_complete_n_N_address(route_state& state, 
 
     if (address.N == 0)
     {
-        push_address_replaced_diagnostic(packet_addresses, packet_addresses_size, address.index, router_address, enable_diagnostics, actions);
-
+        routing_actions_out = push_address_replaced_diagnostic(packet_addresses, packet_addresses_size, address.index, router_address, enable_diagnostics, routing_actions_out);
         array_assign(address.text, address.text_size, router_address.begin(), router_address.end());
         address.length = router_address.size();
         address.N = 0;
         address.n = 0;
         address.kind = address_kind::other;
 
-        push_address_unset_diagnostic(packet_addresses, packet_addresses_size, address.index, enable_diagnostics, actions);
+        routing_actions_out = push_address_unset_diagnostic(packet_addresses, packet_addresses_size, address.index, enable_diagnostics, routing_actions_out);
         set_address_as_used(packet_addresses, packet_addresses_size, address);
-        push_address_set_diagnostic(packet_addresses, packet_addresses_size, address.index, enable_diagnostics, actions);
-
-        return true;
+        routing_actions_out = push_address_set_diagnostic(packet_addresses, packet_addresses_size, address.index, enable_diagnostics, routing_actions_out);
+        return { routing_actions_out, true };
     }
 
-    return false;
+    return { routing_actions_out, false };
 }
 
 APRS_ROUTER_INLINE bool try_decrement_n_N_address(address& n_N_address)

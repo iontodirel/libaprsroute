@@ -2363,7 +2363,7 @@ TEST(diagnostic, push_address_unset_diagnostic)
     set_addresses_offset(p.from, p.to, segments, segments_size);
 
     internal_vector_t<routing_diagnostic> diag;
-    push_address_unset_diagnostic(segments, segments_size, 5, true, diag);
+    push_address_unset_diagnostic(segments, segments_size, 5, true, std::back_inserter(diag));
 
     // N0CALL>APRS,CALLA*,CALLB*,CALLC,WIDE2-2*,CALLD*,CALLE,CALLF:data
     //             ~~~~~~
@@ -2430,7 +2430,7 @@ TEST(diagnostic, push_address_set_diagnostic)
     //                                                  ~
 
     internal_vector_t<routing_diagnostic> diag;
-    push_address_set_diagnostic(segments, segments_size, 5, true, diag);
+    push_address_set_diagnostic(segments, segments_size, 5, true, std::back_inserter(diag));
 
     // N0CALL>APRS,CALLA,CALLB,CALLC,WIDE2-2,CALLD,CALLE*,CALLF:data
     //                                             ~~~~~
