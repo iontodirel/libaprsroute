@@ -29,285 +29,229 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
 
-#include <iostream>
-#include <iomanip>
-#include <chrono>
-#include <string>
-#include <algorithm>
-#include <numeric>
-#include <new>
 #include <array>
-#include <memory_resource>
+#include <atomic>
+#include <chrono>
+#include <cstdlib>
+#include <iomanip>
+#include <iostream>
+#include <new>
+#include <sstream>
+#include <string>
+#include <string_view>
 
-#define APRSROUTE_USE_STACK_ALLOCATOR2
-#define APRSROUTE_LOG_ALLOCATIONS
+bool tracking_enabled = false;
+size_t allocation_count = 0;
+size_t allocation_bytes = 0;
 
-#ifdef APRSROUTE_USE_STACK_ALLOCATOR2
-
-struct stack_buffer
+void* operator new(size_t requested_bytes)
 {
-    void reset() noexcept;
-
-    std::byte* data;
-    std::size_t size;
-    std::size_t offset = 0;
-};
-
-inline void stack_buffer::reset() noexcept
-{
-    offset = 0;
+    void* allocated_pointer = std::malloc(requested_bytes ? requested_bytes : 1);
+    if (!allocated_pointer) throw std::bad_alloc();
+    if (tracking_enabled)
+    {
+        allocation_count++;
+        allocation_bytes += requested_bytes;
+    }
+    return allocated_pointer;
 }
 
-inline stack_buffer* global_stack_buffer()
+void* operator new[](size_t requested_bytes)
 {
-    static std::byte bytes[8192];
-    static stack_buffer buffer { bytes, sizeof(bytes) };
-    return &buffer;
+    return ::operator new(requested_bytes);
 }
 
-template <typename T>
-struct stack_allocator
-{
-    template <typename U> friend struct stack_allocator;
+void operator delete(void* allocated_pointer) noexcept { std::free(allocated_pointer); }
+void operator delete[](void* allocated_pointer) noexcept { std::free(allocated_pointer); }
+void operator delete(void* allocated_pointer, size_t) noexcept { std::free(allocated_pointer); }
+void operator delete[](void* allocated_pointer, size_t) noexcept { std::free(allocated_pointer); }
 
-    using value_type = T;
-    using pointer = T*;
-    using const_pointer = const T*;
-    using size_type = std::size_t;
-    using difference_type = std::ptrdiff_t;
-
-    using propagate_on_container_move_assignment = std::true_type;
-    using is_always_equal = std::false_type;
-
-    stack_allocator() noexcept : buffer(global_stack_buffer())
-    {
-    }
-
-    template <typename U>
-    stack_allocator(const stack_allocator<U>& other) noexcept : buffer(other.buffer)
-    {
-    }
-
-    pointer allocate(size_type n)
-    {
-        std::uintptr_t base = reinterpret_cast<std::uintptr_t>(buffer->data);
-        std::uintptr_t curr = base + buffer->offset;
-        std::uintptr_t aligned = (curr + alignof(T) - 1) & ~(alignof(T) - 1);
-        std::size_t new_offset = aligned - base + n * sizeof(T);
-
-        if (new_offset > buffer->size)
-        {
-            throw std::bad_alloc();
-        }
-
-        buffer->offset = new_offset;
-
-        return reinterpret_cast<pointer>(buffer->data + (aligned - base));
-    }
-
-    void deallocate(pointer, size_type) noexcept
-    {
-    }
-
-    template <typename U>
-    bool operator==(const stack_allocator<U>& other) const noexcept
-    {
-        return buffer == other.buffer;
-    }
-
-    template <typename U>
-    bool operator!=(const stack_allocator<U>& other) const noexcept
-    {
-        return !(*this == other);
-    }
-
-    stack_buffer* buffer;
-};
-
-#define APRS_ROUTER_USE_PMR 0
-#define APRS_ROUTER_DEFINE_CUSTOM_TYPES
-
-namespace aprs::router::detail
-{
-    template<class T>
-    using internal_vector_t = std::vector<T, stack_allocator<T>>;
-
-    template<class T>
-    using internal_string_t = std::basic_string<T>;
-}
-
-#endif // APRSROUTE_USE_STACK_ALLOCATOR2
-
-#ifdef APRSROUTE_LOG_ALLOCATIONS
-
-void log_allocation(size_t size, void* ptr)
-{
-    std::cout << "Allocated " << size << " bytes at " << ptr << std::endl;
-}
-
-void* operator new(size_t size)
-{
-    void* ptr = malloc(size);
-    if (!ptr)
-    {
-        throw std::bad_alloc();
-    }
-    log_allocation(size, ptr);
-    return ptr;
-}
-
-void* operator new[](size_t size)
-{
-    void* ptr = malloc(size);
-    if (!ptr)
-    {
-        throw std::bad_alloc();
-    }
-    log_allocation(size, ptr);
-    return ptr;
-}
-
+#if defined(_MSC_VER)
+#  define APRSROUTE_FORCE_INLINE __forceinline
+#else
+#  define APRSROUTE_FORCE_INLINE inline __attribute__((always_inline))
 #endif
 
-#ifdef APRSROUTE_USE_STACK_ALLOCATOR1
-
-#define APRS_ROUTER_USE_PMR 1
-
+// Anti-DCE primitives. Same pattern the Google Benchmark and Folly use.
+//
+// Clang/GCC: empty inline asm with an "r,m" input constraint and a "memory" clobber.
+// Emits no instructions; tells the compiler the value is read into a register or memory,
+// and that any memory may have been touched, which prevents elision of the producing computation and any reordering across it.
+//
+// MSVC (x64): Force a volatile read of the first byte through a char-pointer alias,
+// then a compile-only signal fence.
+// The volatile load can't be optimized away, and the fence prevents reordering across it.
+template<class T>
+APRSROUTE_FORCE_INLINE void do_not_optimize(T const& value)
+{
+#if defined(__clang__) || defined(__GNUC__)
+    asm volatile("" : : "r,m"(value) : "memory");
+#elif defined(_MSC_VER)
+    char const volatile sink = *reinterpret_cast<char const volatile*>(&value);
+    (void)sink;
+    std::atomic_signal_fence(std::memory_order_acq_rel);
 #endif
+}
 
 #include "../aprsroute.hpp"
 
-using namespace aprs::router;
-using namespace aprs::router::detail;
+#if defined(_MSC_VER)
+constexpr const char* compiler_name = "MSVC";
+#elif defined(__clang__)
+constexpr const char* compiler_name = "Clang";
+#elif defined(__GNUC__)
+constexpr const char* compiler_name = "GCC";
+#else
+constexpr const char* compiler_name = "Unknown";
+#endif
 
-void run_try_route_packet_stress_test()
+#if defined(_WIN32)
+constexpr const char* os_name = "Windows";
+#elif defined(__linux__)
+constexpr const char* os_name = "Linux";
+#elif defined(__APPLE__)
+constexpr const char* os_name = "macOS";
+#else
+constexpr const char* os_name = "Unknown";
+#endif
+
+static std::string platform_label()
+{
+    return std::string(os_name) + " " + compiler_name;
+}
+
+static std::string format_throughput(double pkts_per_sec)
+{
+    std::ostringstream oss;
+    oss << std::fixed;
+    if (pkts_per_sec >= 1'000'000.0)
+    {
+        oss << std::setprecision(2) << (pkts_per_sec / 1'000'000.0) << "M pkts/s";
+    }
+    else if (pkts_per_sec >= 1'000.0)
+    {
+        oss << std::setprecision(0) << (pkts_per_sec / 1'000.0) << "K pkts/s";
+    }
+    else
+    {
+        oss << std::setprecision(0) << pkts_per_sec << " pkts/s";
+    }
+    return oss.str();
+}
+
+static std::string format_route_time(double microseconds)
+{
+    std::ostringstream oss;
+    oss << std::fixed;
+    if (microseconds < 10.0)
+    {
+        oss << std::setprecision(2) << microseconds << " us";
+    }
+    else if (microseconds < 100.0)
+    {
+        oss << std::setprecision(1) << microseconds << " us";
+    }
+    else
+    {
+        oss << std::setprecision(0) << microseconds << " us";
+    }
+    return oss.str();
+}
+
+static void run_throughput_test()
 {
     constexpr size_t packet_count = 10'000'000;
 
-#ifdef APRSROUTE_USE_STACK_ALLOCATOR1
-    constexpr size_t pool_size = 4096;
-    unsigned char buffer[pool_size];
-    std::fill_n(buffer, pool_size, 0);
-#endif
+    const std::string_view packet_from = "N0CALL-10";
+    const std::string_view packet_to   = "CALL-5";
+    const std::string_view router_address = "DIGI";
 
-    aprs::router::router_settings settings{ "DIGI", {}, { "WIDE1-2", "WIDE2-3" }, aprs::router::routing_option::none, false };
+    const std::array<std::string_view, 5> packet_path{ "CALLA-10*", "CALLB-5*", "CALLC-15*", "WIDE1*", "WIDE2-1" };
+    const std::array<std::string_view, 0> explicit_addresses{};
+    const std::array<std::string_view, 2> n_N_addresses{ "WIDE1-1", "WIDE2-1" };
 
-    std::vector<std::string> original_packet_path{ "CALLA-10*", "CALLB-5*", "CALLC-15*", "WIDE1*", "WIDE2-1" };
+    std::array<std::array<char, 10>, 8> routed_packet_path{};
+    std::array<size_t, 8> routed_packet_path_address_sizes{};
 
     aprs::router::routing_state routing_state;
+    aprs::router::route_state route_state;
 
-    std::vector<routing_diagnostic> routing_actions;
+    aprs::router::init_router(router_address, explicit_addresses.begin(), explicit_addresses.end(), n_N_addresses.begin(), n_N_addresses.end(), aprs::router::routing_option::none, route_state);
 
-    std::vector<std::string> routed_packet_path;
-    routed_packet_path.reserve(8);
-
+    std::cout << "Platform:        " << platform_label() << std::endl;
+    std::cout << "Packet:          N0CALL-10>CALL-5,CALLA-10*,CALLB-5*,CALLC-15*,WIDE1*,WIDE2-1:data" << std::endl;
+    std::cout << "Router address:  " << router_address << std::endl;
+    std::cout << "Router path:     WIDE1-2, WIDE2-3" << std::endl;
+    std::cout << "Diagnostics:     disabled" << std::endl;
+    std::cout << "Iterations:      " << packet_count << std::endl;
+    std::cout << std::endl;
     std::cout << "--- Begin routing loop ---" << std::endl;
+
+    allocation_count = 0;
+    allocation_bytes = 0;
+    tracking_enabled = true;
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    for (int i = 0; i < packet_count; i++)
+    for (size_t i = 0; i < packet_count; ++i)
     {
-#ifdef APRSROUTE_USE_STACK_ALLOCATOR1
-        std::pmr::monotonic_buffer_resource pool(buffer, pool_size, std::pmr::null_memory_resource());
-        std::pmr::memory_resource* memory_resource = &pool;
+        auto [routed_packet_path_end, routed_packet_path_address_sizes_end, routing_succeeded] = aprs::router::try_route_packet(
+            packet_from, packet_to,
+            packet_path.begin(), packet_path.end(),
+            routed_packet_path.begin(),
+            routed_packet_path_address_sizes.begin(),
+            routing_state, route_state);
 
-        std::pmr::vector<std::string> routed_packet_path(memory_resource);
-
-        aprs::router::try_route_packet("N0CALL-10", "CALL-5", original_packet_path.begin(), original_packet_path.end(), settings, std::back_inserter(routed_packet_path), routing_state, std::back_inserter(routing_actions), memory_resource);
-#else
-        routed_packet_path.clear();
-
-        aprs::router::try_route_packet("N0CALL-10", "CALL-5", original_packet_path, settings, routed_packet_path, routing_state, routing_actions);
-#endif
-
-#ifdef APRSROUTE_USE_STACK_ALLOCATOR2
-        global_stack_buffer()->reset();
-#endif
+        // Anti-DCE: each call's outputs must be treated as observed
+        // so the optimizer cannot elide the call or hoist it out of the loop.
+        do_not_optimize(routing_succeeded);
+        do_not_optimize(routed_packet_path_end);
+        do_not_optimize(routed_packet_path_address_sizes_end);
     }
 
     auto end = std::chrono::high_resolution_clock::now();
 
+    tracking_enabled = false;
+
+    // Force the cumulative state to be observable too.
+    // Covers any cross-iteration optimization that proves the arrays/state aren't read after the loop.
+    do_not_optimize(routed_packet_path);
+    do_not_optimize(routed_packet_path_address_sizes);
+    do_not_optimize(routing_state);
+    do_not_optimize(route_state);
+
     std::cout << "--- End routing loop ---" << std::endl;
+    std::cout << std::endl;
 
-    std::chrono::duration<double, std::micro> elapsed_us = end - start;
+    const double elapsed_us = std::chrono::duration<double, std::micro>(end - start).count();
+    const double elapsed_ms = elapsed_us / 1000.0;
+    const double elapsed_s  = elapsed_ms / 1000.0;
+    const double avg_route_us = elapsed_us / static_cast<double>(packet_count);
+    const double pkts_per_sec = static_cast<double>(packet_count) / elapsed_s;
 
-    double elapsed_ms = elapsed_us.count() / 1000;
-    double elapsed_seconds = elapsed_ms / 1000;
-    double elapsed_minutes = elapsed_seconds / 60;
-    double packets_per_ms = packet_count / elapsed_ms;
-    double packets_per_second = packet_count / elapsed_seconds;
+    std::ostringstream memory_text;
+    memory_text << allocation_bytes << " bytes, " << allocation_count << " allocations";
 
-    double average_route_time = elapsed_us.count() / packet_count;
+    std::cout << "Elapsed:         " << std::fixed << std::setprecision(2) << elapsed_s << " s ("
+              << std::setprecision(0) << elapsed_ms << " ms)" << std::endl;
+    std::cout << "Throughput:      " << format_throughput(pkts_per_sec) << std::endl;
+    std::cout << "Routing time:    " << format_route_time(avg_route_us) << std::endl;
+    std::cout << "Routing memory:  " << memory_text.str() << std::endl;
+    std::cout << std::endl;
 
-    std::cout << "Elapsed: " << elapsed_ms << " ms" << std::endl;
-    std::cout << "Elapsed: " << std::fixed << std::setprecision(2) << elapsed_seconds << " seconds" << std::endl;
-    std::cout << "Elapsed: " << std::fixed << std::setprecision(2) << elapsed_minutes << " minutes" << std::endl;
-    std::cout << "Throughput: " << packets_per_ms << " packets / ms" << std::endl;
-    std::cout << "Throughput: " << packets_per_second << " packets / second" << std::endl;
-    std::cout << "Average route time: " << average_route_time << " us" << std::endl;
-}
-
-void run_address_equal_stress_test()
-{
-    constexpr size_t count = 100'000'000;
-
-    volatile bool result = false;
-
-    {
-        address a1 { {'W','I','D','E','1'}, 5 }; // WIDE1
-        address a2 { {'W','I','D','E'}, 4, 1 };  // WIDE1
-
-        auto start = std::chrono::high_resolution_clock::now();
-
-        for (size_t i = 0; i < count; i++)
-        {
-            address a1_copy = a1;
-            a1_copy.mark = false;
-            std::array<char, 15> a1_string = {};
-            std::array<char, 15> a2_string = {};
-            size_t a1_string_size = 0;
-            size_t a2_string_size = 0;
-            to_string(a1_copy, a1_string, a1_string_size);
-            to_string(a2, a2_string, a2_string_size);
-            result = (a1_string_size == a2_string_size &&
-                std::equal(a1_string.begin(), a1_string.begin() + a1_string_size, a2_string.begin()));
-            assert(result);
-        }
-
-        auto end = std::chrono::high_resolution_clock::now();
-
-        auto result = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-
-        std::cout << "to_string Elapsed: " << result.count() << " us" << std::endl;
-        std::cout << "to_string Elapsed: " << result.count() / 1000.0 << " ms" << std::endl;
-        std::cout << "to_string Elapsed: " << result.count() / 1000000.0 << " s" << std::endl;
-    }
-
-    {
-        address a1 { {'W','I','D','E','1'}, 5 }; // WIDE1
-        address a2 { {'W','I','D','E'}, 4, 1 };  // WIDE1
-
-        auto start = std::chrono::high_resolution_clock::now();
-
-        for (size_t i = 0; i < count; i++)
-        {
-            result = equal_addresses_ignore_mark(a1, a2);
-            assert(result);
-        }
-
-        auto end = std::chrono::high_resolution_clock::now();
-
-        auto result = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-
-        std::cout << "equal_addresses_ignore_mark Elapsed: " << result.count() << " us" << std::endl;
-        std::cout << "equal_addresses_ignore_mark Elapsed: " << result.count() / 1000.0 << " ms" << std::endl;
-        std::cout << "equal_addresses_ignore_mark Elapsed: " << result.count() / 1000000.0 << " s" << std::endl;
-    }
+    std::cout << "README perf table row (fill hardware column):" << std::endl;
+    std::cout << std::endl;
+    std::cout << "| Platform     | Hardware                     | Throughput  | Routing time  | Routing memory (heap)      |" << std::endl;
+    std::cout << "|--------------|------------------------------|-------------|---------------|----------------------------|" << std::endl;
+    std::cout << "| " << std::left << std::setw(13) << platform_label()
+              << "| " << std::setw(29) << "<fill hardware>"
+              << "| " << std::setw(12) << format_throughput(pkts_per_sec)
+              << "| " << std::setw(14) << format_route_time(avg_route_us)
+              << "| " << std::setw(27) << memory_text.str() << "|" << std::endl;
 }
 
 int main()
 {
-    run_address_equal_stress_test();
-    run_try_route_packet_stress_test();
+    run_throughput_test();
     return 0;
 }
