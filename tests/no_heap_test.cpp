@@ -85,7 +85,7 @@ TEST(no_heap, try_route_packet_low_level_overload_one_million_packets)
     tracking_enabled = true;
 
     aprs::router::routing_state routing_state;
-    aprs::router::route_state reusable_route_state;
+    aprs::router::route_state route_state;
 
     for (size_t iteration = 0; iteration < packet_count; ++iteration)
     {
@@ -98,7 +98,7 @@ TEST(no_heap, try_route_packet_low_level_overload_one_million_packets)
             aprs::router::routing_option::none,
             routed_packet_path.begin(),
             routed_packet_path_address_sizes.begin(),
-            routing_state, reusable_route_state);
+            routing_state, route_state);
 
         (void)routed_packet_path_end;
         (void)routed_packet_path_address_sizes_end;
@@ -141,19 +141,20 @@ TEST(no_heap, init_router_then_no_init_overload_one_million_packets)
     tracking_enabled = true;
 
     aprs::router::routing_state routing_state;
-    aprs::router::route_state reusable_route_state;
+    aprs::router::route_state route_state;
 
-    aprs::router::init_router(router_address, explicit_addresses.begin(), explicit_addresses.end(), n_N_addresses.begin(), n_N_addresses.end(), aprs::router::routing_option::none, false, reusable_route_state);
+    aprs::router::init_router(router_address, explicit_addresses.begin(), explicit_addresses.end(), n_N_addresses.begin(), n_N_addresses.end(), aprs::router::routing_option::none, route_state);
 
     for (size_t iteration = 0; iteration < packet_count; ++iteration)
     {
         auto [routed_packet_path_end, routed_packet_path_address_sizes_end, routing_actions_end, routing_succeeded] = aprs::router::try_route_packet(
             packet_from, packet_to,
             packet_path.begin(), packet_path.end(),
+            false,
             routed_packet_path.begin(),
             routed_packet_path_address_sizes.begin(),
             aprs::router::detail::discard_output_iterator{},
-            routing_state, reusable_route_state);
+            routing_state, route_state);
 
         (void)routed_packet_path_end;
         (void)routed_packet_path_address_sizes_end;
@@ -172,6 +173,68 @@ TEST(no_heap, init_router_then_no_init_overload_one_million_packets)
     {
         EXPECT_EQ(std::string_view(routed_packet_path[address_index].data(), routed_packet_path_address_sizes[address_index]),
                   expected_routed_path[address_index]);
+    }
+}
+
+TEST(no_heap, with_diagnostics_one_million_packets)
+{
+    constexpr size_t packet_count = 1'000'000;
+
+    const std::string_view packet_from = "N0CALL-10";
+    const std::string_view packet_to   = "CALL-5";
+    const std::string_view router_address = "DIGI";
+
+    const std::array<std::string_view, 5> packet_path{ "CALLA-10*", "CALLB-5*", "CALLC-15*", "WIDE1*", "WIDE2-1" };
+    const std::array<std::string_view, 6> expected_routed_path{ "CALLA-10", "CALLB-5", "CALLC-15", "WIDE1", "DIGI", "WIDE2*" };
+    const std::array<std::string_view, 0> explicit_addresses{};
+    const std::array<std::string_view, 2> n_N_addresses{ "WIDE1-1", "WIDE2-1" };
+
+    std::array<std::array<char, 10>, 8> routed_packet_path{};
+    std::array<size_t, 8> routed_packet_path_address_sizes{};
+    std::array<aprs::router::routing_diagnostic, 32> routing_actions{};
+
+    allocation_count = 0;
+    allocation_bytes = 0;
+    tracking_enabled = true;
+
+    aprs::router::routing_state routing_state;
+    aprs::router::route_state route_state;
+
+    aprs::router::init_router(router_address, explicit_addresses.begin(), explicit_addresses.end(), n_N_addresses.begin(), n_N_addresses.end(), aprs::router::routing_option::none, route_state);
+
+    size_t routing_actions_size = 0;
+
+    for (size_t iteration = 0; iteration < packet_count; ++iteration)
+    {
+        auto [routed_packet_path_end, routed_packet_path_address_sizes_end, routing_actions_end, routing_succeeded] = aprs::router::try_route_packet(
+            packet_from, packet_to,
+            packet_path.begin(), packet_path.end(),
+            true,
+            routed_packet_path.begin(),
+            routed_packet_path_address_sizes.begin(),
+            routing_actions.begin(),
+            routing_state, route_state);
+
+        (void)routed_packet_path_end;
+        (void)routed_packet_path_address_sizes_end;
+        (void)routing_succeeded;
+
+        routing_actions_size = static_cast<size_t>(std::distance(routing_actions.begin(), routing_actions_end));
+    }
+
+    tracking_enabled = false;
+
+    EXPECT_EQ(allocation_count, 0u)
+        << "init_router + no-init try_route_packet (diagnostics enabled) performed " << allocation_count
+        << " heap allocation(s) totaling " << allocation_bytes << " bytes across "
+        << packet_count << " routing calls";
+
+    EXPECT_GT(routing_actions_size, 0u) << "expected diagnostics to be emitted when enable_diagnostics=true";
+    EXPECT_LE(routing_actions_size, routing_actions.size()) << "diagnostic count exceeded fixed-size buffer";
+
+    for (size_t address_index = 0; address_index < expected_routed_path.size(); ++address_index)
+    {
+        EXPECT_EQ(std::string_view(routed_packet_path[address_index].data(), routed_packet_path_address_sizes[address_index]), expected_routed_path[address_index]);
     }
 }
 

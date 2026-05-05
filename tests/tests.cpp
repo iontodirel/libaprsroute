@@ -2718,20 +2718,18 @@ TEST(routing, init_router_and_no_init_overload_combinations)
             std::array<size_t, 8> routed_packet_path_address_sizes{};
             aprs::router::routing_state routing_state;
 
-            auto [path_end, sizes_end, actions_end, result] = aprs::router::try_route_packet(
+            auto [path_end, sizes_end, result] = aprs::router::try_route_packet(
                 packet_from, packet_to,
                 packet_path.begin(), packet_path.end(),
                 router_address,
                 explicit_addresses.begin(), explicit_addresses.end(),
                 n_N_addresses.begin(), n_N_addresses.end(),
-                aprs::router::routing_option::none, false,
+                aprs::router::routing_option::none,
                 routed_packet_path.begin(),
                 routed_packet_path_address_sizes.begin(),
-                aprs::router::detail::discard_output_iterator{},
                 routing_state, state);
 
             (void)sizes_end;
-            (void)actions_end;
             (void)result;
 
             size_t routed_path_size = static_cast<size_t>(std::distance(routed_packet_path.begin(), path_end));
@@ -2810,7 +2808,7 @@ TEST(routing, init_router_and_no_init_overload_combinations)
     {
         aprs::router::route_state state;
 
-        aprs::router::init_router(router_address, explicit_addresses.begin(), explicit_addresses.end(), n_N_addresses.begin(), n_N_addresses.end(), aprs::router::routing_option::none, false, state);
+        aprs::router::init_router(router_address, explicit_addresses.begin(), explicit_addresses.end(), n_N_addresses.begin(), n_N_addresses.end(), aprs::router::routing_option::none, state);
 
         for (int i = 0; i < 3; ++i)
         {
@@ -2843,7 +2841,7 @@ TEST(routing, init_router_and_no_init_overload_combinations)
     {
         aprs::router::route_state state;
 
-        aprs::router::init_router(router_address, explicit_addresses.begin(), explicit_addresses.end(), n_N_addresses.begin(), n_N_addresses.end(), aprs::router::routing_option::none, false, state);
+        aprs::router::init_router(router_address, explicit_addresses.begin(), explicit_addresses.end(), n_N_addresses.begin(), n_N_addresses.end(), aprs::router::routing_option::none, state);
 
         for (int i = 0; i < 3; ++i)
         {
