@@ -750,8 +750,8 @@ template <class OutputIterator> OutputIterator push_address_replaced_diagnostic(
 template <class OutputIterator> OutputIterator push_address_decremented_diagnostic(address& address, bool enable_diagnostics, OutputIterator routing_actions_out);
 template <class OutputIterator> OutputIterator push_address_inserted_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t insert_address_index, bool enable_diagnostics, OutputIterator routing_actions_out);
 template <class OutputIterator> OutputIterator push_address_removed_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t remove_address_index, bool enable_diagnostics, OutputIterator routing_actions_out);
-template <class OutputIterator> OutputIterator create_address_move_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t from_index, size_t to_index, bool enable_diagnostics, OutputIterator routing_actions_out);
-template <class OutputIterator> OutputIterator create_truncate_address_range_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t from_index, size_t to_index, bool enable_diagnostics, OutputIterator routing_actions_out);
+template <class OutputIterator> OutputIterator create_address_move_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t from_index, size_t to_index, bool enable_diagnostics, OutputIterator routing_actions_out_begin, OutputIterator routing_actions_out_end);
+template <class OutputIterator> OutputIterator create_truncate_address_range_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t from_index, size_t to_index, bool enable_diagnostics, OutputIterator routing_actions_out_begin, OutputIterator routing_actions_out_end);
 
 std::string create_display_name_diagnostic(const routing_diagnostic_display_entry& line);
 routing_diagnostic_display_entry create_diagnostic_print_line(const routing_diagnostic& diag, const APRS_ROUTER_PACKET_NAMESPACE_REFERENCE packet& routed_packet);
@@ -1782,8 +1782,9 @@ APRS_ROUTER_INLINE_NO_DISABLE std::pair<OutputIterator, bool> try_preempt_transf
         // Diagnostics are calculated before the move.
         // Store diagnostics in a temporary array, and if the move is not successful
         // then we will not add the diagnostics to the actions.
+        // Sized for the worst case: create_address_move_diagnostic emits exactly 2 entries.
         std::array<routing_diagnostic, 8> routing_actions_temp{};
-        auto routing_actions_temp_end = create_address_move_diagnostic(packet_addresses, packet_addresses_size, router_address_index, unused_address_index, enable_diagnostics, routing_actions_temp.begin());
+        auto routing_actions_temp_end = create_address_move_diagnostic(packet_addresses, packet_addresses_size, router_address_index, unused_address_index, enable_diagnostics, routing_actions_temp.begin(), routing_actions_temp.end());
         if (try_move_address_to_position(packet_addresses, packet_addresses_size, router_address_index, unused_address_index))
         {
             routing_actions_out = std::copy(routing_actions_temp.begin(), routing_actions_temp_end, routing_actions_out);
@@ -1795,8 +1796,10 @@ APRS_ROUTER_INLINE_NO_DISABLE std::pair<OutputIterator, bool> try_preempt_transf
         // Diagnostics are calculated before the move.
         // Store diagnostics in a temporary array, and if the move is not successful
         // then we will not add the diagnostics to the actions.
+        // Sized for the worst case: create_truncate_address_range_diagnostic emits at most (packet_addresses_size - 1) entries,
+        // with packet_addresses_size capped at 8.
         std::array<routing_diagnostic, 8> routing_actions_temp{};
-        auto routing_actions_temp_end = create_truncate_address_range_diagnostic(packet_addresses, packet_addresses_size, unused_address_index, router_address_index, enable_diagnostics, routing_actions_temp.begin());
+        auto routing_actions_temp_end = create_truncate_address_range_diagnostic(packet_addresses, packet_addresses_size, unused_address_index, router_address_index, enable_diagnostics, routing_actions_temp.begin(), routing_actions_temp.end());
         if (try_truncate_address_range(packet_addresses, packet_addresses_size, unused_address_index, router_address_index))
         {
             routing_actions_out = std::copy(routing_actions_temp.begin(), routing_actions_temp_end, routing_actions_out);
@@ -1808,8 +1811,10 @@ APRS_ROUTER_INLINE_NO_DISABLE std::pair<OutputIterator, bool> try_preempt_transf
         // Diagnostics are calculated before the move.
         // Store diagnostics in a temporary array, and if the move is not successful
         // then we will not add the diagnostics to the actions.
+        // Sized for the worst case: create_truncate_address_range_diagnostic emits at most (packet_addresses_size - 1) entries,
+        // with packet_addresses_size capped at 8.
         std::array<routing_diagnostic, 8> routing_actions_temp{};
-        auto routing_actions_temp_end = create_truncate_address_range_diagnostic(packet_addresses, packet_addresses_size, 0, router_address_index, enable_diagnostics, routing_actions_temp.begin());
+        auto routing_actions_temp_end = create_truncate_address_range_diagnostic(packet_addresses, packet_addresses_size, 0, router_address_index, enable_diagnostics, routing_actions_temp.begin(), routing_actions_temp.end());
         if (try_truncate_address_range(packet_addresses, packet_addresses_size, 0, router_address_index))
         {
             routing_actions_out = std::copy(routing_actions_temp.begin(), routing_actions_temp_end, routing_actions_out);
@@ -2652,10 +2657,12 @@ APRS_ROUTER_INLINE_NO_DISABLE OutputIterator push_address_removed_diagnostic(con
 }
 
 template <class OutputIterator>
-APRS_ROUTER_INLINE_NO_DISABLE OutputIterator create_address_move_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t from_index, size_t to_index, bool enable_diagnostics, OutputIterator routing_actions_out)
+APRS_ROUTER_INLINE_NO_DISABLE OutputIterator create_address_move_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t from_index, size_t to_index, bool enable_diagnostics, OutputIterator routing_actions_out_begin, OutputIterator routing_actions_out_end)
 {
     assert(from_index < packet_addresses_size);
     assert(to_index < packet_addresses_size); (void)packet_addresses_size;
+
+    OutputIterator routing_actions_out = routing_actions_out_begin;
 
     if (enable_diagnostics)
     {
@@ -2671,6 +2678,12 @@ APRS_ROUTER_INLINE_NO_DISABLE OutputIterator create_address_move_diagnostic(cons
         remove_diag.end = remove_diag.start + removed_address.length;
         remove_diag.index = from_index;
 
+        assert(routing_actions_out != routing_actions_out_end);
+        if (routing_actions_out == routing_actions_out_end)
+        {
+            return routing_actions_out;
+        }
+
         *routing_actions_out++ = remove_diag;
 
         routing_diagnostic insert_diag;
@@ -2685,20 +2698,32 @@ APRS_ROUTER_INLINE_NO_DISABLE OutputIterator create_address_move_diagnostic(cons
         insert_diag.end = insert_diag.start + removed_address.length;
         insert_diag.index = to_index;
 
+        assert(routing_actions_out != routing_actions_out_end);
+        if (routing_actions_out == routing_actions_out_end)
+        {
+            return routing_actions_out;
+        }
+
         *routing_actions_out++ = insert_diag;
     }
+
+    (void)routing_actions_out_end;
+
     return routing_actions_out;
 }
 
 template <class OutputIterator>
-APRS_ROUTER_INLINE_NO_DISABLE OutputIterator create_truncate_address_range_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t from_index, size_t to_index, bool enable_diagnostics, OutputIterator routing_actions_out)
+APRS_ROUTER_INLINE_NO_DISABLE OutputIterator create_truncate_address_range_diagnostic(const std::array<address, 8>& packet_addresses, size_t packet_addresses_size, size_t from_index, size_t to_index, bool enable_diagnostics, OutputIterator routing_actions_out_begin, OutputIterator routing_actions_out_end)
 {
     assert(from_index < packet_addresses_size);
     assert(to_index < packet_addresses_size);
     (void)packet_addresses_size;
 
+    OutputIterator routing_actions_out = routing_actions_out_begin;
+
     if (!enable_diagnostics)
     {
+        (void)routing_actions_out_end;
         return routing_actions_out;
     }
 
@@ -2720,8 +2745,17 @@ APRS_ROUTER_INLINE_NO_DISABLE OutputIterator create_truncate_address_range_diagn
         diag.end = diag.start + address.length;
         diag.index = from_index;
 
+        assert(routing_actions_out != routing_actions_out_end);
+        if (routing_actions_out == routing_actions_out_end)
+        {
+            return routing_actions_out;
+        }
+
         *routing_actions_out++ = diag;
     }
+
+    (void)routing_actions_out_end;
+
     return routing_actions_out;
 }
 
