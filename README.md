@@ -159,18 +159,18 @@ const std::array<std::string_view, 2> n_N_addresses { "WIDE1-1", "WIDE2-1" };
 std::array<std::array<char, 10>, 8> routed_packet_path {};
 std::array<size_t, 8> routed_packet_path_address_sizes {};
 
-aprs::router::routing_state routing_state;
-aprs::router::route_state route_state;
+routing_state routing_state;
+route_state route_state;
 
 // Parse and cache the router's own addresses once; reused for every packet
-aprs::router::init_router(
+init_router(
     router_address,
     explicit_addresses.begin(), explicit_addresses.end(),
     n_N_addresses.begin(), n_N_addresses.end(),
-    aprs::router::routing_option::none,
+    routing_option::none,
     route_state);
 
-auto [routed_path_end, routed_path_sizes_end, routing_succeeded] = aprs::router::try_route_packet(
+auto [routed_path_end, routed_path_sizes_end, routing_succeeded] = try_route_packet(
     packet_from, packet_to,
     packet_path.begin(), packet_path.end(),
     routed_packet_path.begin(),
@@ -178,7 +178,7 @@ auto [routed_path_end, routed_path_sizes_end, routing_succeeded] = aprs::router:
     routing_state, route_state);
 
 assert(routing_succeeded);
-assert(routing_state == aprs::router::routing_state::routed);
+assert(routing_state == routing_state::routed);
 
 // Routed path: CALLA-10, CALLB-5, CALLC-15, WIDE1, DIGI, WIDE2*
 //
