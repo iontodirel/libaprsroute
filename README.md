@@ -144,6 +144,55 @@ for (auto& e : diag.entries)
 }
 ```
 
+### Stack-only routing:
+
+This overload routes packets without any heap allocations. All inputs, outputs and reusable state are stored on the stack, making it suitable for embedded platforms. The same buffers and `route_state` can be reused across millions of packets without reallocation.
+
+``` cpp
+const std::string_view packet_from = "N0CALL-10";
+const std::string_view packet_to = "CALL-5";
+const std::string_view router_address = "DIGI";
+const std::array<std::string_view, 5> packet_path { "CALLA-10*", "CALLB-5*", "CALLC-15*", "WIDE1*", "WIDE2-1" };
+const std::array<std::string_view, 0> explicit_addresses{};
+const std::array<std::string_view, 2> n_N_addresses { "WIDE1-1", "WIDE2-1" };
+
+std::array<std::array<char, 10>, 8> routed_packet_path {};
+std::array<size_t, 8> routed_packet_path_address_sizes {};
+
+aprs::router::routing_state routing_state;
+aprs::router::route_state route_state;
+
+// Parse and cache the router's own addresses once; reused for every packet
+aprs::router::init_router(
+    router_address,
+    explicit_addresses.begin(), explicit_addresses.end(),
+    n_N_addresses.begin(), n_N_addresses.end(),
+    aprs::router::routing_option::none,
+    route_state);
+
+auto [routed_path_end, routed_path_sizes_end, routing_succeeded] = aprs::router::try_route_packet(
+    packet_from, packet_to,
+    packet_path.begin(), packet_path.end(),
+    routed_packet_path.begin(),
+    routed_packet_path_address_sizes.begin(),
+    routing_state, route_state);
+
+assert(routing_succeeded);
+assert(routing_state == aprs::router::routing_state::routed);
+
+// Routed path: CALLA-10, CALLB-5, CALLC-15, WIDE1, DIGI, WIDE2*
+//
+// Reconstruct each routed address as a string_view:
+//
+//   const size_t routed_address_count = static_cast<size_t>(std::distance(routed_packet_path.begin(), routed_path_end));
+//
+//   for (size_t i = 0; i < routed_address_count; ++i)
+//   {
+//       std::string_view address(routed_packet_path[i].data(), routed_packet_path_address_sizes[i]);
+//       // use address ...
+//   }
+```
+
 ### Address parsing:
 
 #### Parsing a WIDE generic address
