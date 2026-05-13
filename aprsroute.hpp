@@ -3103,34 +3103,88 @@ APRS_ROUTER_INLINE q_construct parse_q_construct(std::string_view text)
 
 APRS_ROUTER_INLINE address_kind parse_address_kind(std::string_view text)
 {
-    using pair_t = std::pair<std::string_view, address_kind>;
-
-    // NOTE: lookup_table is sorted by the first element of the pair
-
-    static constexpr std::array<pair_t, 13> lookup_table =
-    {{
-        { "ECHO", address_kind::echo },
-        { "GATE", address_kind::gate },
-        { "IGATECALL", address_kind::igatecall },
-        { "NOGATE", address_kind::nogate },
-        { "OPNTRC", address_kind::opntrc },
-        { "OPNTRK", address_kind::opntrk },
-        { "RELAY", address_kind::relay },
-        { "RFONLY", address_kind::rfonly },
-        { "TCPIP", address_kind::tcpip },
-        { "TCPXX", address_kind::tcpxx },
-        { "TEMP", address_kind::temp },
-        { "TRACE", address_kind::trace },
-        { "WIDE", address_kind::wide }
-    }};
-
-    auto it = std::lower_bound(lookup_table.begin(), lookup_table.end(), text, [](const pair_t& lhs, std::string_view rhs) {
-        return lhs.first < rhs;
-    });
-
-    if (it != lookup_table.end() && it->first == text)
+    if (text.size() < 4 || text.size() > 9)
     {
-        return it->second;
+        return address_kind::other;
+    }
+
+    switch (text[0])
+    {
+        case 'E':
+            if (text == "ECHO")
+            {
+                return address_kind::echo;
+            }
+            break;
+
+        case 'G':
+            if (text == "GATE")
+            {
+                return address_kind::gate;
+            }
+            break;
+
+        case 'I':
+            if (text == "IGATECALL")
+            {
+                return address_kind::igatecall;
+            }
+            break;
+
+        case 'N':
+            if (text == "NOGATE")
+            {
+                return address_kind::nogate;
+            }
+            break;
+
+        case 'O':
+            if (text == "OPNTRC")
+            {
+                return address_kind::opntrc;
+            }
+            if (text == "OPNTRK")
+            {
+                return address_kind::opntrk;
+            }
+            break;
+
+        case 'R':
+            if (text == "RELAY")
+            {
+                return address_kind::relay;
+            }
+            if (text == "RFONLY")
+            {
+                return address_kind::rfonly;
+            }
+            break;
+
+        case 'T':
+            if (text == "TEMP")
+            {
+                return address_kind::temp;
+            }
+            if (text == "TRACE")
+            {
+                return address_kind::trace;
+            }
+            if (text == "TCPIP")
+            {
+                return address_kind::tcpip;
+            }
+            if (text == "TCPXX")
+            {
+                return address_kind::tcpxx;
+            }
+            break;
+
+        case 'W':
+            if (text == "WIDE")
+            {
+                return address_kind::wide;
+            }
+            break;
     }
 
     return address_kind::other;
@@ -3668,51 +3722,65 @@ APRS_ROUTER_INLINE void init_addresses(route_state& state)
 
     for (size_t path_index = 0; path_index < packet_path_size && packet_addresses_size < 8; path_index++)
     {
-        const auto& packet_address_string = packet_path[path_index];
-        bool found = false;
+        const std::string_view packet_address_text { packet_path[path_index].data(), packet_path_address_sizes[path_index] };
+        bool matched_router_address = false;
 
-        for (size_t router_explicit_index = 0; router_explicit_index < router_explicit_addresses_size; router_explicit_index++)
+        struct address packet_explicit_address;
+        bool packet_explicit_address_result = false;
+
+        if (router_explicit_addresses_size > 0)
         {
-            const auto& router_explicit_address = router_explicit_addresses[router_explicit_index];
-            struct address packet_explicit_address;
+            packet_explicit_address_result = try_parse_address_with_ssid(packet_address_text, packet_explicit_address);
+        }
 
-            if (try_parse_address_with_ssid({ packet_address_string.data(), packet_path_address_sizes[path_index] }, packet_explicit_address))
+        if (packet_explicit_address_result)
+        {
+            for (size_t router_explicit_index = 0; router_explicit_index < router_explicit_addresses_size; router_explicit_index++)
             {
+                const auto& router_explicit_address = router_explicit_addresses[router_explicit_index];
+
                 if ((packet_explicit_address.ssid == router_explicit_address.ssid && equal_address_text(packet_explicit_address, router_explicit_address)) ||
                     (router_address.ssid == router_explicit_address.ssid && equal_address_text(router_address, router_explicit_address)))
                 {
                     packet_explicit_address.index = index;
                     array_push_back(packet_addresses, packet_addresses_size, packet_explicit_address);
-                    found = true;
+                    matched_router_address = true;
                     break;
                 }
             }
         }
 
-        if (found)
+        if (matched_router_address)
         {
             index++;
             continue;
         }
 
-        for (size_t router_n_N_index = 0; router_n_N_index < router_n_N_addresses_size; router_n_N_index++)
-        {
-            const auto& router_n_N_address = router_n_N_addresses[router_n_N_index];
-            struct address packet_n_N_adress;
+        struct address packet_n_N_address;
+        bool packet_n_N_address_result = false;
 
-            if (try_parse_n_N_address({ packet_address_string.data(), packet_path_address_sizes[path_index] }, packet_n_N_adress))
+        if (router_n_N_addresses_size > 0)
+        {
+            packet_n_N_address_result = try_parse_n_N_address(packet_address_text, packet_n_N_address);
+        }
+
+        if (packet_n_N_address_result)
+        {
+            for (size_t router_n_N_index = 0; router_n_N_index < router_n_N_addresses_size; router_n_N_index++)
             {
-                if (packet_n_N_adress.n == router_n_N_address.n && equal_address_text(packet_n_N_adress, router_n_N_address))
+                const auto& router_n_N_address = router_n_N_addresses[router_n_N_index];
+
+                if (packet_n_N_address.n == router_n_N_address.n && equal_address_text(packet_n_N_address, router_n_N_address))
                 {
-                    packet_n_N_adress.index = index;
-                    array_push_back(packet_addresses, packet_addresses_size, packet_n_N_adress);
-                    found = true;
+                    packet_n_N_address.index = index;
+                    array_push_back(packet_addresses, packet_addresses_size, packet_n_N_address);
+                    matched_router_address = true;
                     break;
                 }
             }
         }
 
-        if (found)
+        if (matched_router_address)
         {
             index++;
             continue;
@@ -3720,7 +3788,7 @@ APRS_ROUTER_INLINE void init_addresses(route_state& state)
 
         struct address packet_address;
 
-        if (try_parse_address({packet_address_string.data(), packet_path_address_sizes[path_index]}, packet_address))
+        if (try_parse_address(packet_address_text, packet_address))
         {
             packet_address.index = index;
             array_push_back(packet_addresses, packet_addresses_size, packet_address);
